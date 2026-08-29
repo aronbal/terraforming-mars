@@ -41,6 +41,21 @@ NOTE: This site is restarted daily. A multiplayer game will remain available for
 Unfinished solo games are flushed after one day. We continue to make stability and scalability improvements in step with growth and popularity,
 but to make sure your game remains, we highly recommended to host your own web server.
 
+## ⬤ I want to play against the computer
+This fork adds a computer opponent, so you can play an ordinary multiplayer game on your own.
+
+On the new-game screen, set the player count to two or more, tick **Computer opponent** on any
+seat, and choose one of four difficulties:
+
+- **Beginner** — takes legal moves with little planning, and never really builds an engine.
+- **Engineer** — builds production, terraforms steadily and races milestones.
+- **Veteran** — prices its engine correctly, values tag synergies, and spends down at the end.
+- **Director** — as Veteran, plus placement denial and timing the last generation around who leads.
+
+Seats without the tick are played by people, so two humans and a bot in the same game works too.
+
+[How the opponent works, and how to tune it](docs/computer-opponent.md).
+
 ## ⬤ I want to learn how to play
 There are far too many good tutorials online. [Here are the rulebooks, though.](https://github.com/terraforming-mars/terraforming-mars/wiki/Rulebooks)
 

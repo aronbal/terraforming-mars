@@ -7,6 +7,7 @@ import {RandomMAOptionType} from '../ma/RandomMAOptionType';
 import {AgendaStyle} from '../turmoil/Types';
 import {GameId} from '../Types';
 import {Expansion} from '../cards/GameModule';
+import {BotDifficulty} from '../bot/BotDifficulty';
 
 export type BoardNameType = BoardName | RandomBoardOption;
 
@@ -16,6 +17,8 @@ export interface NewPlayerModel {
   beginner: boolean;
   handicap: number;
   first: boolean;
+  /** When set, this seat is played by the computer at this difficulty. */
+  bot?: BotDifficulty;
 }
 
 export type EscapeVelocityOptions = {

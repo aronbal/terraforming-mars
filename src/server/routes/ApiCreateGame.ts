@@ -17,6 +17,8 @@ import {Request} from '../Request';
 import {Response} from '../Response';
 import {QuotaConfig, QuotaHandler} from '../server/QuotaHandler';
 import {durationToMilliseconds} from '../utils/durations';
+import {isBotDifficulty} from '../../common/bot/BotDifficulty';
+import {BotRunner} from '../bot/BotRunner';
 
 function parseQuotaConfig(struct: any): QuotaConfig {
   let {limit} = struct;
@@ -105,13 +107,17 @@ export class ApiCreateGame extends Handler {
           const gameId = safeCast(generateRandomId('g'), isGameId);
           const spectatorId = safeCast(generateRandomId('s'), isSpectatorId);
           const players = gameReq.players.map((p) => {
-            return new Player(
+            const player = new Player(
               p.name,
               p.color,
               p.beginner,
               Number(p.handicap), // For some reason handicap is coming up a string.
               safeCast(generateRandomId('p'), isPlayerId),
             );
+            if (isBotDifficulty(p.bot)) {
+              player.bot = p.bot;
+            }
+            return player;
           });
           let firstPlayerIdx = 0;
           for (let i = 0; i < gameReq.players.length; i++) {
@@ -188,6 +194,9 @@ export class ApiCreateGame extends Handler {
             game = Game.newInstance(gameId, players, players[firstPlayerIdx], spectatorId, gameOptions, seed);
           }
           ctx.gameLoader.add(game);
+          // Computer opponents pick their corporation and opening hand before
+          // the first human is asked for anything.
+          BotRunner.run(game);
           responses.writeJson(res, ctx, Server.getSimpleGameModel(game));
         } catch (error) {
           responses.internalServerError(req, res, error);

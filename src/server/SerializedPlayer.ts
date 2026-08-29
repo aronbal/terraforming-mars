@@ -8,6 +8,7 @@ import {GlobalParameter} from '../common/GlobalParameter';
 import {DiscordId} from './server/auth/discord';
 import {UnderworldPlayerData} from '../common/underworld/UnderworldPlayerData';
 import {DeltaProjectPlayerModel} from '../common/models/DeltaProjectPlayerModel';
+import {BotDifficulty} from '../common/bot/BotDifficulty';
 
 interface DeprecatedFields {
 }
@@ -19,6 +20,8 @@ export interface SerializedPlayer extends DeprecatedFields{
   actionsThisGeneration: Array<CardName>;
   alliedParty: AlliedParty | undefined;
   autoPass: boolean;
+  /** Difficulty when this player is a computer opponent. */
+  bot?: BotDifficulty;
   beginner: boolean;
   canUseHeatAsMegaCredits: boolean;
   canUseTitaniumAsMegacredits: boolean;

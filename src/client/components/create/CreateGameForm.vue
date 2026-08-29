@@ -480,6 +480,20 @@
                                                   <input type="radio" name="firstIndex" :value="index + 1" v-model="firstIndex">
                                                   <i class="form-icon"></i> <span v-i18n>Goes First?</span>
                                               </label>
+
+                                              <label class="form-switch form-inline create-game-bot-option-label">
+                                                  <input type="checkbox" :checked="newPlayer.bot !== undefined" @change="toggleBot(newPlayer, $event)">
+                                                  <i class="form-icon"></i> <span v-i18n>Computer opponent</span>
+                                              </label>
+
+                                              <label class="form-label create-game-bot-difficulty" v-if="newPlayer.bot !== undefined">
+                                                  <select class="form-select form-inline" v-model="newPlayer.bot">
+                                                      <option v-for="difficulty in BOT_DIFFICULTIES" :key="difficulty" :value="difficulty">
+                                                          {{ botLabel(difficulty) }}
+                                                      </option>
+                                                  </select>
+                                                  <span class="create-game-bot-description">{{ botDescription(newPlayer.bot) }}</span>
+                                              </label>
                                           </div>
                                       </div>
                                     </div>
@@ -572,6 +586,7 @@ import * as constants from '@/common/constants';
 
 import {defineComponent, nextTick} from 'vue';
 import {Color, PLAYER_COLORS} from '@/common/Color';
+import {BOT_DIFFICULTIES, BOT_DIFFICULTY_DESCRIPTIONS, BOT_DIFFICULTY_LABELS, BotDifficulty, DEFAULT_BOT_DIFFICULTY} from '@/common/bot/BotDifficulty';
 import {BoardName} from '@/common/boards/BoardName';
 import {RandomBoardOption} from '@/common/boards/RandomBoardOption';
 import {CardName} from '@/common/cards/CardName';
@@ -720,6 +735,9 @@ export default defineComponent({
     PLAYER_COLORS(): typeof PLAYER_COLORS {
       return PLAYER_COLORS;
     },
+    BOT_DIFFICULTIES(): typeof BOT_DIFFICULTIES {
+      return BOT_DIFFICULTIES;
+    },
     boards() {
       return [
         BoardName.THARSIS,
@@ -864,6 +882,16 @@ export default defineComponent({
     },
     getPlayers(): Array<NewPlayerModel> {
       return this.players.slice(0, this.playersCount);
+    },
+    toggleBot(player: NewPlayerModel, event: Event): void {
+      const enabled = (event.target as HTMLInputElement).checked;
+      player.bot = enabled ? DEFAULT_BOT_DIFFICULTY : undefined;
+    },
+    botLabel(difficulty: BotDifficulty): string {
+      return BOT_DIFFICULTY_LABELS[difficulty];
+    },
+    botDescription(difficulty: BotDifficulty | undefined): string {
+      return difficulty === undefined ? '' : BOT_DIFFICULTY_DESCRIPTIONS[difficulty];
     },
     isRandomMAEnabled(): Boolean {
       return this.randomMA !== RandomMAOptionType.NONE;
