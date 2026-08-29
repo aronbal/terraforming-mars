@@ -17,6 +17,7 @@
         v-else-if="screen === 'create-game-form'"
       />
       <LoadGameForm v-else-if="screen === 'load'"/>
+      <ContinueGame v-else-if="screen === 'continue-game'"/>
       <GameHome
         v-else-if="screen === 'game-home' && game !== undefined"
         :game="game"
@@ -56,6 +57,7 @@ import * as constants from '@/common/constants';
 
 const AdminHome = defineAsyncComponent(() => import(/* webpackChunkName: "admin" */ '@/client/components/admin/AdminHome.vue'));
 const CardList = defineAsyncComponent(() => import(/* webpackChunkName: "card-list" */ '@/client/components/cardlist/CardList.vue'));
+const ContinueGame = defineAsyncComponent(() => import(/* webpackChunkName: "continue-game" */ '@/client/components/ContinueGame.vue'));
 const CreateGameForm = defineAsyncComponent(() => import(/* webpackChunkName: "create-game" */ '@/client/components/create/CreateGameForm.vue'));
 const GameEnd = defineAsyncComponent(() => import(/* webpackChunkName: "game-end" */ '@/client/components/GameEnd.vue'));
 const GameHome = defineAsyncComponent(() => import(/* webpackChunkName: "game-home" */ '@/client/components/GameHome.vue'));
@@ -72,6 +74,7 @@ import {PlayerViewModel, ViewModel} from '@/common/models/PlayerModel';
 import {SimpleGameModel} from '@/common/models/SimpleGameModel';
 import {SpectatorModel} from '@/common/models/SpectatorModel';
 import {isPlayerId, isSpectatorId} from '@/common/Types';
+import {rememberGame} from '@/client/utils/RecentGamesStorage';
 import {hasShowModal, showModal, windowHasHTMLDialogElement} from './HTMLDialogElementCompatibility';
 
 import dialogPolyfill from 'dialog-polyfill';
@@ -80,6 +83,7 @@ import {setDocumentTitle} from '../utils/documentTitle';
 type Screen = 'admin' |
             'create-game-form' |
             'cards' |
+            'continue-game' |
             'empty' |
             'game-home' |
             'games-overview' |
@@ -145,6 +149,7 @@ export default defineComponent({
     StartScreen,
     CreateGameForm,
     LoadGameForm,
+    ContinueGame,
     GameHome,
     PlayerHome,
     SpectatorHome,
@@ -205,6 +210,15 @@ export default defineComponent({
             app.spectator = model as SpectatorModel;
           }
           app.playerkey++;
+          rememberGame({
+            id: model.id,
+            kind: path === paths.PLAYER ? 'player' : 'spectator',
+            gameName: model.game.name,
+            name: model.thisPlayer?.name,
+            color: model.thisPlayer?.color,
+            generation: model.game.generation,
+            phase: model.game.phase,
+          });
           if (
             model.game.phase === 'end' &&
               window.location.search.includes('&noredirect') === false
@@ -291,6 +305,8 @@ export default defineComponent({
       app.screen = 'create-game-form';
     } else if (currentPathname === paths.LOAD) {
       app.screen = 'load';
+    } else if (currentPathname === paths.CONTINUE_GAME) {
+      app.screen = 'continue-game';
     } else if (currentPathname === paths.CARDS) {
       app.screen = 'cards';
     } else if (currentPathname === paths.HELP) {

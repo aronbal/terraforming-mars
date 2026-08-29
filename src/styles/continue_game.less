@@ -1,0 +1,280 @@
+.topmost-continue-game {
+  .menu-surface();
+
+  min-height: 100%;
+
+  .main-container {
+    margin: 0;
+  }
+}
+
+.continue-game-container {
+  width: 100%;
+  max-width: 760px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 72px 24px 64px;
+  font-family: @menu_font_display;
+  color: @menu_text;
+}
+
+.continue-game-eyebrow {
+  .menu-eyebrow();
+}
+
+.continue-game-head {
+  padding-bottom: 26px;
+  border-bottom: 1px solid @menu_line_strong;
+
+  h1 {
+    .menu-heading();
+
+    margin-top: 12px;
+  }
+}
+
+.continue-game-lede {
+  margin: 0;
+  font-size: 15px;
+  color: @menu_text_dim;
+}
+
+.continue-game-empty {
+  max-width: 46ch;
+  margin-top: 32px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: @menu_text_dim;
+}
+
+.continue-game-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.continue-game-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px minmax(120px, 1fr) minmax(0, 1.4fr) auto 28px;
+  align-items: center;
+  gap: 16px;
+  min-height: 62px;
+  padding: 0 4px;
+  border-bottom: 1px solid @menu_line;
+  transition: background-color 0.16s ease;
+
+  &:hover {
+    background: linear-gradient(90deg, @menu_accent_soft, transparent 75%);
+  }
+}
+
+// A thin bar in the player's colour, rather than a filled square: enough to
+// identify the seat without pulling focus from the name.
+.continue-game-swatch {
+  width: 3px;
+  height: 26px;
+  border-radius: 2px;
+  overflow: hidden;
+  text-indent: -99px;
+}
+
+.continue-game-link {
+  font-size: 19px;
+  font-weight: 500;
+  color: @menu_text;
+  text-decoration: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: @menu_accent;
+    text-decoration: none;
+  }
+}
+
+.continue-game-meta,
+.continue-game-seen {
+  font-size: 13px;
+  color: @menu_text_dim;
+}
+
+.continue-game-seen {
+  font-family: @menu_font_mono;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.continue-game-gamename {
+  color: @menu_text;
+}
+
+.continue-game-dot {
+  padding: 0 6px;
+  opacity: 0.5;
+}
+
+.continue-game-remove {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: @menu_text_dim;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease;
+
+  &:hover {
+    color: @menu_text;
+    border-color: @menu_line_strong;
+  }
+}
+
+.continue-game-clear {
+  margin-top: 18px;
+}
+
+.continue-game-clear-button {
+  .menu-eyebrow();
+
+  padding: 8px 14px;
+  border: 1px solid @menu_line_strong;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease;
+
+  &:hover {
+    color: @menu_text;
+    border-color: @menu_text_dim;
+  }
+}
+
+.continue-game-manual {
+  margin-top: 56px;
+  padding-top: 26px;
+  border-top: 1px solid @menu_line;
+
+  p {
+    margin: 10px 0 18px;
+    font-size: 14px;
+    color: @menu_text_dim;
+  }
+}
+
+.continue-game-manual-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.continue-game-id {
+  width: 260px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid @menu_line_strong;
+  border-radius: 6px;
+  background: @menu_surface;
+  color: @menu_text;
+  font-family: @menu_font_mono;
+  font-size: 14px;
+
+  &::placeholder {
+    color: fade(@menu_text_dim, 70%);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: @menu_accent;
+  }
+}
+
+.continue-game-go {
+  height: 42px;
+  padding: 0 22px;
+  border: 1px solid @menu_accent;
+  border-radius: 6px;
+  background: @menu_accent;
+  color: #14100a;
+  font-family: @menu_font_display;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: filter 0.16s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+.continue-game-error {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #ff6b53;
+}
+
+.continue-game-back {
+  margin-top: 48px;
+
+  a {
+    .menu-eyebrow();
+
+    text-decoration: none;
+
+    &:hover {
+      color: @menu_accent;
+      text-decoration: none;
+    }
+  }
+}
+
+@media only screen and (max-width: 767px) {
+  .topmost-continue-game {
+    .notice {
+      position: static;
+      padding: 16px;
+      text-align: center;
+    }
+  }
+
+  .continue-game-container {
+    padding: 40px 20px 48px;
+  }
+
+  .continue-game-head h1 {
+    font-size: 30px;
+  }
+
+  // Stack the row: colour bar and name on the first line, details beneath.
+  .continue-game-entry {
+    grid-template-columns: 10px 1fr 28px;
+    align-items: start;
+    gap: 8px 14px;
+    padding: 14px 4px;
+  }
+
+  .continue-game-swatch {
+    height: 20px;
+    margin-top: 4px;
+  }
+
+  .continue-game-meta,
+  .continue-game-seen {
+    grid-column: 2;
+  }
+
+  .continue-game-id {
+    width: 100%;
+  }
+}

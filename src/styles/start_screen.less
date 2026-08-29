@@ -1,133 +1,200 @@
 #app {
   position: relative;
 }
+
+// The start screen is a quiet, typographic menu: near-black ground, hairline
+// rules, and one amber accent. No photography — the two radial washes below
+// supply all the depth the page needs.
 .topmost-start-screen {
   margin: 0px;
   padding-bottom: 40px;
-  background: url(./assets/stars.jpg);
   min-height: 100%;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(232, 163, 61, 0.09), transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, rgba(87, 85, 217, 0.1), transparent 65%),
+    @menu_bg_deep;
+}
+
+// No sidebar on the start screen, so the menu can use the full width and centre.
+.topmost-start-screen .main-container {
+  margin: 0;
 }
 
 .start-screen {
-  width: 400px;
+  width: 520px;
   margin: 0 auto;
-}
-
-.start-screen-game-title {
-  color: #daab63;
-  padding: 40px 0 10px 0;
-  margin: 0 auto;
-  text-align: center;
+  font-family: @menu_font_display;
+  color: @menu_text;
 }
 
 .start-screen-links {
   margin: 0 auto;
-  padding-top: 50px;
+  padding-top: 88px;
+}
+
+.start-screen-header.start-screen-link--title {
+  padding-bottom: 34px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid @menu_line_strong;
+}
+
+.start-screen-title-top {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.62em;
+  text-indent: 0.62em;
+  color: @menu_accent;
+  text-transform: uppercase;
+}
+
+.start-screen-title-bottom {
+  font-size: 76px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  margin-top: 10px;
+  color: @menu_text;
+}
+
+.start-screen-menu {
+  display: block;
 }
 
 .start-screen-link {
-  text-decoration: none;
-  cursor: pointer;
-  box-shadow: inset 0 0 0px 1px #333;
-  line-height: 28px;
-  border-radius: 10px;
-  color: #eee;
-  text-shadow:
-    0 0 2px black,
-    0 2px 1px black;
-  padding-left: 17px;
-  width: 369px;
-  height: 90px;
+  position: relative;
   display: flex;
-  margin-bottom: 5px;
-  font-size: 26px;
-  text-transform: uppercase;
-  font-weight: bold;
-  letter-spacing: 1px;
-  padding-bottom: 15px;
-  flex-direction: column-reverse;
-  background-image: url("assets/buttons-homepage/planets.jpg");
+  align-items: center;
+  gap: 20px;
+  padding: 0 4px 0 18px;
+  height: 62px;
+  border-bottom: 1px solid @menu_line;
+  color: @menu_text;
+  text-decoration: none;
+  transition: background-color 0.16s ease, padding-left 0.16s ease;
+
+  // The accent bar that slides in on hover.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 0;
+    width: 2px;
+    background: @menu_accent;
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.16s ease;
+  }
 
   &:hover,
   &:visited,
   &:active,
   &:focus {
-    color: #eee;
+    color: @menu_text;
     text-decoration: none;
   }
 
-  &:hover {
-    filter: brightness(120%);
+  &:hover,
+  &:focus-visible {
+    background: linear-gradient(90deg, @menu_accent_soft, transparent 70%);
+    padding-left: 26px;
+
+    &::before {
+      transform: scaleY(1);
+    }
+
+    .start-screen-link-label {
+      color: @menu_accent;
+    }
+
+    .start-screen-link-arrow {
+      color: @menu_accent;
+      opacity: 1;
+      transform: translateX(4px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 1px solid @menu_accent;
+    outline-offset: -1px;
   }
 }
 
-.start-screen-header {
-  box-shadow: inset 0 0 20px 20px black;
-  font-family: Prototype, sans-serif;
-  font-size: 16px;
-  width: 369px;
-  line-height: 30px;
-  color: #daab63;
-  display: block;
-  text-shadow:
-    0 0 2px black,
-    0 2px 2px black;
-  letter-spacing: 1px;
-  background: url("assets/buttons-homepage/planets.jpg") no-repeat;
+.start-screen-link-index {
+  font-family: @menu_font_mono;
+  font-size: 12px;
+  color: @menu_text_dim;
+  letter-spacing: 0.08em;
 }
 
-.start-screen-title-top {
-  transform: scaleX(2);
-  text-align: center;
-  padding-top: 15px;
+.start-screen-link-label {
+  flex: 1;
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: color 0.16s ease;
 }
 
-.start-screen-title-bottom {
-  transform: scaleX(2);
-  text-align: center;
-  font-size: 30px;
+.start-screen-link-arrow {
+  font-size: 18px;
+  color: @menu_text_dim;
+  opacity: 0.5;
+  transition: transform 0.16s ease, opacity 0.16s ease, color 0.16s ease;
 }
 
-.start-screen-link--new-game {
-  background-position: 0px -90px;
+// The two ways into a game carry more weight than the reference links below them.
+.start-screen-link--primary {
+  .start-screen-link-label {
+    font-size: 25px;
+    font-weight: 600;
+  }
+
+  .start-screen-link-index {
+    color: @menu_accent;
+  }
 }
 
-.start-screen-link--how-to-play {
-  background-position: 0px -180px;
+// The flags are a dense band of colour that would shout over a quiet menu, so
+// they sit muted until the pointer is on them.
+.start-screen-header.start-screen-link--languages {
+  display: flex;
+  justify-content: center;
+  padding-top: 34px;
+
+  .language-icon {
+    box-shadow: none;
+    opacity: 0.4;
+    filter: saturate(0.5);
+    transition: opacity 0.16s ease, filter 0.16s ease, transform 0.16s ease;
+  }
+
+  .language-icon--selected {
+    opacity: 1;
+    filter: none;
+
+    &::after {
+      border-color: @menu_accent;
+      border-width: 2px;
+    }
+  }
+
+  .language-icon:hover {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
 }
 
-.start-screen-link--cards-list {
-  background-position: 0px -270px;
-}
-
-.start-screen-link--board-game {
-  background-position: 0px -360px;
-}
-
-.start-screen-link--about {
-  background-position: 0px -450px;
-}
-
-.start-screen-link--changelog {
-  background-position: 0px -540px;
-}
-
-.start-screen-link--chat {
-  background-position: 0px -630px;
-}
-
-.start-screen-link--languages {
-  padding-top: 10px;
-  background-position: 0px -720px;
+.start-screen-footer {
+  padding-top: 28px;
+  font-family: @menu_font_mono;
+  font-size: 11px;
+  color: @menu_text_dim;
 }
 
 .start-screen-version-cont {
-  margin-top: 10px;
   text-align: center;
-}
-
-.start-screen-version {
-  margin-top: -5px;
+  line-height: 1.7;
 }
 
 .notice {
@@ -140,33 +207,30 @@
 
 .source-code {
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 .source-code-img {
   vertical-align: middle;
+  width: 16px;
+  opacity: 0.7;
 }
 
 .source-code-text {
-  color: white;
-  font-size: smaller;
-  text-shadow:
-    0 0 2px darkgrey,
-    0 2px 2px darkgrey;
+  color: @menu_text_dim;
+  font-size: 11px;
   letter-spacing: 0.25rem;
   text-decoration: none;
 }
 
-.source-code-text:focus {
-  text-decoration: none;
-}
-
+.source-code-text:focus,
 .source-code-text:hover {
+  color: @menu_text;
   text-decoration: none;
 }
 
 .source-code-text:visited {
-  color: white;
+  color: @menu_text_dim;
 }
 
 @media only screen and (max-width: 1023px) {
@@ -183,25 +247,6 @@
     width: calc(100% - 64px);
     max-width: 520px;
   }
-
-  .start-screen-link,
-  .start-screen-header {
-    box-sizing: border-box;
-    width: 100%;
-    background-repeat: no-repeat;
-    background-size: 100% 900%;
-  }
-
-  .start-screen-title-top,
-  .start-screen-title-bottom {
-    transform: none;
-    white-space: nowrap;
-  }
-
-  .start-screen-link--languages {
-    background-size: 100% 810px;
-    background-position: center -720px;
-  }
 }
 
 @media only screen and (max-width: 767px) {
@@ -217,33 +262,34 @@
   }
 
   .start-screen {
-    width: calc(100% - 32px);
-    max-width: 400px;
+    width: calc(100% - 40px);
+    max-width: 420px;
   }
 
   .start-screen-links {
-    padding-top: max(24px, env(safe-area-inset-top));
-  }
-
-  .start-screen-link {
-    min-height: 90px;
-    height: 90px;
-    padding: 12px 16px;
-    font-size: 20px;
-  }
-}
-
-@media only screen and (min-width: 768px) and (max-width: 1023px) {
-  .start-screen-link {
-    height: 104px;
-    font-size: 28px;
-  }
-
-  .start-screen-title-top {
-    font-size: 20px;
+    padding-top: max(48px, env(safe-area-inset-top));
   }
 
   .start-screen-title-bottom {
-    font-size: 38px;
+    font-size: 52px;
+  }
+
+  .start-screen-title-top {
+    font-size: 12px;
+    letter-spacing: 0.45em;
+    text-indent: 0.45em;
+  }
+
+  .start-screen-link {
+    height: 56px;
+    gap: 14px;
+  }
+
+  .start-screen-link-label {
+    font-size: 18px;
+  }
+
+  .start-screen-link--primary .start-screen-link-label {
+    font-size: 21px;
   }
 }

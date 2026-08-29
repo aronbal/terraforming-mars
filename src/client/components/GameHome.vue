@@ -1,6 +1,7 @@
 <template>
   <div id="game-home" class="game-home-container">
-    <h1><span v-i18n>Terraforming Mars</span> [<span v-i18n>game id:</span> <span>{{getGameId()}}</span>]</h1>
+    <div class="game-home-eyebrow" v-i18n>Terraforming Mars</div>
+    <h1><span v-i18n>game id:</span> <span class="game-home-id">{{getGameId()}}</span></h1>
     <h4><span v-i18n>Instructions: To start the game, separately copy and share the links with all players, and then click on your name.</span><br><span v-i18n>Save this page in case you or one of your opponents loses a link.</span></h4>
     <ul>
       <li v-for="(player, index) in (game === undefined ? [] : game.players)" :key="player.color">
@@ -25,7 +26,7 @@
 
     <div class="spacing-setup"></div>
     <div v-if="game !== undefined">
-      <h1 v-i18n>Game settings</h1>
+      <div class="game-home-eyebrow" v-i18n>Game settings</div>
       <GameSetupDetail :gameOptions="game.gameOptions" :playerNumber="game.players.length" :lastSoloGeneration="game.lastSoloGeneration"/>
     </div>
   </div>
@@ -43,6 +44,7 @@ import {ParticipantId} from '@/common/Types';
 import {Color} from '@/common/Color';
 import {playerSymbol} from '@/client/utils/playerSymbol';
 import {setDocumentTitle} from '../utils/documentTitle';
+import {rememberGame} from '@/client/utils/RecentGamesStorage';
 
 // taken from https://stackoverflow.com/a/46215202/83336
 // The solution to copying to the clipboard in this case is
@@ -131,6 +133,7 @@ export default defineComponent({
     // Reset the copied player id after 3 seconds to hide the "copied" message
     setInterval(this.setCopiedIdToDefault, 3000);
     setDocumentTitle(this.game.name);
+    rememberGame({id: this.game.id, kind: 'game', gameName: this.game.name});
     // Set the viewport width to width=device-width on the create game form so mobile browsers use their actual CSS viewport width.
     // The current global viewport is width=1260, which prevents the create game form from using the device width on phones.
     // This is a temporary solution in order to make this edit scoped to the create game form.

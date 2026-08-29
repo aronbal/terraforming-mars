@@ -1,17 +1,74 @@
-.create-game-player {
-  padding: 25px;
-  margin: 10px 0px 10px 15px
+// The create-game form shares the menus' look: a dark ground, columns separated
+// by hairlines, and controls that read as list rows rather than as slabs. The
+// amber accent marks everything that is currently switched on.
+.topmost-create-game-form {
+  .menu-surface();
+
+  min-height: 100%;
+
+  .notice {
+    position: static;
+    padding: 28px;
+    text-align: right;
+  }
+}
+
+.create-game {
+  width: 100%;
+  max-width: 1380px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 64px 28px 40px;
+  font-family: @menu_font_display;
+  color: @menu_text;
+
+  h1 {
+    .menu-heading();
+
+    margin-top: 12px;
+  }
+
+  .changelog,
+  .discord-invite {
+    padding: 0;
+    font-size: 14px;
+    color: @menu_text_dim;
+
+    a {
+      color: @menu_text_dim;
+
+      &:hover {
+        color: @menu_accent;
+      }
+    }
+
+    u {
+      text-decoration-color: fade(@menu_text_dim, 50%);
+    }
+  }
+
+  .changelog {
+    margin-top: 14px;
+  }
+
+  .discord-invite {
+    margin-top: 4px;
+  }
+}
+
+.create-game-eyebrow {
+  .menu-eyebrow();
 }
 
 .create-game--block {
-  margin: 16px 16px 0 18px;
-  padding: 20px;
-  border-radius: 10px;
-  background: black;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .create-game-form {
-  padding-top: 5px;
+  padding-top: 0;
 }
 
 .create_game_form {
@@ -21,130 +78,149 @@
   width: 100%;
 }
 
-.create-game-corporation {
-  padding: 0 0 25px 25px;
-}
-
-.create-game-corporations-count {
-  width: 80px;
-  margin-right: 10px;
-  height: 40px;
-  padding-left: 30px;
-}
-
-.player-handicap {
-  width: 80px;
-  margin-right: 10px;
-}
-
-.form-input::placeholder {
-  /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: #888888;
-  opacity: 1; /* Firefox */
-}
-
-.form-input::-ms-input-placeholder {
-  /* Internet Explorer 10-11, Microsoft Edge */
-  color: #888888;
-}
-
-.tooltip:hover {
-  text-decoration: none;
-}
-
-.create-game-subsection-label {
-  font-size: 22px;
-  color: gray;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
+// Equal-width columns that all start at the same baseline, with a hairline
+// between them. The old flex-wrap layout let a long column push its neighbours
+// into a second row.
 .create-game-page-container {
-  display: flex;
-  flex-flow: row wrap;
-  background-color: black;
-  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  align-items: start;
+  margin-top: 34px;
+  border-top: 1px solid @menu_line_strong;
+  background: transparent;
+  border-radius: 0;
 }
 
 .create-game-page-column {
   display: flex;
-  flex-flow: column wrap;
-  padding: 20px 10px;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px 22px 30px 0;
+
+  & + .create-game-page-column {
+    padding-left: 22px;
+    border-left: 1px solid @menu_line;
+  }
+
+  h4 {
+    .menu-eyebrow();
+
+    margin: 0 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid @menu_line;
+  }
 }
 
 .create-game-page-column-row {
   display: flex;
-  flex-flow: row nowrap;
+  flex-flow: column nowrap;
 }
 
+.create-game-subsection-label {
+  .menu-eyebrow();
 
-.create-game-page-column-row > div{
-  flex-grow: 1;
+  font-size: 10px;
+  color: fade(@menu_text_dim, 75%);
+  padding: 18px 0 8px;
 }
 
-.create-game-page-column input[type="checkbox"] {
-  opacity: 0;
-  position: fixed;
-  width: 0;
-}
-
-.create-game-page-column input:focus-visible + label {
-  outline: 3px solid #ffcc64;
-  outline-offset: 2px;
-}
+.create-game-page-column input[type="checkbox"],
 .create-game-page-column input[type="radio"] {
   opacity: 0;
   position: fixed;
   width: 0;
 }
 
+// Every option is a 38px row. The state lives in a small indicator on the left,
+// so a switched-on option no longer has to repaint the whole row.
 .create-game-page-column label {
-  color: #ccc;
-  background-color: @grey_850;
-  padding: 10px 20px 10px 20px;
-  font-family: Ubuntu, sans-serif;
-  font-size: 23px;
-  border-radius: 8px;
-  text-align: center;
-  margin: 4px;
-  min-width: 125px;
-  height: 60px;
-  line-height: 40px;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  margin: 1px 0;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: @menu_text;
+  font-family: @menu_font_display;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-align: left;
+  justify-content: flex-start;
+
+  a {
+    color: fade(@menu_text_dim, 80%);
+    text-decoration: none;
+  }
 }
 
 .create-game-page-column .expansion-button {
   text-align: left;
-  justify-content: left;
+  justify-content: flex-start;
 }
 
-.create-game-page-column label:hover {
-  background-color: rgb(104, 104, 104);
+.create-game-page-column input[type="checkbox"] + label,
+.create-game-page-column input[type="radio"] + label {
   cursor: pointer;
+
+  &::before {
+    content: "";
+    flex: none;
+    width: 15px;
+    height: 15px;
+    box-sizing: border-box;
+    border: 1px solid @menu_line_strong;
+    background: @menu_surface;
+    transition: background-color 0.14s ease, border-color 0.14s ease;
+  }
 }
 
+.create-game-page-column input[type="checkbox"] + label::before {
+  border-radius: 4px;
+}
+
+.create-game-page-column input[type="radio"] + label::before {
+  border-radius: @radius_circle;
+}
+
+.create-game-page-column input[type="checkbox"] + label:hover,
+.create-game-page-column input[type="radio"] + label:hover {
+  background: @menu_surface;
+
+  &::before {
+    border-color: @menu_text_dim;
+  }
+}
+
+.create-game-page-column input[type="checkbox"]:checked + label,
 .create-game-page-column input[type="radio"]:checked + label {
-  background-color: rgb(199, 199, 199);
-  color: black;
-}
-.create-game-page-column input[type="radio"]:checked + label a {
-  color:black
+  background: @menu_accent_soft;
+  border-color: fade(@menu_accent, 35%);
+  font-weight: 500;
+
+  &::before {
+    background: @menu_accent;
+    border-color: @menu_accent;
+  }
+
+  a {
+    color: @menu_accent;
+  }
 }
 
-.create-game-page-column input[type="checkbox"]:checked + label {
-  background-color: rgb(199, 199, 199);
-  color: black;
-}
-.create-game-page-column input[type="checkbox"]:checked + label a {
-  color:black
+.create-game-page-column input:focus-visible + label {
+  outline: 2px solid @menu_accent;
+  outline-offset: 1px;
 }
 
 .create-game-page-column .create-game-board-hexagon {
-  font-size: 30px;
-  vertical-align: top;
-  line-height: 34px;
-  margin-right: 10px;
+  font-size: 17px;
+  line-height: 1;
+  vertical-align: middle;
+  margin-right: 0;
 }
 
 // stylelint-disable-next-line no-duplicate-selectors
@@ -164,10 +240,10 @@
   .create-game-arabia-terra {
     color: @board-arabia_terra;
   }
-  .create-game-terra-cimmeria{
+  .create-game-terra-cimmeria {
     color: @board-terra_cimmeria;
   }
-  .create-game-vastitas-borealis{
+  .create-game-vastitas-borealis {
     color: @board-vastitas_borealis;
   }
   .create-game-hollandia {
@@ -176,43 +252,142 @@
 }
 
 .create-game-page-column .create-game-random {
-  color: rgb(106,106,106);
+  color: @menu_text_dim;
 }
 
 .create-game-expansion-icon {
   display: inline-block;
-  width: 30px;
-  height: 30px;
-  background-size: 30px 30px;
+  flex: none;
+  width: 21px;
+  height: 21px;
+  background-size: 21px 21px;
   background-position: 0px 0px;
   background-repeat: no-repeat;
   vertical-align: middle;
-  margin: 5px 10px 5px 0px;
+  margin: 0;
+}
+
+.create-game-corporations-count,
+.player-handicap {
+  width: 54px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid @menu_line_strong;
+  border-radius: 5px;
+  background: @menu_surface;
+  color: @menu_text;
+  font-family: @menu_font_mono;
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    border-color: @menu_accent;
+  }
+}
+
+.agendaStyle-random,
+.agendaStyle-chairman {
+  width: auto;
+  min-width: 0 !important;
+}
+
+.agendas-text {
+  font-size: 15px;
+  text-transform: capitalize;
+}
+
+// The old design hung a light tab above the selected sub-option. The row's own
+// selected state says the same thing, so the tab is gone.
+.create-game-page-column input[type="radio"]:checked + label.label-randomMAOption::after,
+.create-game-page-column input[type="radio"]:checked + label.label-agendaStyle::after {
+  content: none;
+}
+
+.create-game-players-cont {
+  grid-column: 1 / -1;
+  padding-top: 10px;
+  border-top: 1px solid @menu_line;
+
+  .container {
+    padding: 0;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(304px, 1fr));
+    gap: 14px;
+    margin: 0;
+  }
+}
+
+.create-game-player {
+  position: relative;
+  width: auto;
+  margin: 0;
+  padding: 18px 18px 18px 22px;
+  border: 1px solid @menu_line;
+  border-radius: 10px;
+  background: @menu_surface;
+  overflow: hidden;
+
+  .form-label,
+  .form-switch,
+  .form-radio {
+    font-size: 14px;
+    color: @menu_text_dim;
+    margin: 8px 0 0;
+  }
+
+  .form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+  }
+
+  a {
+    color: fade(@menu_text_dim, 80%);
+    text-decoration: none;
+  }
+}
+
+// The player's colour, as an edge rather than as a wash over the whole card.
+.create-game-player-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
 }
 
 .create-game-player-name {
-  height: 40px;
-  border: none;
-  color: #ccc;
-  text-shadow: 0 0 2px black;
-  border-bottom: none;
-  font-size: 20px;
-  letter-spacing: 1px;
-  font-weight: bold;
-  border-radius: 5px;
-  background: linear-gradient(@grey_850,transparent);
-  background: rgba(0,0,0,.3);
-}
+  width: 100%;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid @menu_line_strong;
+  border-radius: 6px;
+  background: @menu_bg;
+  color: @menu_text;
+  font-family: @menu_font_display;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-shadow: none;
 
-.create-game-player-name:focus {
-  border: none;
-  box-shadow: none;
+  &:focus {
+    border-color: @menu_accent;
+    box-shadow: none;
+    outline: none;
+  }
 }
 
 .create-game-page-color-row {
   display: flex;
-  flex-flow: row nowrap;
-  margin-top: 10px;
+  flex-flow: row wrap;
+  gap: 6px;
+  margin-top: 12px;
 }
 
 .create-game-page-color-row div > input[type="radio"] {
@@ -222,110 +397,149 @@
 }
 
 .create-game-page-color-row div > label {
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  border-radius: 5px;
-  text-align: center;
-  vertical-align: middle;
-  padding: 4px 6px;
-  margin: 0px 0px;
+  display: block;
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  margin: 0;
   cursor: pointer;
 }
 
 .create-game-page-color-row label:hover {
-  background-color:rgba(0,0,0,.1)
+  border-color: @menu_line_strong;
 }
-
 
 .create-game-page-color-row input[type="radio"]:checked + label {
-  background-color: rgba(0,0,0,.3);
-}
-
-.create-game-page-column input[type="radio"]:checked + label.label-randomMAOption {
-  position: relative;
-}
-.create-game-page-column input[type="radio"]:checked + label.label-randomMAOption::after {
-  position: absolute;
-  width: 40px;
-  height: 12px;
-  top: -10px;
-  left: 50%;
-  margin-left: -20px;
-  content: " ";
-  background-color: rgb(199, 199, 199);
-}
-
-.create-game-page-column input[type="radio"]:checked + label.label-agendaStyle {
-  position: relative;
-}
-.create-game-page-column input[type="radio"]:checked + label.label-agendaStyle::after {
-  position: absolute;
-  width: 40px;
-  height: 12px;
-  top: -10px;
-  left: 50%;
-  margin-left: -20px;
-  content: " ";
-  background-color: rgb(199, 199, 199);
-}
-
-.agendaStyle-random {
-  width: 105px;
-  min-width: 105px !important;
-}
-
-.agendaStyle-chairman {
-  width: 115px;
-  min-width: 115px !important;
-}
-
-.agendas-text {
-  font-size: 22px;
+  border-color: @menu_accent;
+  background: @menu_accent_soft;
 }
 
 .create-game-colorbox {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  display: inline-block;
-  text-align: center;
-  vertical-align: text-top;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: block;
 }
 
 .create-game-beginner-option-label {
   margin-top: 15px;
 }
 
+// The computer-opponent controls sit inside the player card, so they take the
+// card's field treatment rather than the browser's default select.
 .create-game-bot-option-label {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .create-game-bot-difficulty {
-  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 6px;
 
-  .form-select {
+  // Spectre paints the closed select white through a `background` shorthand on
+  // a `:not()` selector, so the dark field has to be at least as specific.
+  .form-select:not([multiple]):not([size]) {
     width: auto;
-    min-width: 140px;
+    min-width: 170px;
+    height: 34px;
+    padding: 0 22px 0 10px;
+    border: 1px solid @menu_line_strong;
+    border-radius: 6px;
+    background-color: @menu_bg;
+    color: @menu_text;
+    font-family: @menu_font_display;
+    font-size: 14px;
+
+    &:focus {
+      border-color: @menu_accent;
+      box-shadow: none;
+    }
+
+    option {
+      background: @menu_surface;
+      color: @menu_text;
+    }
   }
 }
 
 .create-game-bot-description {
   display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.3;
-  opacity: 0.8;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: @menu_text_dim;
 }
 
-.create-game {
-  .discord-invite {
-    padding: 0px 15px;
-    font-size: 20px;
+.create-game-corporation {
+  padding: 0 0 25px 25px;
+}
+
+.form-input::placeholder {
+  color: fade(@menu_text_dim, 75%);
+  opacity: 1;
+}
+
+.form-input::-ms-input-placeholder {
+  color: fade(@menu_text_dim, 75%);
+}
+
+.tooltip:hover {
+  text-decoration: none;
+}
+
+// A single bar for every action, pinned to the bottom of the viewport so
+// "Create game" is reachable without scrolling back up a long form.
+.create-game-action {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px -28px 0;
+  padding: 14px 28px;
+  border-top: 1px solid @menu_line_strong;
+  background: @menu_bg_deep;
+
+  // .btn carries !important in common.less, so the menu treatment has to match
+  // that weight to reach these buttons.
+  .btn {
+    height: 42px;
+    min-width: 0;
+    margin: 0;
+    padding: 0 20px;
+    border-radius: 6px;
+    font-family: @menu_font_display;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: @menu_text !important;
+    background: transparent !important;
+    border-color: @menu_line_strong !important;
+
+    &:hover {
+      border-color: @menu_text_dim !important;
+    }
   }
 
-  .changelog {
-    padding: 0px 15px;
+  // The commit action, in the accent the menus use for "go".
+  > .btn:first-child {
+    color: #14100a !important;
+    background: @menu_accent !important;
+    border-color: @menu_accent !important;
+
+    &:hover {
+      filter: brightness(1.1);
+    }
+  }
+
+  label {
+    margin: 0;
   }
 }
 
@@ -334,84 +548,60 @@
     min-height: 100dvh;
     overflow-x: clip;
 
-    .main-container {
-      margin: 0;
-    }
-
     .notice {
-      position: static;
       padding: 16px;
       text-align: center;
     }
   }
 
   .create-game {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 12px;
-  }
-
-  .create-game--block {
-    margin: 16px 0 0;
-    padding: 0px 10px;
+    padding: 40px 16px 32px;
   }
 
   .create-game-page-container {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 18px;
   }
 
   .create-game-page-column {
-    min-width: 0;
-    padding: 16px;
-
-    label {
-      min-height: 52px;
-      height: auto;
-      padding: 6px 12px;
-      font-size: 18px;
-      line-height: 1.25;
-      align-items: center;
-    }
+    padding: 20px 0 24px;
   }
 
-  .create-game-players-cont,
-  .create-game-action {
-    grid-column: 1 / -1;
+  .create-game-page-column label {
+    min-height: 42px;
   }
 
   .create-game-action {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 10px;
-    background: #000000;
+    margin: 8px -16px 0;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
 
     .btn {
       min-height: 44px;
     }
   }
-
-  .create-game-player {
-    width: 100%;
-    padding: 16px;
-  }
 }
 
 @media only screen and (max-width: 767px) {
-
   .create-game {
+    padding: 32px 16px 32px;
+
     h1 {
       font-size: 28px;
-      line-height: 1.15;
     }
   }
 
-  .create-game-page-container,
-  .create-game-page-column {
-    display: block;
+  .create-game-page-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  // Stacked columns are separated by the rule above each heading, not a rule
+  // down the side.
+  .create-game-page-column + .create-game-page-column {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .create-game-players-cont .columns {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
