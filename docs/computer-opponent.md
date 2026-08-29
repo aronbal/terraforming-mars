@@ -14,7 +14,7 @@ are played by people, so mixed games (two humans and a bot, say) work too.
 | `easy` | Beginner | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
 | `medium` | Engineer | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
 | `hard` | Veteran | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
-| `insane` | Director | Everything Veteran does, plus placement denial and timing the final generation around who is ahead. |
+| `insane` | Director | Everything Veteran does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Veteran — see the ladder below. |
 
 ## How it works
 
@@ -92,24 +92,53 @@ reports win rates. Run it after changing anything in the evaluator:
 npx tsx src/server/tools/bot_tournament.ts 60
 ```
 
-Each level should beat the ones below it. Results from 60 games per pairing,
-seats alternated:
+Results from 60 games per pairing, seats alternated:
 
 ```
-medium  vs easy     medium wins 55/60 ( 92%)
-hard    vs easy     hard wins   60/60 (100%)
+medium  vs easy     medium wins 59/60 ( 98%)
+hard    vs easy     hard wins   59/60 ( 98%)
 insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   37/60 ( 62%)
-insane  vs medium   insane wins 40/60 ( 67%)
-insane  vs hard     insane wins 35/60 ( 58%)
+hard    vs medium   hard wins   38/60 ( 63%)
+insane  vs medium   insane wins 38/60 ( 63%)
+insane  vs hard     insane wins 32/60 ( 53%)
 ```
 
-`insane` over `hard` is a genuine but modest edge, which is expected: the two
-share an evaluator and differ only in opponent awareness.
+**Read this honestly: there are three distinct tiers, not four.** `easy` is far
+weaker than everything, `hard` beats `medium` reliably, and `insane` is a coin
+flip against `hard`. Director differs from Veteran only in opponent awareness —
+placement denial and timing the final generation — and against another bot that
+plays just as well, denial mostly cancels out.
 
-Bot-versus-bot games run about 14 to 16 generations, longer than a typical
-human game, because two cautious bots terraform more slowly than a human who is
-pushing to close the game out.
+Bot-versus-bot games run about 14 to 16 generations, longer than a typical human
+game, because two cautious bots terraform more slowly than a human pushing to
+close the game out.
+
+## What has already been tried, and failed
+
+Do not spend time re-deriving these. Each was implemented and measured over
+80-120 games of `insane` against `hard`, and none beat the 50% baseline:
+
+| Idea | Result |
+| --- | --- |
+| Buy cards on value with a margin, instead of to a quota | **44%** — actively harmful. More cards beats fewer: the play threshold already filters what gets played, so extra options are worth more than the 3 M€. |
+| Price steel and titanium by whether the hand holds cards that can spend them | 49% — no effect. |
+| Both of the above together | **32%** — clearly worse. |
+| Value a greenery by adjacency to the player's own cities at decision time | 44% — no effect. Placement already picks good spaces once the greenery is bought. |
+| Raise or lower the card buy rate (0.45, 0.6, 0.85, 1.0) | 49-56% — all inside the noise band. |
+| Heavier engine weighting, zero cash reserve, more aggressive closing | 49-51% — all inside the noise band. |
+
+At n=100 the standard error is about 5 points, so nothing under roughly 60% is
+a real effect.
+
+The conclusion is that **parameter tuning is exhausted**: once a level prices
+the game accurately, sharpening the same knobs does nothing. A genuinely
+stronger fourth tier needs a structural capability the evaluator does not have,
+most plausibly turn-level planning — choosing the best *pair* of actions rather
+than the best single action twice, so the bot can play a cheap production card
+to make an expensive one affordable in the same turn. That needs simulation,
+and the obvious route is blocked: `Game.serialize` deliberately drops the
+deferred-action queue, so a clone taken mid-action is not the position it came
+from. Any attempt should start by solving that.
 
 ## Tests
 

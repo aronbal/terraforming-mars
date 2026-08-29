@@ -52,6 +52,9 @@ seat, and choose one of four difficulties:
 - **Veteran** — prices its engine correctly, values tag synergies, and spends down at the end.
 - **Director** — as Veteran, plus placement denial and timing the last generation around who leads.
 
+Veteran and Director play to roughly a draw against each other; the measured
+ladder and the reasons are in the doc below.
+
 Seats without the tick are played by people, so two humans and a bot in the same game works too.
 
 [How the opponent works, and how to tune it](docs/computer-opponent.md).

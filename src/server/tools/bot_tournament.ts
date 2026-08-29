@@ -19,7 +19,7 @@ import {isPlayerId, isGameId, isSpectatorId, safeCast} from '../../common/Types'
 import {globalInitialize} from '../globalInitialize';
 
 /** Games are played in memory; nothing here should touch a real database. */
-const NO_DATABASE = {
+export const NO_DATABASE = {
   markFinished: () => Promise.resolve(),
   deleteGameNbrSaves: () => Promise.resolve(),
   getPlayerCount: () => Promise.resolve(0),

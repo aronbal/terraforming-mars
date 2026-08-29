@@ -7,6 +7,7 @@ import {UndoActionOption} from '../../inputs/UndoActionOption';
 import {IStandardProjectCard, isIStandardProjectCard} from '../../cards/IStandardProjectCard';
 import {CardName} from '../../../common/cards/CardName';
 import {ActionAnnotation} from '../../../common/input/Annotation';
+import {Message} from '../../../common/logs/Message';
 import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} from '../../../common/constants';
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
@@ -30,6 +31,9 @@ const MIN_MONEY_VALUE = 0.3;
 
 /** Most the endgame race can shift the value of terraforming, either way. */
 const MAX_CLOSING_SWING = 7;
+
+/** What an award lead is worth at the very start of the game, as a fraction. */
+const MINIMUM_AWARD_CERTAINTY = 0.25;
 
 /**
  * Scores an entry in the action menu, in megacredits.
@@ -137,6 +141,12 @@ export class ActionScorer {
     if (option instanceof SelectCardToPlay) {
       return this.bestPlayableCardScore(option);
     }
+    if (option instanceof SelectOption) {
+      const named = this.namedChoiceValue(option.title);
+      if (named !== undefined) {
+        return named;
+      }
+    }
     if (option instanceof OrOptions) {
       return option.options
         .map((child) => this.score(child))
@@ -171,15 +181,50 @@ export class ActionScorer {
 
   private awardValue(ownScore: number, award: {getScore(player: IPlayer): number}, cost: number): number {
     const best = Math.max(...this.player.opponents.map((opponent) => award.getScore(opponent)), 0);
-    if (ownScore > best) {
-      // Funding an award you already lead is the cheapest five points available.
-      return AWARD_FIRST_PLACE_POINTS * VP_VALUE - cost;
+    if (ownScore < best) {
+      // Funding an award the opponent leads hands them points.
+      return -AWARD_FIRST_PLACE_POINTS * VP_VALUE;
     }
-    if (ownScore === best) {
-      return AWARD_SECOND_PLACE_POINTS * VP_VALUE - cost;
+    const points = ownScore > best ? AWARD_FIRST_PLACE_POINTS : AWARD_SECOND_PLACE_POINTS;
+    return points * VP_VALUE * this.awardCertainty() - cost;
+  }
+
+  /**
+   * How much a current award lead is worth betting on.
+   *
+   * Leading an award in the first generation means almost nothing — one tag is
+   * enough to lead when nobody has played anything — while a lead late in the
+   * game is close to banked. Without this the bot funds awards on its opening
+   * turn, which is close to the worst use of eight megacredits in the game.
+   */
+  private awardCertainty(): number {
+    return MINIMUM_AWARD_CERTAINTY + (1 - MINIMUM_AWARD_CERTAINTY) * this.tempo.progress;
+  }
+
+  /**
+   * Scores one entry inside the milestone or award submenu.
+   *
+   * The submenu's own score decides whether to spend at all; this decides
+   * which one to spend on, which matters because funding an award the
+   * opponent leads hands them the points. The titles are `AwardName` and
+   * `MilestoneName` identifiers rather than translated prose, so matching on
+   * them is safe.
+   */
+  private namedChoiceValue(title: string | Message): number | undefined {
+    const name = typeof title === 'string' ? title : title.message;
+    const game = this.player.game;
+
+    const award = game.awards.find((candidate) => candidate.name === name);
+    if (award !== undefined) {
+      const cost = 8 + game.fundedAwards.length * 6;
+      return this.awardValue(award.getScore(this.player), award, cost);
     }
-    // Funding an award the opponent leads hands them points.
-    return -AWARD_FIRST_PLACE_POINTS * VP_VALUE;
+
+    // Every claimable milestone is worth the same five points.
+    if (game.milestones.some((candidate) => candidate.name === name)) {
+      return this.milestoneScore();
+    }
+    return undefined;
   }
 
   private convertPlantsScore(): number {
