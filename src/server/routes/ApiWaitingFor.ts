@@ -8,6 +8,7 @@ import {IGame} from '../IGame';
 import {isPlayerId, isSpectatorId} from '../../common/Types';
 import {Request} from '../Request';
 import {Response} from '../Response';
+import {BotRunner} from '../bot/BotRunner';
 
 export class ApiWaitingFor extends Handler {
   public static readonly INSTANCE = new ApiWaitingFor();
@@ -68,6 +69,10 @@ export class ApiWaitingFor extends Handler {
       responses.notFound(req, res, 'cannot find game for that player');
       return;
     }
+    // A reloaded game restores a bot's pending decision but nothing drives it,
+    // so a human polling while the computer is on turn would wait forever.
+    BotRunner.run(game);
+
     try {
       if (isPlayerId(id)) {
         const player = game.getPlayerById(id);

@@ -75,6 +75,21 @@ Player choices and multi-step effects use `DeferredAction` (`src/server/deferred
 
 When a player needs to make a choice, the server returns a `PlayerInput` (e.g., `SelectSpace`, `SelectCard`, `OrOptions`). These live in `src/server/inputs/`. The client renders the appropriate UI based on the input type.
 
+### Computer Opponent
+
+`src/server/bot/` holds a computer opponent that answers `PlayerInput` objects with the same
+`InputResponse` shape the browser posts, so bot moves go through the normal validation in
+`Player.process`. `BotRunner.run(game)` is called after game creation and after each human input.
+
+`BotBrain` dispatches one input to one response; `evaluate/` prices cards, actions and board
+spaces in megacredits; `BotProfile` holds the per-difficulty knobs. Menu entries built by
+`Player.getActions` carry an `ActionAnnotation` (`src/common/input/Annotation.ts`) so the bot can
+recognise them without matching on translated titles — keep those annotations in place when
+editing that method.
+
+Run `npx tsx src/server/tools/bot_tournament.ts 60` after changing the evaluator: each difficulty
+should still beat the ones below it. See `docs/computer-opponent.md`.
+
 ### Game Modules (Expansions)
 
 Each expansion has its own directory under `src/server/cards/` and a manifest. Modules: `base`, `corpera` (Corporate Era), `promo`, `venus`, `colonies`, `prelude`, `prelude2`, `turmoil`, `community`, `ares`, `moon`, `pathfinders`, `ceo`, `starwars`, `underworld`. Cross-expansion card compatibility is declared via `compatibility` in `CardFactorySpec`.

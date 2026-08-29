@@ -428,6 +428,52 @@
   margin-top: 15px;
 }
 
+// The computer-opponent controls sit inside the player card, so they take the
+// card's field treatment rather than the browser's default select.
+.create-game-bot-option-label {
+  margin-top: 12px;
+}
+
+.create-game-bot-difficulty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 6px;
+
+  // Spectre paints the closed select white through a `background` shorthand on
+  // a `:not()` selector, so the dark field has to be at least as specific.
+  .form-select:not([multiple]):not([size]) {
+    width: auto;
+    min-width: 170px;
+    height: 34px;
+    padding: 0 22px 0 10px;
+    border: 1px solid @menu_line_strong;
+    border-radius: 6px;
+    background-color: @menu_bg;
+    color: @menu_text;
+    font-family: @menu_font_display;
+    font-size: 14px;
+
+    &:focus {
+      border-color: @menu_accent;
+      box-shadow: none;
+    }
+
+    option {
+      background: @menu_surface;
+      color: @menu_text;
+    }
+  }
+}
+
+.create-game-bot-description {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: @menu_text_dim;
+}
+
 .create-game-corporation {
   padding: 0 0 25px 25px;
 }

@@ -8,7 +8,7 @@ import {BoardName} from '@/common/boards/BoardName';
 import {DEFAULT_EXPANSIONS} from '@/common/cards/GameModule';
 import {JSONObject} from '@/common/Types';
 import {defineComponent} from 'vue';
-import {NewGameConfig} from '@/common/game/NewGameConfig';
+import {NewGameConfig, NewPlayerModel} from '@/common/game/NewGameConfig';
 
 // Minimal serialized Create Game payload used by settings restore tests.
 function createNewGameConfig(overrides: JSONObject = {}):  NewGameConfig {
@@ -149,6 +149,74 @@ describe('CreateGameForm', () => {
       const savedSettings = new CreateGameSettingsStorage(localStorage).loadSettings();
       expect(savedSettings?.board).eq(BoardName.ELYSIUM);
       expect((savedSettings?.players as Array<{name: string}>).map((player) => player.name)).deep.eq(['Alice', 'Bob']);
+    } finally {
+      global.fetch = originalFetch;
+      global.alert = originalAlert;
+    }
+  });
+
+  it('starts with every seat played by a person', () => {
+    const wrapper = shallowMount(CreateGameForm, {
+      ...globalConfig,
+    });
+
+    const players = (wrapper.vm as any).players as Array<NewPlayerModel>;
+    expect(players.every((player) => player.bot === undefined)).is.true;
+  });
+
+  it('turns a seat into a computer opponent and back', () => {
+    const wrapper = shallowMount(CreateGameForm, {
+      ...globalConfig,
+    });
+    const vm = wrapper.vm as any;
+    const player = vm.players[1] as NewPlayerModel;
+
+    vm.toggleBot(player, {target: {checked: true}} as unknown as Event);
+    expect(player.bot).to.eq('medium');
+
+    vm.toggleBot(player, {target: {checked: false}} as unknown as Event);
+    expect(player.bot).is.undefined;
+  });
+
+  it('offers every difficulty and describes each one', () => {
+    const wrapper = shallowMount(CreateGameForm, {
+      ...globalConfig,
+    });
+    const vm = wrapper.vm as any;
+
+    expect(vm.BOT_DIFFICULTIES).to.deep.eq(['easy', 'medium', 'hard', 'insane']);
+    for (const difficulty of vm.BOT_DIFFICULTIES) {
+      expect(vm.botLabel(difficulty)).to.have.length.greaterThan(0);
+      expect(vm.botDescription(difficulty)).to.have.length.greaterThan(0);
+    }
+    expect(vm.botDescription(undefined)).to.eq('');
+  });
+
+  it('sends the chosen difficulty to the server', async () => {
+    const originalFetch = global.fetch;
+    const originalAlert = global.alert;
+    let posted: NewGameConfig | undefined;
+    global.fetch = ((_url: string, options: {body: string}) => {
+      posted = JSON.parse(options.body);
+      return Promise.resolve({text: () => Promise.resolve(JSON.stringify({id: 'g', players: [{id: 'p'}, {id: 'p2'}]}))});
+    }) as unknown as typeof global.fetch;
+    global.alert = (() => {}) as unknown as typeof global.alert;
+
+    try {
+      const wrapper = shallowMount(CreateGameForm, {
+        ...globalConfig,
+      });
+      const vm = wrapper.vm as any;
+      vm.playersCount = 2;
+      vm.randomFirstPlayer = false;
+      vm.players[0].name = 'Alice';
+      vm.players[1].name = 'Computer';
+      vm.players[1].bot = 'hard';
+
+      await vm.createGame();
+
+      const seats = posted?.players ?? [];
+      expect(seats.map((player) => player.bot)).to.have.members([undefined, 'hard']);
     } finally {
       global.fetch = originalFetch;
       global.alert = originalAlert;

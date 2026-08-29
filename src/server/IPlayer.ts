@@ -14,6 +14,7 @@ import {CardResource} from '../common/CardResource';
 import {Priority} from './deferredActions/Priority';
 import {SerializedPlayer} from './SerializedPlayer';
 import {Timer} from '../common/Timer';
+import {BotDifficulty} from '../common/bot/BotDifficulty';
 import {AllOptions, DrawOptions} from './deferredActions/DrawCards';
 import {Units} from '../common/Units';
 import {GlobalParameter} from '../common/GlobalParameter';
@@ -338,6 +339,8 @@ export interface IPlayer {
 
   /** Player has prestated they want to pass on their next turn */
   autopass: boolean;
+  /** When set, this player is a computer opponent playing at this difficulty. */
+  bot?: BotDifficulty;
   /** Player is done taking actions this generation. */
   pass(): void;
   takeActionForFinalGreenery(): void;
