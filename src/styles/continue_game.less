@@ -1,0 +1,83 @@
+.continue-game-container {
+  padding: 32px;
+
+  .continue-game-empty {
+    max-width: 640px;
+  }
+
+  .continue-game-list {
+    list-style: none;
+    padding: 0;
+    max-width: 900px;
+  }
+
+  .continue-game-entry {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #404040;
+  }
+
+  .color-square {
+    display: block;
+    width: 23px;
+    height: 23px;
+    border-radius: 3px;
+  }
+
+  .continue-game-link {
+    font-size: @font_size_big;
+    text-decoration: underline;
+    min-width: 140px;
+  }
+
+  .continue-game-detail {
+    font-size: @font_size_small;
+    color: #b0b0b0;
+  }
+
+  .continue-game-clear {
+    margin-top: 16px;
+  }
+
+  .continue-game-manual {
+    margin-top: 32px;
+  }
+
+  .continue-game-id {
+    color: @text_dark;
+    max-width: 230px;
+    margin-right: 8px;
+  }
+
+  .continue-game-error {
+    margin-top: 8px;
+    color: #bb0000;
+  }
+
+  .continue-game-back {
+    margin-top: 32px;
+  }
+}
+
+@media only screen and (max-width: 767px) {
+  .topmost-continue-game {
+    .notice {
+      position: static;
+      padding: 16px;
+      text-align: center;
+    }
+  }
+
+  .continue-game-container {
+    padding: 24px 16px;
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.15;
+      padding: 0;
+    }
+  }
+}
