@@ -34,6 +34,8 @@ import {SerializedPlayer} from './SerializedPlayer';
 import {StormCraftIncorporated} from './cards/colonies/StormCraftIncorporated';
 import {Tag} from '../common/cards/Tag';
 import {Timer} from '../common/Timer';
+import {BotDifficulty, isBotDifficulty} from '../common/bot/BotDifficulty';
+import {ActionAnnotation} from '../common/input/Annotation';
 import {TurmoilHandler} from './turmoil/TurmoilHandler';
 import {AllOptions, DrawCards, DrawOptions} from './deferredActions/DrawCards';
 import {Units} from '../common/Units';
@@ -91,6 +93,15 @@ const DEFAULT_GLOBAL_PARAMETER_STEPS = {
   [GlobalParameter.MOON_LOGISTIC_RATE]: 0,
 } as const;
 
+/**
+ * Tags an action-menu entry so code that reasons about the menu can recognise
+ * it without matching on display titles.
+ */
+function annotate(input: PlayerInput, annotation: ActionAnnotation): PlayerInput {
+  input.annotation = annotation;
+  return input;
+}
+
 export class Player implements IPlayer {
   public readonly id: PlayerId;
   protected waitingFor?: PlayerInput;
@@ -143,6 +154,9 @@ export class Player implements IPlayer {
 
   public timer: Timer = Timer.newInstance();
   public autopass = false;
+
+  /** When set, this player is a computer opponent playing at this difficulty. */
+  public bot?: BotDifficulty;
 
   // Turmoil
   public turmoilPolicyActionUsed: boolean = false;
@@ -1570,19 +1584,20 @@ export class Player implements IPlayer {
           this.claimMilestone(milestone);
           return undefined;
         }));
+      milestoneOption.annotation = 'milestone';
       action.options.push(milestoneOption);
     }
 
     // Convert Plants
     const convertPlants = new ConvertPlants();
     if (convertPlants.canAct(this)) {
-      action.options.push(convertPlants.action(this));
+      action.options.push(annotate(convertPlants.action(this), 'convertPlants'));
     }
 
     // Convert Heat. Kelvinists kp03 swaps in a 6-heat variant in this slot.
     if (PartyHooks.shouldApplyPolicy(this, PartyName.KELVINISTS, 'kp03')) {
       if (KELVINISTS_POLICY_3.canAct(this)) {
-        action.options.push(KELVINISTS_POLICY_3.action(this));
+        action.options.push(annotate(KELVINISTS_POLICY_3.action(this), 'convertHeat'));
       }
     } else {
       const convertHeat = new ConvertHeat();
@@ -1596,6 +1611,7 @@ export class Player implements IPlayer {
             option.eligibleForDefault = false;
           }
         }
+        option.annotation = 'convertHeat';
         action.options.push(option);
       }
     }
@@ -1603,37 +1619,37 @@ export class Player implements IPlayer {
     // Turmoil
     const turmoilInput = TurmoilHandler.partyAction(this);
     if (turmoilInput !== undefined) {
-      action.options.push(turmoilInput);
+      action.options.push(annotate(turmoilInput, 'turmoilParty'));
     }
 
     // Action cards
     if (this.getPlayableActionCards().length > 0) {
-      action.options.push(this.playActionCard());
+      action.options.push(annotate(this.playActionCard(), 'actionCard'));
     }
 
     // CEO cards
     const ceoOpgAction = this.getPlayCeoOPGAction();
     if (ceoOpgAction !== undefined) {
-      action.options.push(ceoOpgAction);
+      action.options.push(annotate(ceoOpgAction, 'ceoAction'));
     }
 
     // Playable cards
     const playableCards = this.getPlayableCards();
     if (playableCards.length !== 0) {
-      action.options.push(new SelectProjectCardToPlay(this, playableCards));
+      action.options.push(annotate(new SelectProjectCardToPlay(this, playableCards), 'projectCard'));
     }
 
     // Trade with colonies
     const coloniesTradeAction = this.colonies.coloniesTradeAction();
     if (coloniesTradeAction !== undefined) {
-      action.options.push(coloniesTradeAction);
+      action.options.push(annotate(coloniesTradeAction, 'tradeWithColony'));
     }
 
     // Add delegates
     Turmoil.ifTurmoil(this.game, (turmoil) => {
       const input = turmoil.getSendDelegateInput(this);
       if (input !== undefined) {
-        action.options.push(input);
+        action.options.push(annotate(input, 'sendDelegate'));
       }
     });
 
@@ -1642,7 +1658,7 @@ export class Player implements IPlayer {
       this.actionsTakenThisRound > 0 &&
       !this.game.gameOptions.fastModeOption &&
       this.allOtherPlayersHavePassed() === false) {
-      action.options.push(this.endTurnOption());
+      action.options.push(annotate(this.endTurnOption(), 'endTurn'));
     }
 
     // Fund award
@@ -1654,24 +1670,25 @@ export class Player implements IPlayer {
       remainingAwards.options = this.game.awards
         .filter((award: IAward) => this.game.hasBeenFunded(award) === false)
         .map((award: IAward) => this.fundAward(award));
+      remainingAwards.annotation = 'award';
       action.options.push(remainingAwards);
     }
 
     // Standard Projects
-    action.options.push(this.getStandardProjectOption());
+    action.options.push(annotate(this.getStandardProjectOption(), 'standardProject'));
 
     // Pass
-    action.options.push(this.passOption());
+    action.options.push(annotate(this.passOption(), 'pass'));
 
     // Sell patents
     const sellPatents = new SellPatentsStandardProject();
     if (sellPatents.canAct(this)) {
-      action.options.push(sellPatents.action(this));
+      action.options.push(annotate(sellPatents.action(this), 'sellPatents'));
     }
 
     // Propose undo action only if you have done one action this turn
     if (this.actionsTakenThisRound > 0 && this.game.gameOptions.undoOption) {
-      action.options.push(new UndoActionOption());
+      action.options.push(annotate(new UndoActionOption(), 'undo'));
     }
 
     return action;
@@ -1853,6 +1870,7 @@ export class Player implements IPlayer {
       draftHand: this.draftHand.map(toName),
       autoPass: this.autopass,
       globalParameterSteps: this.globalParameterSteps,
+      bot: this.bot,
     };
 
     if (this.lastCardPlayed !== undefined) {
@@ -1934,6 +1952,7 @@ export class Player implements IPlayer {
     player.playedCards.deserialize(d.playedCards);
     player.draftedCards = cardsFromJSON(d.draftedCards);
     player.autopass = d.autoPass ?? false;
+    player.bot = isBotDifficulty(d.bot) ? d.bot : undefined;
     player.preservationProgram = d.preservationProgram ?? false;
     // TODO(kberg): remove ?? 0 by 2026-11-01
     player.trThisGeneration = d.trThisGeneration ?? 0;

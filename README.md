@@ -41,6 +41,54 @@ NOTE: This site is restarted daily. A multiplayer game will remain available for
 Unfinished solo games are flushed after one day. We continue to make stability and scalability improvements in step with growth and popularity,
 but to make sure your game remains, we highly recommended to host your own web server.
 
+## ⬤ I want to play against the computer
+This fork adds a computer opponent, so you can play an ordinary multiplayer game on your own.
+
+On the new-game screen, set the player count to two or more, tick **Computer opponent** on any
+seat, and choose one of four difficulties:
+
+- **Beginner** — takes legal moves with little planning, and never really builds an engine.
+- **Engineer** — builds production, terraforms steadily and races milestones.
+- **Veteran** — prices its engine correctly, values tag synergies, and spends down at the end.
+- **Director** — as Veteran, plus placement denial and timing the last generation around who leads.
+
+Veteran and Director play to roughly a draw against each other; the measured
+ladder and the reasons are in the doc below.
+
+Seats without the tick are played by people, so two humans and a bot in the same game works too.
+
+[How the opponent works, and how to tune it](docs/computer-opponent.md).
+
+## ⬤ I want to run it on my own machine
+```bash
+git clone https://github.com/aronbal/terraforming-mars.git
+cd terraforming-mars
+npm run play
+```
+
+`npm run play` (or `bash scripts/start.sh`) installs dependencies if they are
+missing, builds anything out of date, and serves the game on
+http://localhost:8080. The first run takes a few minutes; after that it starts
+straight away.
+
+```bash
+npm run play -- --port 3000    # serve somewhere else
+npm run play -- --rebuild      # force a full rebuild first
+```
+
+Node 22 or newer is required.
+
+Then, in the browser: **NEW GAME** → 2 players → tick **Computer opponent** on
+the second seat → pick a difficulty → **Create game** → click your own name.
+
+**If you build by hand, use `npm run build`, not `npm run build:server`.** The
+server and the tests both need generated CSS and card JSON that a plain
+TypeScript compile does not produce. Without them `npm run test:server` aborts
+before running a single test — and exits 0 while doing it, so it looks like
+everything passed. `npm run play` handles this for you.
+
+For development with hot reload, use `npm run dev` instead.
+
 ## ⬤ I want to learn how to play
 There are far too many good tutorials online. [Here are the rulebooks, though.](https://github.com/terraforming-mars/terraforming-mars/wiki/Rulebooks)
 

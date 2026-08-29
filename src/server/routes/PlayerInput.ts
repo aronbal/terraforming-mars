@@ -15,6 +15,7 @@ import {statusCode} from '../../common/http/statusCode';
 import {InputError} from '../inputs/InputError';
 import {isIProjectCard} from '../cards/IProjectCard';
 import {AppErrorResponse, INVALID_RUN_ID} from '../../common/app/AppErrorId';
+import {BotRunner} from '../bot/BotRunner';
 
 export class PlayerInput extends Handler {
   public static readonly INSTANCE = new PlayerInput();
@@ -103,6 +104,9 @@ export class PlayerInput extends Handler {
             await this.performUndo(req, res, ctx, player);
           } else {
             player.process(entity);
+            // Let any computer opponents take their turns before answering, so
+            // the client receives a state it can actually act on.
+            BotRunner.run(player.game);
             responses.writeJson(res, ctx, Server.getPlayerModel(player));
           }
           resolve();
