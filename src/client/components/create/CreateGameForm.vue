@@ -1,6 +1,7 @@
 <template>
         <div id="create-game" class="create-game">
-            <h1><span v-i18n>{{ constants.APP_NAME }}</span> — <span v-i18n>Create New Game</span></h1>
+            <div class="create-game-eyebrow" v-i18n>{{ constants.APP_NAME }}</div>
+            <h1 v-i18n>Create New Game</h1>
             <div class="changelog"><a :href="wikiUrls.changelog" class="tooltip" v-i18n data-tooltip="Link opens in a new tab/window" target="_blank"><u v-i18n>Read our changelog to get the latest updates.</u></a></div>
             <div class="discord-invite" v-if="playersCount===1">
               (<span v-i18n>Looking for people to play with</span>? <a :href="constants.DISCORD_INVITE" class="tooltip" v-i18n data-tooltip="Link opens in a new tab/window" target="_blank"><u v-i18n>Join us on Discord</u></a>.)
@@ -449,7 +450,8 @@
                                 <div class="columns">
                                   <template v-for="(newPlayer, index) in getPlayers()" :key="index">
                                     <div>
-                                      <div :class="'form-group col6 create-game-player '+getPlayerContainerColorClass(newPlayer.color)">
+                                      <div class="form-group col6 create-game-player">
+                                          <div :class="'create-game-player-bar '+getPlayerCubeColorClass(newPlayer.color)"></div>
                                           <div>
                                               <input class="form-input form-inline create-game-player-name" :placeholder="getPlayerNamePlaceholder(index)" v-model="newPlayer.name" >
                                           </div>
@@ -563,7 +565,9 @@
                   :hint="'Start typing the card name to include'"
               />
             </div>
-          <PreferencesIcon/>
+          <div class="free-floating-preferences-icon">
+            <PreferencesIcon/>
+          </div>
         </div>
 </template>
 
@@ -953,9 +957,6 @@ export default defineComponent({
     },
     getPlayerCubeColorClass(color: Color): string {
       return playerColorClass(color, 'bg');
-    },
-    getPlayerContainerColorClass(color: Color): string {
-      return playerColorClass(color, 'bg_transparent');
     },
     boardHref(boardName: BoardName | RandomBoardOption) {
       const options: Record<BoardName | RandomBoardOption, string> = {

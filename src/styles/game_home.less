@@ -1,43 +1,181 @@
-.game-home-container {
-  padding-top: 32px;
-  padding-bottom: 32px;
-  height: 860px;
-  >h4 {
-    margin-left: 20px;
+// The share-links page is the last step of the create-game flow, so it wears the
+// same menu treatment: eyebrow, oversized heading, hairline rows.
+.topmost-game-home {
+  .menu-surface();
+
+  min-height: 100%;
+
+  .main-container {
+    margin: 0;
   }
-  .turn-order {
-    display: inline-block;
-    width: 40px;
+
+  .notice {
+    position: static;
+    padding: 28px;
     text-align: right;
+  }
+}
+
+.game-home-eyebrow {
+  .menu-eyebrow();
+}
+
+.game-home-container {
+  width: 100%;
+  max-width: 760px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 72px 24px 48px;
+  font-family: @menu_font_display;
+  color: @menu_text;
+
+  h1 {
+    .menu-heading();
+
+    margin-top: 12px;
+    font-size: 34px;
+  }
+
+  .game-home-id {
+    font-family: @menu_font_mono;
+    font-size: 26px;
+    color: @menu_accent;
+  }
+
+  > h4 {
+    max-width: 62ch;
+    margin: 14px 0 26px;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: @menu_text_dim;
+  }
+
+  .turn-order {
+    .menu-eyebrow();
+
+    display: inline-block;
+    width: 34px;
     white-space: nowrap;
   }
-  >ul {
+
+  > ul {
     list-style: none;
-    >li {
-      font-size: @font_size_big;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid @menu_line_strong;
+
+    > li {
       display: flex;
       flex-flow: row;
       align-items: center;
+      gap: 14px;
+      min-height: 58px;
+      font-size: 18px;
+      border-bottom: 1px solid @menu_line;
+
+      // An empty paragraph in the spectator row that only added a gap.
+      > p {
+        display: none;
+      }
     }
   }
+
+  // The seat colour, as an edge rather than a filled chip.
   .color-square {
     display: block;
-    width: 23px;
-    height: 23px;
-    border-radius: 3px;
-    margin: 0px 12px;
+    width: 3px;
+    height: 24px;
+    border-radius: 2px;
+    margin: 0;
+    overflow: hidden;
+    text-indent: -99px;
   }
+
   .player-name {
-    text-decoration: underline;
-    margin-right: 18px;
+    flex: 1;
+    text-decoration: none;
     cursor: pointer;
+
+    a {
+      color: @menu_text;
+      text-decoration: none;
+      font-weight: 500;
+
+      &:hover {
+        color: @menu_accent;
+      }
+    }
   }
+
   .copied-notice {
-    margin-left: 12px;
-    font-size: @font_size_normal;
+    .menu-eyebrow();
+
+    color: @menu_accent;
   }
-  .spacing-setup{
-    padding-bottom: 64px;
+
+  // .btn carries !important in common.less, so the quiet treatment has to match
+  // that weight to reach the copy buttons.
+  .btn {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 6px;
+    font-family: @menu_font_display;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: @menu_text_dim !important;
+    background: transparent !important;
+    border-color: @menu_line_strong !important;
+
+    &:hover {
+      color: @menu_text !important;
+      border-color: @menu_text_dim !important;
+    }
+  }
+
+  .spacing-setup {
+    padding-bottom: 26px;
+  }
+
+  // GameSetupDetail is shared with the in-game sidebar, so its own rules stay
+  // untouched and only the copy on this page is toned down.
+  .game-setup-detail-container {
+    margin-top: 14px;
+
+    > ul {
+      margin: 0;
+      padding: 0;
+
+      > li {
+        font-size: 14px;
+        color: @menu_text_dim;
+      }
+    }
+
+    .game-config {
+      font-size: 13px;
+      color: @menu_text;
+    }
+  }
+
+  > span > div {
+    font-size: 14px;
+    color: @menu_text_dim;
+
+    a {
+      color: @menu_text_dim;
+
+      &:hover {
+        color: @menu_accent;
+      }
+    }
+  }
+
+  .general-warning {
+    color: #ff6b53;
   }
 }
 
@@ -91,30 +229,12 @@
 }
 
 @media only screen and (max-width: 1023px) {
-  
   .topmost-game-home {
     min-height: 100dvh;
-
-    .main-container {
-      margin: 0;
-    }
   }
 
   .game-home-container {
-
-    padding: 24px;
-
-    h1 {
-      padding: 0px;
-    }
-
-    >h4 {
-      margin-left: 0;
-    }
-
-    .spacing-setup{
-      padding-bottom: 32px;
-    }
+    padding: 40px 20px 32px;
   }
 
   .game-setup-detail-container {
@@ -128,7 +248,6 @@
 @media only screen and (max-width: 767px) {
   .topmost-game-home {
     .notice {
-      position: static;
       padding: 16px;
       text-align: center;
     }
@@ -136,22 +255,17 @@
 
   .game-home-container {
     h1 {
-      font-size: 28px;
-      line-height: 1.15;
-      padding: 0px;
+      font-size: 26px;
     }
 
-    >h4 {
-      font-size: 16px;
-      line-height: 1.4;
+    .game-home-id {
+      font-size: 20px;
     }
 
-    >ul >li {
-      font-size: 18px;
-    }
-    
-    .spacing-setup{
-      padding-bottom: 32px;
+    > ul > li {
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 17px;
     }
   }
 

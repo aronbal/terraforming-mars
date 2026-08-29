@@ -1,6 +1,7 @@
 <template>
   <div id="game-home" class="game-home-container">
-    <h1><span v-i18n>Terraforming Mars</span> [<span v-i18n>game id:</span> <span>{{getGameId()}}</span>]</h1>
+    <div class="game-home-eyebrow" v-i18n>Terraforming Mars</div>
+    <h1><span v-i18n>game id:</span> <span class="game-home-id">{{getGameId()}}</span></h1>
     <h4><span v-i18n>Instructions: To start the game, separately copy and share the links with all players, and then click on your name.</span><br><span v-i18n>Save this page in case you or one of your opponents loses a link.</span></h4>
     <ul>
       <li v-for="(player, index) in (game === undefined ? [] : game.players)" :key="player.color">
@@ -25,7 +26,7 @@
 
     <div class="spacing-setup"></div>
     <div v-if="game !== undefined">
-      <h1 v-i18n>Game settings</h1>
+      <div class="game-home-eyebrow" v-i18n>Game settings</div>
       <GameSetupDetail :gameOptions="game.gameOptions" :playerNumber="game.players.length" :lastSoloGeneration="game.lastSoloGeneration"/>
     </div>
   </div>

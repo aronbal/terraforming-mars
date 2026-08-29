@@ -33,3 +33,36 @@
   border-radius: 0px !important;
   background-position: 0px !important;
 }
+
+// The shared look of the out-of-game menus: start screen, continue game and
+// create game. Dark ground, hairline rules, one amber accent, no photography.
+.menu-surface() {
+  font-family: @menu_font_display;
+  color: @menu_text;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(232, 163, 61, 0.07), transparent 60%),
+    @menu_bg_deep;
+}
+
+// The small uppercase caption that titles a group of controls.
+.menu-eyebrow() {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: @menu_text_dim;
+}
+
+// A page heading: oversized, tight, with the amber rule beneath it.
+.menu-heading() {
+  font-family: @menu_font_display;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: @menu_text;
+  filter: none;
+  text-shadow: none;
+  padding: 0;
+  margin: 0 0 8px;
+}
