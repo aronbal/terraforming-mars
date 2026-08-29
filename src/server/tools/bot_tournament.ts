@@ -41,6 +41,20 @@ export const NO_DATABASE = {
   getSessions: () => Promise.resolve([]),
 } satisfies IDatabase;
 
+/**
+ * Turns a match number into a game seed.
+ *
+ * `SeededRandom` takes a float in [0, 1) and scales it back up by 2^32, so
+ * every whole number lands on the same internal state. Feeding it 1, 2, 3 …
+ * would deal every match from an identical shuffle and quietly reduce a
+ * hundred-game run to one game played a hundred times. Spreading the match
+ * number over the unit interval with an odd multiplier gives each match its
+ * own board, deck and opening hands.
+ */
+export function seedForMatch(match: number): number {
+  return ((match * 2654435761) % 4294967296) / 4294967296;
+}
+
 export type MatchResult = {
   winner: BotDifficulty | 'draw';
   generations: number;
@@ -49,8 +63,9 @@ export type MatchResult = {
 };
 
 /** Plays one game between two difficulties and reports who won. */
-export function playMatch(first: BotDifficulty, second: BotDifficulty, seed: number): MatchResult {
-  const suffix = `${first}-${second}-${seed}`;
+export function playMatch(first: BotDifficulty, second: BotDifficulty, match: number): MatchResult {
+  const suffix = `${first}-${second}-${match}`;
+  const seed = seedForMatch(match);
   const players = [
     new Player('first', 'blue', false, 0, safeCast(`p-first-${suffix}`, isPlayerId)),
     new Player('second', 'red', false, 0, safeCast(`p-second-${suffix}`, isPlayerId)),

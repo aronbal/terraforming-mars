@@ -11,6 +11,13 @@ import {SelectPlayer} from '../../src/server/inputs/SelectPlayer';
 import {SelectProductionToLose} from '../../src/server/inputs/SelectProductionToLose';
 import {UndoActionOption} from '../../src/server/inputs/UndoActionOption';
 import {Resource} from '../../src/common/Resource';
+import {IGame} from '../../src/server/IGame';
+import {Space} from '../../src/server/boards/Space';
+
+/** Empty land beside a space, which is where greeneries can still go. */
+function countOpenNeighbours(game: IGame, space: Space): number {
+  return game.board.getAdjacentSpaces(space).filter((adjacent) => game.board.canPlaceTile(adjacent)).length;
+}
 
 describe('BotBrain', () => {
   it('answers a plain confirmation', () => {
@@ -64,6 +71,52 @@ describe('BotBrain', () => {
     const response = brain.respond(new SelectSpace('Select space for greenery tile', spaces));
 
     expect(spaces.map((space) => space.id)).to.include((response as {spaceId: string}).spaceId);
+  });
+
+  it('plants beside its own city rather than beside the opponent\'s', () => {
+    const [game, player, opponent] = testGame(2);
+    const board = game.board;
+    const open = board.getAvailableSpacesOnLand(player);
+    const mine = open[0];
+    // Somewhere far enough that the two cities share no neighbour.
+    const theirs = open.find((space) =>
+      board.getAdjacentSpaces(space).every((adjacent) =>
+        adjacent.id !== mine.id &&
+        board.getAdjacentSpaces(adjacent).every((next) => next.id !== mine.id)));
+    if (theirs === undefined) {
+      throw new Error('expected two spaces that share no neighbour');
+    }
+    game.addCity(player, mine);
+    game.addCity(opponent, theirs);
+
+    const besideMine = board.getAdjacentSpaces(mine).filter((space) => board.canPlaceTile(space));
+    const besideTheirs = board.getAdjacentSpaces(theirs).filter((space) => board.canPlaceTile(space));
+    const brain = new BotBrain(player, 'hard', new BotRandom(1));
+
+    // A greenery scores its city's owner a point too, so where it goes decides
+    // who gets the second point.
+    const response = brain.respond(
+      new SelectSpace('Select space for greenery tile', [...besideTheirs, ...besideMine]));
+
+    expect(besideMine.map((space) => space.id)).to.include((response as {spaceId: string}).spaceId);
+  });
+
+  it('builds a city where there is room to grow forests', () => {
+    const [game, player] = testGame(2);
+    const board = game.board;
+    player.production.override({plants: 3});
+
+    const roomy = board.getAvailableSpacesForCity(player)
+      .reduce((best, space) => countOpenNeighbours(game, space) > countOpenNeighbours(game, best) ? space : best);
+    const boxedIn = board.getAvailableSpacesForCity(player)
+      .reduce((worst, space) => countOpenNeighbours(game, space) < countOpenNeighbours(game, worst) ? space : worst);
+    const brain = new BotBrain(player, 'hard', new BotRandom(1));
+
+    const response = brain.respond(new SelectSpace('Select space for city tile', [boxedIn, roomy]));
+
+    expect(countOpenNeighbours(game, roomy), 'the two spaces were equally roomy')
+      .to.be.greaterThan(countOpenNeighbours(game, boxedIn));
+    expect((response as {spaceId: string}).spaceId).to.eq(roomy.id);
   });
 
   it('aims player-targeting prompts at the opponent', () => {

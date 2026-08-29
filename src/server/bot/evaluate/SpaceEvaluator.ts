@@ -5,7 +5,8 @@ import {SpaceBonus} from '../../../common/boards/SpaceBonus';
 import {SpaceType} from '../../../common/boards/SpaceType';
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
-import {Tempo, VP_VALUE, cardDrawValue, stockValues} from './Values';
+import {BoardOutlook} from './BoardOutlook';
+import {Tempo, cardDrawValue, stockValues} from './Values';
 
 /** Megacredits the bot assumes it gains for each ocean it builds next to. */
 const OCEAN_ADJACENCY_VALUE = 2;
@@ -22,7 +23,8 @@ export function scoreSpace(
   space: Space,
   tileType: TileType | undefined,
   tempo: Tempo,
-  profile: BotProfile): number {
+  profile: BotProfile,
+  outlook: BoardOutlook): number {
   const board = player.game.board;
   let score = bonusValue(player, space, tempo, profile);
 
@@ -31,13 +33,16 @@ export function scoreSpace(
   score += oceans * (player.oceanBonus > 0 ? player.oceanBonus : OCEAN_ADJACENCY_VALUE);
 
   if (tileType === TileType.GREENERY) {
-    score += greeneryValue(player, adjacent);
+    score += greeneryValue(space, outlook);
   } else if (tileType === TileType.CITY || tileType === TileType.CAPITAL) {
-    score += cityValue(player, adjacent, tempo);
+    score += cityValue(space, tempo, profile, outlook);
   }
 
   if (profile.playsAgainstOpponent) {
-    score += denialValue(player, space, adjacent);
+    score += denialValue(player, space, adjacent, tileType);
+    if (tileType === TileType.CITY || tileType === TileType.CAPITAL) {
+      score += outlook.cityDenialValue(space);
+    }
   }
 
   // Reserved ocean spaces are scarce; do not spend one on a land tile.
@@ -104,45 +109,46 @@ function bonusValue(player: IPlayer, space: Space, tempo: Tempo, profile: BotPro
   return value;
 }
 
-/** Greeneries want to sit beside the player's own tiles, and beside cities. */
-function greeneryValue(player: IPlayer, adjacent: ReadonlyArray<Space>): number {
-  let value = 0;
-  for (const neighbour of adjacent) {
-    if (neighbour.tile === undefined) {
-      continue;
-    }
-    if (Board.isCitySpace(neighbour)) {
-      // Each greenery beside a city is a point for whoever owns the city.
-      value += neighbour.player?.id === player.id ? VP_VALUE : -VP_VALUE * 0.6;
-    }
-  }
-  return value;
+/**
+ * Greeneries want to sit beside the player's own cities.
+ *
+ * Each city beside a greenery scores a point for whoever owns that city, so
+ * the same forest is worth two points beside the bot's own city, one point in
+ * open ground, and rather less beside an opponent's.
+ */
+function greeneryValue(space: Space, outlook: BoardOutlook): number {
+  return outlook.cityAdjacencyPointsFor(space);
 }
 
-/** Cities want empty neighbours the player can fill with greeneries later. */
-function cityValue(player: IPlayer, adjacent: ReadonlyArray<Space>, tempo: Tempo): number {
-  let value = 0;
-  let openNeighbours = 0;
-  for (const neighbour of adjacent) {
-    if (neighbour.tile === undefined && neighbour.spaceType === SpaceType.LAND) {
-      openNeighbours++;
-    } else if (neighbour.tile?.tileType === TileType.GREENERY) {
-      value += neighbour.player?.id === player.id ? VP_VALUE : 0;
-    }
+/**
+ * Cities want greeneries beside them, now or later.
+ *
+ * This is the whole reason to build one: a city tile is worth nothing on its
+ * own. So the score is the points the city should end up collecting — forests
+ * already standing beside it, plus the ones this player can still grow into
+ * the gaps — and not a flat count of empty neighbours, which is what had the
+ * bot dropping cities into corners it could never green.
+ */
+function cityValue(space: Space, tempo: Tempo, profile: BotProfile, outlook: BoardOutlook): number {
+  if (profile.valuesCityGrowth === false) {
+    // A weak player counts elbow room and leaves it there.
+    const openNeighbours = outlook.growthRoomValue(space);
+    return openNeighbours * (tempo.endgame ? 0.5 : 1);
   }
-  // Room to grow is only worth something while there is time to grow into it.
-  value += Math.min(openNeighbours, 3) * (tempo.endgame ? 0.5 : 1.5);
-  return value;
+  return outlook.greeneryPointsFor(space) + outlook.growthRoomValue(space);
 }
 
 /** How much taking this space costs the opponent. */
-function denialValue(player: IPlayer, space: Space, adjacent: ReadonlyArray<Space>): number {
+function denialValue(player: IPlayer, space: Space, adjacent: ReadonlyArray<Space>, tileType: TileType | undefined): number {
   let value = 0;
-  for (const neighbour of adjacent) {
-    const owner = neighbour.player;
-    if (owner !== undefined && owner.id !== player.id && Board.isCitySpace(neighbour)) {
-      // Sitting beside their city denies them a greenery point later.
-      value += 1.5;
+  // A greenery beside their city is not denial, it is a gift: it scores them
+  // the point. Any other tile takes the slot away instead.
+  if (tileType !== TileType.GREENERY) {
+    for (const neighbour of adjacent) {
+      const owner = neighbour.player;
+      if (owner !== undefined && owner.id !== player.id && Board.isCitySpace(neighbour)) {
+        value += 1.5;
+      }
     }
   }
   // Spaces with strong bonuses are worth taking before the opponent does.

@@ -13,6 +13,7 @@ import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
 import {CardEvaluator} from './CardEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
+import {BoardOutlook} from './BoardOutlook';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 
 /** Points awarded for claiming a milestone or winning an award. */
@@ -49,7 +50,8 @@ export class ActionScorer {
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
     private readonly tempo: Tempo,
-    private readonly cards: CardEvaluator) {
+    private readonly cards: CardEvaluator,
+    private readonly outlook: BoardOutlook) {
     this.weights = weightsOf(profile);
   }
 
@@ -233,7 +235,9 @@ export class ActionScorer {
     const oxygenGain = this.player.game.getOxygenLevel() < MAX_OXYGEN_LEVEL ?
       terraformRatingValue(this.tempo, this.weights) :
       0;
-    return VP_VALUE + oxygenGain + TILE_PLACEMENT_VALUE - cost + 1 + this.closingAdjustment();
+    // Planting beside one of the bot's own cities scores that city a point too.
+    const adjacency = this.outlook.greeneryAdjacencyBonus();
+    return VP_VALUE + oxygenGain + TILE_PLACEMENT_VALUE + adjacency - cost + 1 + this.closingAdjustment();
   }
 
   private convertHeatScore(option: PlayerInput): number {
@@ -354,9 +358,15 @@ export class ActionScorer {
     case CardName.AQUIFER_STANDARD_PROJECT:
       return oceans < MAX_OCEAN_TILES ? tr + TILE_PLACEMENT_VALUE + this.closingAdjustment() : 0;
     case CardName.GREENERY_STANDARD_PROJECT:
-      return VP_VALUE + (game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? tr + this.closingAdjustment() : 0) + TILE_PLACEMENT_VALUE;
+      return VP_VALUE +
+        (game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? tr + this.closingAdjustment() : 0) +
+        TILE_PLACEMENT_VALUE +
+        this.outlook.greeneryAdjacencyBonus();
     case CardName.CITY_STANDARD_PROJECT:
-      return production.megacredits + VP_VALUE * 0.8 + TILE_PLACEMENT_VALUE;
+      // The megacredit production is the small half of this. The large half is
+      // the greeneries the city will collect, which is why it is priced off
+      // the board rather than off a constant.
+      return production.megacredits + this.outlook.valueOfNextCity() + TILE_PLACEMENT_VALUE;
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT:
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT_VARIANT:
       return game.getVenusScaleLevel() < MAX_VENUS_SCALE ? tr : 0;

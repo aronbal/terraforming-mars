@@ -34,6 +34,16 @@ export type BotProfile = {
   /** When false, the bot never claims milestones or funds awards on purpose. */
   racesMilestones: boolean;
 
+  /**
+   * When false, the bot treats a city as a flat point and plants wherever.
+   *
+   * A city scores only through the greeneries that end up beside it, so
+   * connecting the two is the difference between a player who builds cities
+   * and one who builds cities that pay. Weak players famously do not make the
+   * connection, so `easy` does not either.
+   */
+  valuesCityGrowth: boolean;
+
   /** When false, the bot ignores what the opponent is doing. */
   playsAgainstOpponent: boolean;
 
@@ -62,6 +72,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     terraformWeight: 0.65,
     valuesSynergy: false,
     racesMilestones: false,
+    valuesCityGrowth: false,
     playsAgainstOpponent: false,
     reserveMegacredits: 6,
     buyRate: 0.25,
@@ -74,6 +85,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     terraformWeight: 0.85,
     valuesSynergy: false,
     racesMilestones: true,
+    valuesCityGrowth: true,
     playsAgainstOpponent: false,
     reserveMegacredits: 3,
     buyRate: 0.45,
@@ -86,6 +98,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     terraformWeight: 1.0,
     valuesSynergy: true,
     racesMilestones: true,
+    valuesCityGrowth: true,
     playsAgainstOpponent: false,
     reserveMegacredits: 2,
     buyRate: 0.6,
@@ -98,6 +111,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     terraformWeight: 1.0,
     valuesSynergy: true,
     racesMilestones: true,
+    valuesCityGrowth: true,
     playsAgainstOpponent: true,
     reserveMegacredits: 1,
     buyRate: 0.7,
@@ -105,8 +119,27 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
   },
 };
 
+/**
+ * Knobs moved on top of a difficulty's profile, for the benchmark tools.
+ *
+ * Measuring an evaluator change means playing the change against its absence,
+ * and the two sides have to sit in one process for that. `bot_ab.ts` sets this
+ * so one seat plays with a knob moved and the other plays the shipped profile.
+ * Nothing in a real game touches it.
+ */
+const overrides = new Map<BotDifficulty, Partial<BotProfile>>();
+
+export function overrideProfile(difficulty: BotDifficulty, values: Partial<BotProfile>): void {
+  overrides.set(difficulty, values);
+}
+
+export function clearProfileOverrides(): void {
+  overrides.clear();
+}
+
 export function profileFor(difficulty: BotDifficulty): BotProfile {
-  return PROFILES[difficulty];
+  const override = overrides.get(difficulty);
+  return override === undefined ? PROFILES[difficulty] : {...PROFILES[difficulty], ...override};
 }
 
 /** The valuation weights implied by a profile. */

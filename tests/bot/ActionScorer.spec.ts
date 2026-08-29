@@ -4,6 +4,7 @@ import {ActionScorer, PASS_SCORE} from '../../src/server/bot/evaluate/ActionScor
 import {CardEvaluator} from '../../src/server/bot/evaluate/CardEvaluator';
 import {Tempo, tempoOf} from '../../src/server/bot/evaluate/Values';
 import {profileFor} from '../../src/server/bot/BotProfile';
+import {BoardOutlook} from '../../src/server/bot/evaluate/BoardOutlook';
 import {OrOptions} from '../../src/server/inputs/OrOptions';
 import {SelectOption} from '../../src/server/inputs/SelectOption';
 import {IPlayer} from '../../src/server/IPlayer';
@@ -11,7 +12,8 @@ import {TileType} from '../../src/common/TileType';
 
 function scorerFor(player: IPlayer, tempo: Tempo): ActionScorer {
   const profile = profileFor('hard');
-  return new ActionScorer(player, profile, tempo, new CardEvaluator(player, profile, tempo));
+  const outlook = new BoardOutlook(player, tempo, profile);
+  return new ActionScorer(player, profile, tempo, new CardEvaluator(player, profile, tempo, outlook), outlook);
 }
 
 /** The action menu offers award funding as an annotated submenu. */
