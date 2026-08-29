@@ -10,6 +10,7 @@ import {Resource} from '../../../common/Resource';
 import {Units} from '../../../common/Units';
 import {BotProfile, weightsOf} from '../BotProfile';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
+import {BoardOutlook} from './BoardOutlook';
 
 /** What the bot assumes an unremarkable tile placement is worth in bonuses. */
 const TILE_PLACEMENT_VALUE = 2.5;
@@ -26,7 +27,8 @@ export class CardEvaluator {
   constructor(
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
-    private readonly tempo: Tempo) {
+    private readonly tempo: Tempo,
+    private readonly outlook: BoardOutlook) {
     this.weights = weightsOf(profile);
   }
 
@@ -141,11 +143,14 @@ export class CardEvaluator {
       value += count * (trValue + TILE_PLACEMENT_VALUE);
     }
     if (behavior.greenery !== undefined) {
-      value += VP_VALUE + trValue + TILE_PLACEMENT_VALUE;
+      // A greenery beside one of the player's own cities scores twice: once
+      // for itself, once for the city.
+      value += VP_VALUE + trValue + TILE_PLACEMENT_VALUE + this.outlook.greeneryAdjacencyBonus();
     }
     if (behavior.city !== undefined) {
-      // A city is worth the points of the greeneries that end up beside it.
-      value += VP_VALUE + TILE_PLACEMENT_VALUE;
+      // A city is worth the points of the greeneries that end up beside it,
+      // which depends on the board and on this player's plant engine.
+      value += this.outlook.valueOfNextCity() + TILE_PLACEMENT_VALUE;
     }
     if (behavior.tile !== undefined) {
       value += TILE_PLACEMENT_VALUE;

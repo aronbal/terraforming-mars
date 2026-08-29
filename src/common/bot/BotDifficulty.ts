@@ -15,17 +15,17 @@ export function isBotDifficulty(value: unknown): value is BotDifficulty {
 
 /** Labels shown in the new-game screen, in play order from gentlest to nastiest. */
 export const BOT_DIFFICULTY_LABELS: Record<BotDifficulty, string> = {
-  easy: 'Beginner',
-  medium: 'Engineer',
-  hard: 'Veteran',
-  insane: 'Director',
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+  insane: 'Insane',
 } as const;
 
 export const BOT_DIFFICULTY_DESCRIPTIONS: Record<BotDifficulty, string> = {
-  easy: 'Plays legal moves with little planning. Buys few cards and rarely builds an engine.',
-  medium: 'Builds production, plays affordable cards and terraforms steadily.',
-  hard: 'Values synergies and tags, races milestones and awards, and pushes hard at game end.',
-  insane: 'Plays like Veteran, and additionally blocks your placements, denies awards and times the final generation.',
+  easy: 'Plays legal moves with little planning. Buys few cards, rarely builds an engine, and drops cities wherever they fit.',
+  medium: 'Builds production, plays affordable cards, terraforms steadily, and grows greeneries around its cities.',
+  hard: 'Values synergies and tags, races milestones and awards, plans its cities around the forests it can grow, and pushes hard at game end.',
+  insane: 'Everything Hard does, and additionally blocks your placements, takes the city spaces you wanted, denies awards and times the final generation.',
 } as const;
 
 /** The default a new computer opponent starts on. */

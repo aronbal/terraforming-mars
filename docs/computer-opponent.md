@@ -9,12 +9,12 @@ On the new-game screen, set the player count to two or more, then tick
 **Computer opponent** on any seat and pick a difficulty. Seats without the tick
 are played by people, so mixed games (two humans and a bot, say) work too.
 
-| Level | Name | Plays like |
-| --- | --- | --- |
-| `easy` | Beginner | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
-| `medium` | Engineer | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
-| `hard` | Veteran | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
-| `insane` | Director | Everything Veteran does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Veteran — see the ladder below. |
+| Level | Plays like |
+| --- | --- |
+| Easy | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine, and drops cities wherever they happen to fit. |
+| Medium | Builds production, plays what it can afford, terraforms steadily, races milestones, and grows greeneries around its cities. |
+| Hard | Prices its engine correctly, values tag synergies, plans cities around the forests it can actually grow, and converts spare cash into points at the end. |
+| Insane | Everything Hard does, plus placement denial — including taking the city spaces you wanted — and timing the final generation around who is ahead. |
 
 ## How it works
 
@@ -38,6 +38,7 @@ have made through the UI.
 | `src/server/bot/evaluate/CardEvaluator.ts` | Scores a card by walking its `behavior`. |
 | `src/server/bot/evaluate/ActionScorer.ts` | Scores an entry in the action menu. |
 | `src/server/bot/evaluate/SpaceEvaluator.ts` | Scores a space for a tile. |
+| `src/server/bot/evaluate/BoardOutlook.ts` | Prices cities and greeneries against the board, which no card's `behavior` can express. |
 
 ### Evaluation
 
@@ -59,14 +60,52 @@ one thousand cards are priced without any per-card code. Cards with bespoke
 `play()` overrides fall back to their tags, victory points and a small
 allowance, so the bot treats them as playable rather than worthless.
 
+### Cities, and why they need their own file
+
+A city tile is the one piece the `behavior` DSL cannot price, because by itself
+it is worth nothing. It scores one point for every greenery that ends up beside
+it, whoever planted that greenery, so what a city is worth is a bet on how much
+green the player can still grow and on whether there is anywhere left to grow
+it. Neither is written on the card.
+
+`BoardOutlook` makes that bet explicitly, once per decision:
+
+- **What a city is worth** is the greeneries already standing beside the best
+  space open to the player, plus the ones the player's plants can still reach —
+  banked plants, plants the engine will still grow, and a small allowance for
+  greeneries that arrive from cards. A board with nowhere good left to build,
+  or a player with no plants, prices its own cities down to nothing.
+- **Cities already owned take their share first.** Without that, every city is
+  priced as though it were the only one and the bot builds a fourth expecting
+  the same three forests the first three are already counting on.
+- **What a greenery is worth** includes the point it scores for any city it
+  lands beside. Beside the bot's own city a forest is two points, not one;
+  beside an opponent's it pays for part of their turn instead. This is what
+  makes the bot plant *around* its cities rather than wherever the bonus is
+  best, and it feeds the plant conversion, the greenery standard project and
+  greenery cards alike.
+- **Room to grow** is worth something on its own while there is still time to
+  use it, so cities go where forests can follow rather than into a corner.
+- **Denial**, for Insane only, counts what taking a space costs the opponent. A
+  city may not sit beside another city, so building one closes seven spaces to
+  every other player, which matters most when the good spots are running out.
+
+The effect on play is large. Measured over 20 self-play games at Hard, the bot
+went from 1.4 cities and 2.6 points of city scoring per game to roughly 3.4
+cities and 8.7 points, with greeneries rising from 7 to 9 — and it beats the
+evaluator without this reasoning 59% of the time (400 games), by about 7 points
+a game.
+
 ### Difficulty
 
 The levels run identical code; a profile decides how much of that code's advice
 the bot takes. The largest lever is `productionWeight`, which is how accurately
-the bot prices its own engine — `easy` prices it at 0.4 of its true value and
-therefore under-builds, the way a weak player does. On top of that, weaker
-levels mix noise into every score and occasionally discard their ranking
-entirely.
+the bot prices its own engine — Easy prices it at 0.4 of its true value and
+therefore under-builds, the way a weak player does. `valuesCityGrowth` is the
+second: without it a bot builds cities as though they scored a flat point and
+never connects them to its forests, which is exactly how a beginner plays them.
+On top of that, weaker levels mix noise into every score and occasionally
+discard their ranking entirely.
 
 There is no tree search. Cloning a game to try moves is not reliable here,
 because `Game.serialize` deliberately drops the deferred-action queue, so a
@@ -83,60 +122,89 @@ minimum legal card selection, the first available space — before it gives up.
 It also caps retries per input and total decisions per call, so a bug can slow
 a game down but cannot spin the server.
 
-## Checking the difficulty ladder
+## Measuring a change
 
-`src/server/tools/bot_tournament.ts` plays the levels against each other and
-reports win rates. Run it after changing anything in the evaluator:
+Two tools, and they answer different questions. Run both after changing
+anything in the evaluator.
+
+**Is the ladder still a ladder?** `bot_tournament.ts` plays the levels against
+each other; each should beat the ones below it.
 
 ```bash
-npx tsx src/server/tools/bot_tournament.ts 60
+npx tsx src/server/tools/bot_tournament.ts 120
 ```
 
-Results from 60 games per pairing, seats alternated:
-
 ```
-medium  vs easy     medium wins 59/60 ( 98%)
-hard    vs easy     hard wins   59/60 ( 98%)
-insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   38/60 ( 63%)
-insane  vs medium   insane wins 38/60 ( 63%)
-insane  vs hard     insane wins 32/60 ( 53%)
+medium  vs easy     medium wins 120/120 (100%)
+hard    vs easy     hard wins  120/120 (100%)
+insane  vs easy     insane wins 120/120 (100%)
+hard    vs medium   hard wins   78/120 ( 65%)
+insane  vs medium   insane wins 76/120 ( 63%)
+insane  vs hard     insane wins 68/120 ( 57%)
 ```
 
-**Read this honestly: there are three distinct tiers, not four.** `easy` is far
-weaker than everything, `hard` beats `medium` reliably, and `insane` is a coin
-flip against `hard`. Director differs from Veteran only in opponent awareness —
-placement denial and timing the final generation — and against another bot that
-plays just as well, denial mostly cancels out.
+**Did this change help?** The tournament cannot say, because both seats get the
+change. `bot_ab.ts` plays a difficulty against itself with profile knobs moved
+on one seat:
 
-Bot-versus-bot games run about 14 to 16 generations, longer than a typical human
+```bash
+npx tsx src/server/tools/bot_ab.ts 400 hard valuesCityGrowth=false
+```
+
+**What is the bot actually doing?** `bot_diagnostics.ts` prints the shape of the
+games rather than the win rate — tiles laid, where the points came from, how
+long the game ran. A change that raises the win rate while the bot stops
+building anything is worth looking at twice.
+
+```bash
+npx tsx src/server/tools/bot_diagnostics.ts 20 hard hard
+```
+
+### A note on seeds
+
+`SeededRandom` takes a float in [0, 1) and scales it back up by 2^32, so every
+whole number lands on the same internal state. The tournament used to pass 1,
+2, 3 … as seeds, which meant a hundred-game run was one game played a hundred
+times with different bot noise — and at Insane, which has no noise, it was one
+game played a hundred times identically. Every measurement taken before that
+was fixed, including the ladder that used to be printed here, was drawn from a
+single board. `seedForMatch` spreads the match number over the unit interval;
+`tests/bot/BotTournament.spec.ts` guards it, because the failure is invisible
+from the outside.
+
+Bot-versus-bot games run about 16 generations, longer than a typical human
 game, because two cautious bots terraform more slowly than a human pushing to
-close the game out.
+close the game out. Easy games run past 23.
 
 ## What has already been tried, and failed
 
-Do not spend time re-deriving these. Each was implemented and measured over
-80-120 games of `insane` against `hard`, and none beat the 50% baseline:
+Do not spend time re-deriving these. Each was implemented and measured, and
+none beat its baseline. Below roughly 60% at n=400 (standard error about 2.5
+points) there is no effect worth keeping.
 
 | Idea | Result |
 | --- | --- |
 | Buy cards on value with a margin, instead of to a quota | **44%** — actively harmful. More cards beats fewer: the play threshold already filters what gets played, so extra options are worth more than the 3 M€. |
 | Price steel and titanium by whether the hand holds cards that can spend them | 49% — no effect. |
 | Both of the above together | **32%** — clearly worse. |
-| Value a greenery by adjacency to the player's own cities at decision time | 44% — no effect. Placement already picks good spaces once the greenery is bought. |
 | Raise or lower the card buy rate (0.45, 0.6, 0.85, 1.0) | 49-56% — all inside the noise band. |
 | Heavier engine weighting, zero cash reserve, more aggressive closing | 49-51% — all inside the noise band. |
+| Price a blue card's action by walking its `action` behavior, instead of a flat allowance, and rank action cards by that | 48-49% over 400 games, twice. Taking a free action is nearly always right whatever it does, so pricing it changes little; where it does change the ranking, the DSL undervalues actions that stockpile resources for later. |
+| Fold the city-adjacency bonus into the price of a plant, so plant production is worth more once cities are standing | **50%**, down from 59% — clearly harmful. The bonus belongs to one specific greenery on one specific space; spread across every plant the bot owns it triples the value of its whole plant engine. |
 
-At n=100 the standard error is about 5 points, so nothing under roughly 60% is
-a real effect.
+Note that the first five rows were measured before the seeding bug above was
+found, so they were each drawn from a single board. They are recorded as
+suspect rather than deleted: the conclusions are plausible, and re-running them
+honestly is cheap.
 
-The conclusion is that **parameter tuning is exhausted**: once a level prices
-the game accurately, sharpening the same knobs does nothing. A genuinely
-stronger fourth tier needs a structural capability the evaluator does not have,
-most plausibly turn-level planning — choosing the best *pair* of actions rather
-than the best single action twice, so the bot can play a cheap production card
-to make an expensive one affordable in the same turn. That needs simulation,
-and the obvious route is blocked: `Game.serialize` deliberately drops the
+The conclusion still holds that **parameter tuning is exhausted**: once a level
+prices the game accurately, sharpening the same knobs does nothing. What did
+work was giving the evaluator something it could not previously see at all —
+the board, in `BoardOutlook`. A genuinely stronger fifth tier probably needs
+turn-level planning, choosing the best *pair* of actions rather than the best
+single action twice, so the bot can play a cheap production card to make an
+expensive one affordable in the same turn. That needs simulation, and the
+obvious route is blocked: `Game.serialize` deliberately drops the
 deferred-action queue, so a clone taken mid-action is not the position it came
 from. Any attempt should start by solving that.
 
@@ -145,3 +213,5 @@ from. Any attempt should start by solving that.
 `tests/bot/SelfPlay.spec.ts` is the load-bearing test: it plays a full
 two-player game at every difficulty and asserts the game reaches `Phase.END`.
 If the bot cannot answer some input, the run stops early and the test fails.
+`tests/bot/BoardOutlook.spec.ts` and the placement cases in
+`tests/bot/BotBrain.spec.ts` cover the city and greenery reasoning directly.

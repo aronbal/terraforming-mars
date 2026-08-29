@@ -5,6 +5,7 @@ import {InputResponse} from '../../common/inputs/InputResponse';
 import {Payment} from '../../common/inputs/Payment';
 import {Units} from '../../common/Units';
 import {Resource} from '../../common/Resource';
+import {TileType} from '../../common/TileType';
 import {BotDifficulty} from '../../common/bot/BotDifficulty';
 import {ICard} from '../cards/ICard';
 import {ICorporationCard} from '../cards/corporation/ICorporationCard';
@@ -35,6 +36,7 @@ import {planPayment} from './PaymentPlanner';
 import {ActionScorer} from './evaluate/ActionScorer';
 import {CardEvaluator} from './evaluate/CardEvaluator';
 import {scoreSpace} from './evaluate/SpaceEvaluator';
+import {BoardOutlook} from './evaluate/BoardOutlook';
 import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './evaluate/Values';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
@@ -61,6 +63,7 @@ export class BotBrain {
   private readonly tempo: Tempo;
   private readonly cards: CardEvaluator;
   private readonly actions: ActionScorer;
+  private readonly outlook: BoardOutlook;
   private readonly weights: ValueWeights;
 
   constructor(
@@ -70,8 +73,9 @@ export class BotBrain {
     this.profile = profileFor(difficulty);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
-    this.cards = new CardEvaluator(player, this.profile, this.tempo);
-    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards);
+    this.outlook = new BoardOutlook(player, this.tempo, this.profile);
+    this.cards = new CardEvaluator(player, this.profile, this.tempo, this.outlook);
+    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.outlook);
   }
 
   public respond(input: PlayerInput): InputResponse {
@@ -300,7 +304,7 @@ export class BotBrain {
   private respondToSpace(input: SelectSpace): InputResponse {
     const tileType = this.tileTypeOf(input);
     const scores = input.spaces.map((space) =>
-      scoreSpace(this.player, space, tileType, this.tempo, this.profile));
+      scoreSpace(this.player, space, tileType, this.tempo, this.profile, this.outlook));
     const index = this.chooseIndex(scores);
     return {type: 'space', spaceId: input.spaces[index].id};
   }
@@ -309,19 +313,21 @@ export class BotBrain {
    * Guesses which kind of tile is being placed.
    *
    * `SelectSpace` does not carry the tile type, so this reads it off the title,
-   * which is the only signal available. Getting it wrong only costs placement
-   * quality, never legality.
+   * which is the only signal available. The titles are English source strings
+   * — translation happens in the browser — and the ones the game builds for a
+   * city or a greenery both name the tile. Getting it wrong only costs
+   * placement quality, never legality.
    */
-  private tileTypeOf(input: SelectSpace): undefined | number {
+  private tileTypeOf(input: SelectSpace): TileType | undefined {
     const title = this.titleText(input.title).toLowerCase();
     if (title.includes('greenery')) {
-      return 0; // TileType.GREENERY
+      return TileType.GREENERY;
     }
     if (title.includes('ocean')) {
-      return 1; // TileType.OCEAN
+      return TileType.OCEAN;
     }
     if (title.includes('city')) {
-      return 2; // TileType.CITY
+      return TileType.CITY;
     }
     return undefined;
   }
@@ -477,7 +483,17 @@ export class BotBrain {
     return LOSS_WORDS.some((word) => text.includes(word));
   }
 
+  /**
+   * The words in a prompt's title, including the ones it interpolates.
+   *
+   * A title assembled as `Select space for ${0}` keeps the tile or card name in
+   * its data rather than in the sentence, so reading only `message` throws away
+   * the one word worth reading.
+   */
   private titleText(title: string | Message): string {
-    return typeof title === 'string' ? title : title.message;
+    if (typeof title === 'string') {
+      return title;
+    }
+    return [title.message, ...title.data.map((entry) => String(entry.value))].join(' ');
   }
 }
