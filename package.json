@@ -20,11 +20,11 @@
     "uuid": "^14.0.1",
     "vue": "^3.4.0",
     "webpack": "^5.108.3",
-    "webpack-cli": "^7.0.2"
+    "webpack-cli": "^7.0.2",
+    "@playwright/test": "^1.48.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
-    "@playwright/test": "^1.48.0",
     "@stylistic/stylelint-plugin": "^5.2.1",
     "@types/ansi-escape-sequences": "^4.0.4",
     "@types/better-sqlite3": "^7.6.13",
