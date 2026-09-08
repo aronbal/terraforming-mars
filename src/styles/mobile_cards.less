@@ -99,13 +99,7 @@
     vertical-align: top;
   }
 
-  // Hand and card collections are horizontal rails with native iOS momentum.
-  .player_home_block--hand .sortable-cards,
-  .player_home_block--hand > div:not(.hiding-card-button-row),
-  .player_home_block--cards .cardbox + .cardbox {
-    -webkit-overflow-scrolling: touch;
-  }
-
+  // Hand is a horizontal rail with native iOS momentum.
   .player_home_block--hand .sortable-cards {
     display: flex;
     flex-wrap: nowrap;
@@ -116,6 +110,7 @@
     overflow-x: auto;
     overflow-y: visible;
     padding: 6px 10px 14px;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     scroll-snap-type: x proximity;
     box-sizing: border-box;
@@ -131,7 +126,7 @@
     scroll-snap-align: start;
   }
 
-  // Played cards use a compact rail too. Stacks retain their game meaning.
+  // Played cards remain a compact horizontal collection.
   .player_home_block--cards {
     overflow-x: auto;
     overflow-y: visible;
@@ -148,12 +143,18 @@
   }
 
   .player_home_block--cards > .cardbox,
-  .player_home_block--cards .cards-stack,
-  .player_home_block--cards .cards-stack-first {
+  .player_home_block--cards .cardbox {
     display: inline-block;
     zoom: var(--mobile-card-zoom);
     vertical-align: top;
     white-space: normal;
+  }
+
+  // Do not double-zoom the inner layers of StackedCards; the outer cardbox
+  // already carries the mobile scale.
+  .player_home_block--cards .cards-stack,
+  .player_home_block--cards .cards-stack-first {
+    zoom: 1;
   }
 
   .filterDiv, .cardbox {
@@ -251,8 +252,7 @@
     margin: 0 -7px !important;
   }
 
-  // Help/preferences/info remain available from the desktop sidebar but are
-  // removed from the primary mobile thumb zone.
+  // Keep rarely-used utilities out of the primary mobile thumb zone.
   .sidebar_cont.sidebar > .sidebar_item--help,
   .sidebar_cont.sidebar > .sidebar_item--info,
   .sidebar_cont.sidebar > .language-icon,
