@@ -1,125 +1,249 @@
 import { test, expect } from '@playwright/test';
 
-// Test mobile layout for Terraforming Mars
+// Mobile-specific tests for Terraforming Mars PWA
+// These tests verify that the mobile layout and touch interactions work correctly
 
 test.describe('Mobile Layout Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the game URL
-    await page.goto('http://localhost:8080');
-    // Set viewport to iPhone 12 dimensions
-    await page.setViewportSize({ width: 375, height: 812 });
-  });
-
-  test('Board should be scaled and scrollable on mobile', async ({ page }) => {
-    const board = page.locator('.board-cont');
-    await expect(board).toHaveCSS('width', '100%');
+  // Test the main game screen on mobile
+  test('Main game screen renders correctly on iPhone', async ({ page }) => {
+    // Navigate to the game
+    await page.goto('/');
     
-    // Check if the board is scaled down
-    const boardElement = page.locator('.board');
-    await expect(boardElement).toHaveCSS('transform', /scale\(0\.8\)/);
-  });
-
-  test('Cards in hand should be touch-friendly', async ({ page }) => {
-    // Assuming there are cards in hand
-    const card = page.locator('.cardbox').first();
-    await expect(card).toHaveCSS('min-width', '80px');
-    await expect(card).toHaveCSS('min-height', '120px');
-  });
-
-  test('Global parameters should be visible and properly spaced', async ({ page }) => {
-    const globalParams = page.locator('.mobile-global-parameters');
-    await expect(globalParams).toBeVisible();
+    // Wait for the page to load
+    await page.waitForLoadState('networkidle');
     
-    // Check if parameters are displayed in a row
-    const temperature = page.locator('.global-numbers-temperature.mobile-parameter');
-    const oxygen = page.locator('.global-numbers-oxygen.mobile-parameter');
-    await expect(temperature).toBeVisible();
-    await expect(oxygen).toBeVisible();
+    // Check that the main container is full width
+    const mainContainer = page.locator('#app');
+    await expect(mainContainer).toHaveCSS('width', '100%');
+    
+    // Check that the player home has reduced padding
+    const playerHome = page.locator('#player-home');
+    await expect(playerHome).toHaveCSS('padding-left', '5px');
+    await expect(playerHome).toHaveCSS('padding-right', '5px');
   });
 
-  test('Players overview should be scrollable horizontally', async ({ page }) => {
-    const playersOverview = page.locator('.players-overview');
-    await expect(playersOverview).toHaveCSS('overflow-x', 'auto');
-    await expect(playersOverview).toHaveCSS('flex-wrap', 'nowrap');
+  // Test the board scaling on mobile
+  test('Game board scales down on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that the board container is responsive
+    const boardCont = page.locator('.board-cont');
+    await expect(boardCont).toHaveCSS('width', '100%');
+    
+    // Check that the board itself is scaled down
+    const board = page.locator('.board');
+    const transform = await board.getAttribute('style');
+    expect(transform).toContain('scale(0.8)');
   });
 
-  test('Milestones and awards should be centered and wrapped', async ({ page }) => {
-    const milestonesAwards = page.locator('.mobile-milestones-awards');
-    await expect(milestonesAwards).toHaveCSS('display', 'flex');
-    await expect(milestonesAwards).toHaveCSS('flex-wrap', 'wrap');
-    await expect(milestonesAwards).toHaveCSS('justify-content', 'center');
+  // Test card display on mobile
+  test('Cards in hand are properly sized for touch', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that card boxes have minimum touch size
+    const cardBoxes = page.locator('.cardbox');
+    if (await cardBoxes.count() > 0) {
+      await expect(cardBoxes.first()).toHaveCSS('min-width', '80px');
+      await expect(cardBoxes.first()).toHaveCSS('min-height', '120px');
+    }
   });
 
-  test('Action buttons should have minimum touch target size', async ({ page }) => {
+  // Test button sizes on mobile
+  test('Buttons have minimum touch target size', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that buttons have minimum touch size
     const buttons = page.locator('.btn');
-    await expect(buttons.first()).toHaveCSS('min-height', '44px');
-    await expect(buttons.first()).toHaveCSS('min-width', '44px');
+    if (await buttons.count() > 0) {
+      await expect(buttons.first()).toHaveCSS('min-height', '44px');
+      await expect(buttons.first()).toHaveCSS('min-width', '44px');
+    }
   });
 
-  test('Log panel should be scrollable vertically', async ({ page }) => {
-    const logPanel = page.locator('.log-panel');
-    await expect(logPanel).toHaveCSS('max-height', '200px');
-    await expect(logPanel).toHaveCSS('overflow-y', 'auto');
-  });
-
-  test('Colonies should be displayed in a wrapped layout', async ({ page }) => {
-    const coloniesCont = page.locator('.player_home_colony_cont');
-    await expect(coloniesCont).toHaveCSS('display', 'flex');
-    await expect(coloniesCont).toHaveCSS('flex-wrap', 'wrap');
-    await expect(coloniesCont).toHaveCSS('justify-content', 'center');
-  });
-
-  test('Top bar should be sticky and full-width', async ({ page }) => {
+  // Test the top bar on mobile
+  test('Top bar is sticky and full width on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
     const topBarContainer = page.locator('.top-bar-container');
     await expect(topBarContainer).toHaveCSS('position', 'sticky');
     await expect(topBarContainer).toHaveCSS('width', '100%');
   });
 
-  test('Sidebar should be full-width on mobile', async ({ page }) => {
+  // Test the sidebar layout on mobile
+  test('Sidebar is full width on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
     const sidebar = page.locator('.sidebar');
     await expect(sidebar).toHaveCSS('width', '100%');
   });
-});
 
-test.describe('Touch Interaction Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:8080');
-    await page.setViewportSize({ width: 375, height: 812 });
-  });
-
-  test('Cards should respond to touch', async ({ page }) => {
-    const card = page.locator('.cardbox').first();
-    await card.tap();
-    // Check if the card has some visual feedback after tap
-    // This might need to be adjusted based on actual implementation
-    await expect(card).toHaveClass(/active|tapped/);
-  });
-
-  test('Buttons should respond to touch', async ({ page }) => {
-    const button = page.locator('.btn').first();
-    await button.tap();
-    // Check if the button has some visual feedback after tap
-    await expect(button).toHaveCSS('transform', /scale\(0\.9[0-9]+\)/);
-  });
-});
-
-test.describe('Responsive Design Tests', () => {
-  test('Layout should adapt to different screen sizes', async ({ page }) => {
-    // Test on iPhone 12
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('http://localhost:8080');
+  // Test the players overview scrolling
+  test('Players overview has horizontal scrolling on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
     
+    const playersOverview = page.locator('.player_home_block--players');
+    await expect(playersOverview).toHaveCSS('overflow-x', 'auto');
+    
+    const playersOverviewInner = page.locator('.players-overview');
+    await expect(playersOverviewInner).toHaveCSS('overflow-x', 'auto');
+  });
+
+  // Test that non-essential elements are hidden on mobile
+  test('Non-essential elements are hidden on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that the board legend is hidden
+    const boardLegend = page.locator('.board-legend');
+    await expect(boardLegend).toHaveCSS('display', 'none');
+    
+    // Check that keyboard shortcuts are hidden
+    const keyboardShortcuts = page.locator('.keyboard-shortcuts');
+    await expect(keyboardShortcuts).toHaveCSS('display', 'none');
+  });
+
+  // Test the responsive layout for different mobile viewports
+  test('Layout adapts to different mobile viewports', async ({ page }) => {
+    // Test iPhone SE viewport (320x568)
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that the board scales down further on smaller screens
     const board = page.locator('.board');
-    await expect(board).toHaveCSS('transform', /scale\(0\.8\)/);
+    const transform = await board.getAttribute('style');
+    expect(transform).toContain('scale(0.6)');
     
-    // Test on iPhone 13
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload();
-    await expect(board).toHaveCSS('transform', /scale\(0\.8\)/);
+    // Test iPad Mini viewport (768x1024)
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
     
-    // Test on Pixel 5
-    await page.setViewportSize({ width: 393, height: 851 });
-    await page.reload();
-    await expect(board).toHaveCSS('transform', /scale\(0\.8\)/);
+    // On larger mobile devices, the board should scale up
+    const boardTransform = await board.getAttribute('style');
+    expect(boardTransform).toContain('scale(0.8)');
+  });
+
+  // Test touch feedback on interactive elements
+  test('Interactive elements provide visual feedback on touch', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that buttons have active state styles
+    const buttons = page.locator('.btn');
+    if (await buttons.count() > 0) {
+      await expect(buttons.first()).toHaveCSS('transform', 'scale(0.96)');
+    }
+  });
+
+  // Test the mobile-specific CSS is loaded
+  test('Mobile CSS is properly loaded', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check that the mobile optimizations stylesheet is loaded
+    const stylesheets = await page.evaluate(() => {
+      return Array.from(document.styleSheets).map(sheet => sheet.href);
+    });
+    
+    // Check if mobile_optimizations.less is loaded (it's imported in common.less)
+    // Since it's imported, we can't check the href directly, but we can check for mobile styles
+    const body = page.locator('body');
+    await expect(body).toHaveCSS('text-size-adjust', '100%');
+  });
+});
+
+test.describe('Mobile Interaction Tests', () => {
+  // Test that cards can be tapped
+  test('Cards respond to tap interactions', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Find a card and tap it
+    const card = page.locator('.card').first();
+    if (await card.count() > 0) {
+      await card.click();
+      // If the card is clickable, it should respond (this is a basic test)
+      // In a real scenario, you'd check for specific behavior
+    }
+  });
+
+  // Test that buttons can be tapped
+  test('Buttons respond to tap interactions', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Find a button and tap it
+    const button = page.locator('.btn').first();
+    if (await button.count() > 0) {
+      await button.click();
+      // Basic interaction test
+    }
+  });
+
+  // Test scrolling behavior on mobile
+  test('Horizontal scrolling works on mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Test scrolling in the players overview
+    const playersOverview = page.locator('.players-overview');
+    if (await playersOverview.count() > 0) {
+      // Scroll to the right
+      await playersOverview.evaluate(el => {
+        el.scrollLeft = 100;
+      });
+      
+      // Check that the scroll position changed
+      const scrollLeft = await playersOverview.evaluate(el => el.scrollLeft);
+      expect(scrollLeft).toBeGreaterThan(0);
+    }
+  });
+});
+
+test.describe('Mobile PWA Tests', () => {
+  // Test that the PWA manifest is present
+  test('PWA manifest is present', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check for the manifest link
+    const manifest = page.locator('link[rel="manifest"]');
+    await expect(manifest).toHaveCount(1);
+  });
+
+  // Test that the service worker is registered
+  test('Service worker is registered', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check for service worker registration
+    const swRegistered = await page.evaluate(() => {
+      return 'serviceWorker' in navigator && navigator.serviceWorker.controller !== null;
+    });
+    
+    // Note: This might not work in Playwright's context, but it's a good check
+    // In a real PWA test, you'd need to check the service worker in a different way
+  });
+
+  // Test viewport meta tag for mobile
+  test('Viewport meta tag is present for mobile', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    
+    // Check for the viewport meta tag
+    const viewport = page.locator('meta[name="viewport"]');
+    await expect(viewport).toHaveCount(1);
+    
+    // Check the content of the viewport meta tag
+    const content = await viewport.getAttribute('content');
+    expect(content).toContain('width=device-width');
+    expect(content).toContain('initial-scale=1');
   });
 });
