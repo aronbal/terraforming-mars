@@ -1,20 +1,42 @@
 <!-- Common widgets between player and spectator views -->
 <template>
   <a name="board" class="player_home_anchor hotkey-target"></a>
-  <Board
-    :spaces="game.spaces"
-    :expansions="game.gameOptions.expansions"
-    :venusScaleLevel="game.venusScaleLevel"
-    :boardName ="game.gameOptions.boardName"
-    :oceans_count="game.oceans"
-    :oxygen_level="game.oxygenLevel"
-    :temperature="game.temperature"
-    :altVenusBoard="game.gameOptions.altVenusBoard"
-    :aresData="game.aresData"
-    :tileView="tileView"
-    @toggleTileView="$emit('toggleTileView')"
-    id="shortkey-board"
-  />
+  <div class="board-container">
+    <Board
+      :spaces="game.spaces"
+      :expansions="game.gameOptions.expansions"
+      :venusScaleLevel="game.venusScaleLevel"
+      :boardName ="game.gameOptions.boardName"
+      :oceans_count="game.oceans"
+      :oxygen_level="game.oxygenLevel"
+      :temperature="game.temperature"
+      :altVenusBoard="game.gameOptions.altVenusBoard"
+      :aresData="game.aresData"
+      :tileView="tileView"
+      @toggleTileView="$emit('toggleTileView')"
+      id="shortkey-board"
+    />
+  </div>
+
+  <div class="mobile-global-parameters">
+    <div class="global-numbers-temperature mobile-parameter">
+      <div :class="getScaleCSS(lvl)" v-for="(lvl, idx) in getValuesForParameter('temperature')" :key="idx">{{ lvl.strValue }}</div>
+    </div>
+    <div class="global-numbers-oxygen mobile-parameter">
+      <div :class="getScaleCSS(lvl)" v-for="(lvl, idx) in getValuesForParameter('oxygen')" :key="idx">{{ lvl.strValue }}</div>
+    </div>
+    <div class="global-numbers-venus mobile-parameter" v-if="game.gameOptions.expansions.venus">
+      <div :class="getScaleCSS(lvl)" v-for="(lvl, idx) in getValuesForParameter('venus')" :key="idx">{{ lvl.strValue }}</div>
+    </div>
+    <div class="global-numbers-oceans mobile-parameter">
+      <span v-if="game.oceans === constants.MAX_OCEAN_TILES">
+        <img width="20" src="assets/misc/circle-checkmark.png" class="board-ocean-checkmark" :alt="$t('Completed!')">
+      </span>
+      <span v-else>
+        {{ game.oceans }}/{{ constants.MAX_OCEAN_TILES }}
+      </span>
+    </div>
+  </div>
 
   <template v-if="game.turmoil">
     <a class="hotkey-target"></a>
@@ -33,7 +55,7 @@
 
   <DeltaProjectBoard v-if="game.gameOptions.expansions.deltaProject" :players="players"/>
 
-  <div v-if="players.length > 1" class="player_home_block--milestones-and-awards">
+  <div v-if="players.length > 1" class="player_home_block--milestones-and-awards mobile-milestones-awards">
     <a class="hotkey-target"></a>
     <Milestones :milestones="game.milestones" />
     <Awards :awards="game.awards" />
@@ -55,6 +77,12 @@ import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
 import {TileView} from './board/TileView';
 import {scrollToSpace} from '@/client/utils/boardScroll';
+import * as constants from '@/common/constants';
+
+class GlobalParamLevel {
+  constructor(public value: number, public isActive: boolean, public strValue: string) {
+  }
+}
 
 export default defineComponent({
   name: 'GameBoardView',
@@ -104,6 +132,87 @@ export default defineComponent({
         }
       }
     },
+    getValuesForParameter(targetParameter: string): Array<GlobalParamLevel> {
+      const values = [];
+      let startValue: number;
+      let endValue: number;
+      let step: number;
+      let curValue: number;
+      let strValue: string;
+
+      switch (targetParameter) {
+      case 'oxygen':
+        startValue = constants.MIN_OXYGEN_LEVEL;
+        endValue = constants.MAX_OXYGEN_LEVEL;
+        step = 1;
+        curValue = this.game.oxygenLevel;
+        break;
+      case 'temperature':
+        startValue = constants.MIN_TEMPERATURE;
+        endValue = constants.MAX_TEMPERATURE;
+        step = 2;
+        curValue = this.game.temperature;
+        break;
+      case 'venus':
+        startValue = constants.MIN_VENUS_SCALE;
+        endValue = constants.MAX_VENUS_SCALE;
+        step = 2;
+        curValue = this.game.venusScaleLevel;
+        break;
+      default:
+        throw new Error('Wrong parameter to get values from: ' + targetParameter);
+      }
+
+      for (let value = endValue; value >= startValue; value -= step) {
+        strValue = (targetParameter === 'temperature' && value > 0) ? '+'+value : value.toString();
+        values.push(
+          new GlobalParamLevel(value, value === curValue, strValue),
+        );
+      }
+      return values;
+    },
+    getScaleCSS(paramLevel: GlobalParamLevel): string {
+      let css = 'global-numbers-value val-' + paramLevel.value + ' ';
+      if (paramLevel.isActive) {
+        css += 'val-is-active';
+      }
+      return css;
+    },
+  },
+  computed: {
+    constants() {
+      return constants;
+    },
   },
 });
 </script>
+
+<style scoped>
+.board-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+
+.mobile-global-parameters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.mobile-parameter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+@media (min-width: 769px) {
+  .mobile-global-parameters,
+  .mobile-milestones-awards {
+    display: none;
+  }
+}
+</style>
