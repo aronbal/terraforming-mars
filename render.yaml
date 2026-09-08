@@ -8,6 +8,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+    # Install both production and development dependencies
+    # This ensures all build tools (like webpack, less, etc.) are available
+    installCommand: npm install --production=false
+    # Build the project before starting
+    buildCommand: npm run build
+    # Start the server
+    startCommand: npm start
     disk:
       name: terraforming-mars-db
       mountPath: /usr/src/app/db
