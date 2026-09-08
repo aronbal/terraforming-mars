@@ -1,0 +1,301 @@
+// Mobile-first game surface.
+// Desktop keeps the original fixed board/card geometry. On phones we turn it
+// into a compact game table with card rails, a scaled board and bottom nav.
+
+@media screen and (max-width: 767px) {
+  :root {
+    --mobile-card-zoom: 0.34;
+    --mobile-board-zoom: 0.54;
+    --mobile-bottom-bar: 62px;
+  }
+
+  html, body, #app, #player-home {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #player-home {
+    padding-bottom: calc(var(--mobile-bottom-bar) + env(safe-area-inset-bottom) + 12px);
+  }
+
+  // Compact sticky player bar.
+  .top-bar-container {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    width: 100%;
+    max-width: 100vw;
+    padding-top: env(safe-area-inset-top);
+    box-sizing: border-box;
+    background: rgba(17, 17, 17, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .top-bar {
+    width: 100%;
+    max-width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .top-bar-collapser {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  // The physical board is 670px wide. Zoom it to the phone instead of
+  // making the user pan around a desktop-sized board.
+  .board-cont {
+    display: block;
+    width: 670px;
+    max-width: none;
+    height: 610px;
+    margin: 6px auto 14px;
+    padding: 0;
+    overflow: visible;
+    box-sizing: content-box;
+    zoom: var(--mobile-board-zoom);
+    transform-origin: top center;
+  }
+
+  .board {
+    margin-top: 35px;
+    margin-left: 46px;
+  }
+
+  // Cards become small physical tiles. They never form a huge vertical grid.
+  .player_home_block--hand,
+  .player_home_block--cards,
+  .player_home_block--setup {
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .player_home_block--hand > .cardbox,
+  .player_home_block--cards > .cardbox,
+  .player_home_block--setup > .cardbox,
+  .player_home_block--cards .cardbox,
+  .player_home_block--setup .cardbox {
+    zoom: var(--mobile-card-zoom);
+    margin: 0 3px 8px 0;
+    vertical-align: top;
+  }
+
+  // Hand is a horizontal rail with native iOS momentum.
+  .player_home_block--hand .sortable-cards {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 3px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 6px 10px 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    box-sizing: border-box;
+  }
+
+  .player_home_block--hand .sortable-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .player_home_block--hand .sortable-cards > div {
+    flex: 0 0 auto;
+    width: 240px;
+    scroll-snap-align: start;
+  }
+
+  // Played cards remain a compact horizontal collection.
+  .player_home_block--cards {
+    overflow-x: auto;
+    overflow-y: visible;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-left: 10px;
+    padding-right: 10px;
+    box-sizing: border-box;
+  }
+
+  .player_home_block--cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .player_home_block--cards > .cardbox,
+  .player_home_block--cards .cardbox {
+    display: inline-block;
+    zoom: var(--mobile-card-zoom);
+    vertical-align: top;
+    white-space: normal;
+  }
+
+  // Do not double-zoom the inner layers of StackedCards; the outer cardbox
+  // already carries the mobile scale.
+  .player_home_block--cards .cards-stack,
+  .player_home_block--cards .cards-stack-first {
+    zoom: 1;
+  }
+
+  .filterDiv, .cardbox {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  // Keep all sections inside the phone viewport.
+  .player_home_block {
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+  }
+
+  .player_home_block--actions {
+    padding: 0 10px 8px;
+  }
+
+  .player_home_block--actions .btn,
+  .player_home_block--actions button {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .log, .game-log, [class*="log-container"] {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  // Turn the desktop sidebar into a thumb-friendly bottom navigation bar.
+  .sidebar_cont.sidebar {
+    position: fixed !important;
+    z-index: 1200;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: var(--mobile-bottom-bar) !important;
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-around;
+    gap: 3px;
+    box-sizing: border-box;
+    background: rgba(18, 18, 18, 0.97);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .sidebar_cont.sidebar > a,
+  .sidebar_cont.sidebar > .sidebar_item,
+  .sidebar_cont.sidebar > .preferences_player {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 72px;
+    height: 48px;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar_cont.sidebar .sidebar_item {
+    border-radius: 10px;
+  }
+
+  .sidebar_cont.sidebar .sidebar_item:active,
+  .sidebar_cont.sidebar > a:active .sidebar_item {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .sidebar_cont.sidebar .global_params {
+    flex: 2 1 0;
+    min-width: 0;
+    max-width: 150px;
+    height: 48px;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .sidebar_cont.sidebar .global_params > * {
+    transform: scale(0.62);
+    transform-origin: center;
+    margin: 0 -7px !important;
+  }
+
+  // Keep rarely-used utilities out of the primary mobile thumb zone.
+  .sidebar_cont.sidebar > .sidebar_item--help,
+  .sidebar_cont.sidebar > .sidebar_item--info,
+  .sidebar_cont.sidebar > .language-icon,
+  .sidebar_cont.sidebar > .preferences-icon {
+    display: none !important;
+  }
+
+  button, .btn, input[type="button"], input[type="submit"], select,
+  .hiding-card-button, .played-cards-selection {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  input[type="checkbox"], input[type="radio"] {
+    width: 22px;
+    height: 22px;
+    touch-action: manipulation;
+  }
+
+  dialog, .dialog-polyfill, .dialog-polyfill-open {
+    width: min(94vw, 560px);
+    max-width: 94vw;
+    max-height: calc(100dvh - 24px);
+    box-sizing: border-box;
+  }
+
+  @media (hover: none) {
+    .card-hover-tall:hover, .filterDiv:hover, .btn:hover {
+      filter: none;
+    }
+  }
+}
+
+@media screen and (max-width: 390px) {
+  :root {
+    --mobile-card-zoom: 0.30;
+    --mobile-board-zoom: 0.51;
+  }
+}
+
+@media screen and (min-width: 600px) and (max-width: 767px) {
+  :root {
+    --mobile-card-zoom: 0.40;
+    --mobile-board-zoom: 0.68;
+  }
+}

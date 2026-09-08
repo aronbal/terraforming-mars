@@ -1,0 +1,97 @@
+/* Responsive layout for phones and small tablets. The desktop board keeps its
+ * original dimensions; on narrow screens it is scaled as a single unit so the
+ * board coordinates, tiles and overlays stay aligned. */
+
+@media only screen and (max-width: 767px) {
+  html,
+  body,
+  #app {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .main-container {
+    margin-left: 0;
+  }
+
+  #player-home,
+  #spectator-home {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 8px 32px 56px;
+  }
+
+  .player_home_block {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dynamic-title {
+    font-size: 26px;
+    margin-bottom: 10px;
+  }
+
+  /* The board is built from fixed pixel coordinates. Scale the whole board
+   * rather than changing individual coordinates, which would misalign tiles
+   * and the printed board artwork. */
+  .board-cont {
+    margin-top: 8px;
+    transform-origin: top left;
+  }
+
+  .players-overview,
+  .player_home_block--hand,
+  .player_home_block--cards {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .btn,
+  button,
+  select {
+    min-height: 44px;
+  }
+
+  .alert-dialog {
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+  }
+}
+
+@media only screen and (max-width: 420px) {
+  .board-cont {
+    zoom: 0.5;
+  }
+}
+
+@media only screen and (min-width: 421px) and (max-width: 520px) {
+  .board-cont {
+    zoom: 0.6;
+  }
+}
+
+@media only screen and (min-width: 521px) and (max-width: 620px) {
+  .board-cont {
+    zoom: 0.7;
+  }
+}
+
+@media only screen and (min-width: 621px) and (max-width: 767px) {
+  .board-cont {
+    zoom: 0.8;
+  }
+}
+
+/* Landscape phones have enough width for the normal board in most cases. */
+@media only screen and (max-width: 900px) and (orientation: landscape) {
+  #player-home,
+  #spectator-home {
+    padding-left: 56px;
+  }
+
+  .board-cont {
+    zoom: 0.9;
+  }
+}
