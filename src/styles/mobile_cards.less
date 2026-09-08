@@ -1,30 +1,14 @@
-// Mobile card sizing for narrow touch devices.
-// Keep the desktop card dimensions intact; CSS zoom scales the complete card
-// including its artwork and typography without having to rewrite the many
-// fixed-position elements used by the card renderer.
+// Mobile card layout is controlled by the Card size preference in preferences.less.
+// Keep the surrounding layout compact without changing the internal card geometry.
 
 @media screen and (max-width: 600px) {
   .filterDiv {
-    zoom: 0.70;
     margin-right: 8px;
     margin-top: 10px;
     margin-bottom: 8px;
   }
 
-  // The reorder overlay is positioned from the original card width and must
-  // follow the same scale on mobile.
   .sortable-cards .reorder-banners-container {
-    zoom: 0.70;
     width: 248px;
-  }
-}
-
-@media screen and (max-width: 390px) {
-  .filterDiv {
-    zoom: 0.66;
-  }
-
-  .sortable-cards .reorder-banners-container {
-    zoom: 0.66;
   }
 }
