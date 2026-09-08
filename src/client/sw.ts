@@ -9,14 +9,21 @@ const STATIC_ASSETS = [
   '/favicon.ico',
 ];
 
-self.addEventListener('install', (event: ExtendableEvent) => {
+// This project uses DOM TypeScript libraries, so keep the service-worker-specific
+// browser APIs local to this file instead of changing the global tsconfig libs.
+const serviceWorker = self as unknown as {
+  skipWaiting: () => Promise<void>;
+  clients: {claim: () => Promise<void>};
+};
+
+serviceWorker.addEventListener('install', (event: any) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
-  self.skipWaiting();
+  serviceWorker.skipWaiting();
 });
 
-self.addEventListener('activate', (event: ExtendableEvent) => {
+serviceWorker.addEventListener('activate', (event: any) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys
@@ -24,10 +31,10 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
         .map((key) => caches.delete(key)),
     )),
   );
-  self.clients.claim();
+  serviceWorker.clients.claim();
 });
 
-self.addEventListener('fetch', (event: FetchEvent) => {
+serviceWorker.addEventListener('fetch', (event: any) => {
   const request = event.request;
 
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) {
