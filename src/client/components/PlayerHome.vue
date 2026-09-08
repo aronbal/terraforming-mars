@@ -5,7 +5,7 @@
     <div v-if="game.phase === 'end'">
       <div class="player_home_block">
         <DynamicTitle title="This game is over!" :color="thisPlayer.color"/>
-        <a :href="'the-end?id='+ playerView.id" v-i18n>Go to game results</a>
+        <a :href="'/the-end?id='+ playerView.id" v-i18n>Go to game results</a>
       </div>
     </div>
 
@@ -37,8 +37,8 @@
         />
       </div>
 
-    <a class="hotkey-target"></a>
-    <PlayersOverview class="player_home_block player_home_block--players nofloat" :playerView="playerView" v-trim-whitespace id="shortkey-playersoverview"/>
+      <a class="hotkey-target"></a>
+      <PlayersOverview class="player_home_block player_home_block--players nofloat" :playerView="playerView" v-trim-whitespace id="shortkey-playersoverview"/>
 
       <a class="hotkey-target"></a>
       <div class="player_home_block nofloat">
