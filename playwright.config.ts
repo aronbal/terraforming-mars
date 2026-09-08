@@ -20,11 +20,15 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFile: 'playwright-report/index.html' }],
+    ['json', { outputFile: 'test-results.json' }],
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    // baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:8080',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -34,26 +38,28 @@ export default defineConfig({
 
     /* Capture video after each test failure */
     video: 'retain-on-failure',
+
+    // Mobile-specific settings
+    viewport: { width: 375, height: 812 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for major browsers and mobile devices */
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Pixel 5'] },
-    },
-
-    {
-      name: 'firefox',
+      name: 'iPhone 12',
       use: { ...devices['iPhone 12'] },
     },
-
     {
-      name: 'webkit',
-      use: { ...devices['iPhone 13'] },
+      name: 'iPhone SE',
+      use: { ...devices['iPhone SE'] },
     },
-
-    /* Test against mobile viewports. */
+    {
+      name: 'iPad Mini',
+      use: { ...devices['iPad Mini'] },
+    },
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'], viewport: { width: 375, height: 812 } },
@@ -62,22 +68,21 @@ export default defineConfig({
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'], viewport: { width: 375, height: 812 } },
     },
-
-    /* Test against branded browsers. */
     {
-      name: 'Microsoft Edge',
-      use: { ...devices['Edge'], channel: 'msedge' },
+      name: 'Desktop Chrome',
+      use: { ...devices['Desktop Chrome'], isMobile: false, hasTouch: false },
     },
     {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+      name: 'Desktop Firefox',
+      use: { ...devices['Desktop Firefox'], isMobile: false, hasTouch: false },
     },
   ],
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://127.0.0.1:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: {
+    command: 'npm run dev:server',
+    url: 'http://localhost:8080',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000, // 2 minutes to start the server
+  },
 });
