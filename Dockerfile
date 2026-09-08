@@ -13,8 +13,10 @@ WORKDIR /usr/src/app
 # Install dependencies first, to cache the image.
 COPY ["package.json", "package-lock.json", "./"]
 
-# Install dependencies
-RUN npm ci
+# npm ci requires package-lock.json to be perfectly in sync with package.json.
+# The mobile/PWA branch currently has a stale lockfile (Playwright is missing),
+# so use npm install here and let npm reconcile the lockfile during the image build.
+RUN npm install --include=dev --no-audit --no-fund
 
 
 # Create image for application building
@@ -30,7 +32,7 @@ RUN npm run build
 # Create image to prepare prod dependencies to be copied from
 FROM install AS installprod
 
-RUN npm ci --production --prefer-offline
+RUN npm install --omit=dev --no-audit --no-fund
 
 
 # Target image
