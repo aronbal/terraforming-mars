@@ -23,93 +23,31 @@ export type Preferences = {
   experimental_ui: boolean,
   lang: string,
 }
-
 export type Preference = keyof Preferences;
-
 const defaults: Preferences = {
-  learner_mode: true,
-  enable_sounds: true,
-  magnify_cards: true,
-  show_alerts: true,
-  lang: 'en',
-
-  hide_hand: false,
-  hide_awards_and_milestones: false,
-  show_milestone_details: true,
-  show_award_details: true,
-  hide_top_bar: false,
-  small_cards: false,
-  card_scale: 0.8,
-  remove_background: false,
-  hide_active_cards: false,
-  hide_automated_cards: false,
-  hide_event_cards: false,
-  hide_tile_confirmation: false,
-  hide_discount_on_cards: false,
-  hide_animated_sidebar: false,
-
-  symbol_overlay: false,
-  animated_title: true,
-
-  experimental_ui: false,
-  debug_view: false,
+  learner_mode: true, enable_sounds: true, magnify_cards: true, show_alerts: true, lang: 'en',
+  hide_hand: false, hide_awards_and_milestones: false, show_milestone_details: true, show_award_details: true,
+  hide_top_bar: false, small_cards: false, card_scale: 0.45, remove_background: false,
+  hide_active_cards: false, hide_automated_cards: false, hide_event_cards: false, hide_tile_confirmation: false,
+  hide_discount_on_cards: false, hide_animated_sidebar: false, symbol_overlay: false, animated_title: true,
+  experimental_ui: false, debug_view: false,
 };
-
 export class PreferencesManager {
   public static INSTANCE = new PreferencesManager();
   private readonly _values: Preferences;
-
-  private localStorageSupported(): boolean {
-    return typeof localStorage !== 'undefined';
-  }
-
-  public static resetForTest() {
-    this.INSTANCE = new PreferencesManager();
-  }
-
-  private constructor() {
-    this._values = {...defaults};
-    for (const key of Object.keys(defaults) as Array<Preference>) {
-      const value = this.localStorageSupported() ? localStorage.getItem(key) : undefined;
-      if (value) {
-        this._set(key, value);
-      }
-    }
-  }
-
+  private localStorageSupported(): boolean { return typeof localStorage !== 'undefined'; }
+  public static resetForTest() { this.INSTANCE = new PreferencesManager(); }
+  private constructor() { this._values = {...defaults}; for (const key of Object.keys(defaults) as Array<Preference>) { const value = this.localStorageSupported() ? localStorage.getItem(key) : undefined; if (value) this._set(key, value); } }
   private _set(key: Preference, val: string | boolean | number) {
-    if (key === 'lang') {
-      this._values.lang = String(val);
-    } else if (key === 'card_scale') {
-      const parsed = Number(val);
-      this._values.card_scale = Number.isFinite(parsed) ? Math.min(1, Math.max(0.6, parsed)) : defaults.card_scale;
-    } else {
-      this._values[key] = typeof(val) === 'boolean' ? val : (val === '1');
-    }
+    if (key === 'lang') this._values.lang = String(val);
+    else if (key === 'card_scale') { const parsed = Number(val); this._values.card_scale = Number.isFinite(parsed) ? Math.min(1, Math.max(0.35, parsed)) : defaults.card_scale; }
+    else this._values[key] = typeof(val) === 'boolean' ? val : (val === '1');
   }
-
-  // Making this Readonly means that it's Typescript-impossible to
-  // set preferences through the fields themselves.
-  values(): Readonly<Preferences> {
-    return this._values;
-  }
-
+  values(): Readonly<Preferences> { return this._values; }
   set(name: Preference, val: string | boolean | number, setOnChange = false): void {
-    // Don't set values if nothing has changed.
-    if (setOnChange && this._values[name] === val) {
-      return;
-    }
+    if (setOnChange && this._values[name] === val) return;
     this._set(name, val);
-    if (this.localStorageSupported()) {
-      if (name === 'lang') {
-        localStorage.setItem(name, this._values.lang);
-      } else {
-        localStorage.setItem(name, String(this._values[name]));
-      }
-    }
+    if (this.localStorageSupported()) { if (name === 'lang') localStorage.setItem(name, this._values.lang); else localStorage.setItem(name, String(this._values[name])); }
   }
 }
-
-export function getPreferences(): Readonly<Preferences> {
-  return PreferencesManager.INSTANCE.values();
-}
+export function getPreferences(): Readonly<Preferences> { return PreferencesManager.INSTANCE.values(); }

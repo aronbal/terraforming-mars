@@ -1,14 +1,79 @@
-// Mobile card layout is controlled by the Card size preference in preferences.less.
-// Keep the surrounding layout compact without changing the internal card geometry.
-
+// Responsive mobile card layout.
 @media screen and (max-width: 600px) {
-  .filterDiv {
-    margin-right: 8px;
-    margin-top: 10px;
-    margin-bottom: 8px;
+  #ts-preferences-target .player_home_block--hand,
+  #ts-preferences-target .player_home_block--cards {
+    --card-slot-width: calc(240px * var(--card-scale, 0.45));
   }
 
-  .sortable-cards .reorder-banners-container {
-    width: 248px;
+  #ts-preferences-target .player_home_block--hand > .cardbox,
+  #ts-preferences-target .player_home_block--cards > .cardbox {
+    display: inline-block;
+    vertical-align: top;
+    width: var(--card-slot-width);
+    margin-right: 0;
   }
+
+  #ts-preferences-target .player_home_block--hand > .cardbox > .filterDiv,
+  #ts-preferences-target .player_home_block--cards > .cardbox > .filterDiv {
+    transform: scale(var(--card-scale, 0.45)) !important;
+    transform-origin: left top;
+    margin-right: 0;
+    margin-bottom: calc(10px * var(--card-scale, 0.45));
+    transition: transform 0.15s;
+  }
+
+  #ts-preferences-target input[type="checkbox"]:checked + .filterDiv,
+  #ts-preferences-target input[type="radio"]:checked + .filterDiv {
+    transform: scale(var(--card-zoom-scale, 0.9)) !important;
+    transform-origin: center top;
+    z-index: 100;
+  }
+
+  #ts-preferences-target .dragging .filterDiv,
+  #ts-preferences-target .dragging .filterDiv:hover {
+    transform: none !important;
+  }
+
+  .filterDiv { margin-top: 10px; }
+  .sortable-cards .reorder-banners-container { width: 248px; }
+
+  .top-bar-container {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding-top: 8px;
+  }
+
+  .top-bar {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .top-bar .player-status-and-res {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .top-bar .resource_items_cont {
+    max-width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    box-sizing: border-box;
+  }
+
+  .top-bar .player-info-name,
+  .top-bar .player-info-corp {
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media screen and (max-width: 380px) {
+  .top-bar-container { padding-top: 12px; }
 }
