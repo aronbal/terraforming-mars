@@ -1,14 +1,11 @@
 // Responsive mobile card layout.
 @media screen and (max-width: 600px) {
-  // Keep the card containers in a real horizontal flow. The previous
-  // selectors were scoped to the preferences dialog, so they did not match
-  // the cards on the player home page.
   #player-home .player_home_block--hand > .cardbox,
   #player-home .player_home_block--cards > .cardbox,
   #player-home .player_home_block--setup > .cardbox {
     display: inline-block;
     vertical-align: top;
-    width: calc(240px * var(--card-scale, 0.45));
+    width: calc(240px * var(--card-scale, 0.36));
     margin-right: 0;
     margin-bottom: 0;
   }
@@ -17,28 +14,30 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 0;
+    gap: 2px;
   }
 
   #player-home .sortable-cards > div {
-    width: calc(240px * var(--card-scale, 0.45));
-    flex: 0 0 calc(240px * var(--card-scale, 0.45));
+    width: calc(240px * var(--card-scale, 0.36));
+    flex: 0 0 calc(240px * var(--card-scale, 0.36));
   }
 
   #player-home .player_home_block--hand > .cardbox > .filterDiv,
   #player-home .player_home_block--cards > .cardbox > .filterDiv,
   #player-home .player_home_block--setup > .cardbox > .filterDiv,
   #player-home .sortable-cards .cardbox > .filterDiv {
-    transform: scale(var(--card-scale, 0.45)) !important;
+    transform: scale(var(--card-scale, 0.36)) !important;
     transform-origin: left top;
     margin-right: 0;
-    margin-bottom: calc(10px * var(--card-scale, 0.45));
+    margin-bottom: calc(8px * var(--card-scale, 0.36));
     transition: transform 0.15s;
+    touch-action: manipulation;
   }
 
+  // Selected cards remain readable without filling the iPhone viewport.
   #player-home input[type="checkbox"]:checked + .filterDiv,
   #player-home input[type="radio"]:checked + .filterDiv {
-    transform: scale(var(--card-zoom-scale, 0.9)) !important;
+    transform: scale(var(--card-zoom-scale, 0.78)) !important;
     transform-origin: center top;
     z-index: 100;
   }
@@ -48,11 +47,10 @@
     transform: none !important;
   }
 
-  #player-home .filterDiv { margin-top: 10px; }
+  #player-home .filterDiv { margin-top: 8px; }
   #player-home .sortable-cards .reorder-banners-container { width: 248px; }
 
-  // Header: allow the player info and all six resource counters to wrap
-  // instead of clipping at the right edge on narrow iPhones.
+  // Header: wrap player information and resource counters instead of clipping.
   .top-bar-container {
     width: 100%;
     max-width: 100vw;
@@ -105,4 +103,121 @@
 
 @media screen and (max-width: 380px) {
   .top-bar-container { padding-top: calc(12px + env(safe-area-inset-top)); }
+}
+
+// iPhone / touch polish. Desktop layout is intentionally left unchanged.
+@media screen and (max-width: 767px) {
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    min-height: 100dvh;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    overscroll-behavior-x: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label,
+  a {
+    touch-action: manipulation;
+  }
+
+  button,
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  select {
+    min-height: 44px;
+  }
+
+  .touch-target-small {
+    min-height: 36px !important;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 22px;
+    height: 22px;
+    accent-color: @menu_accent;
+  }
+
+  // Prevent desktop hover effects from sticking after a finger tap.
+  @media (hover: none) {
+    .btn:hover {
+      filter: none;
+    }
+  }
+
+  // Keep modal/dialog content inside the safe viewport.
+  dialog,
+  .dialog-polyfill,
+  .dialog-polyfill-open {
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    box-sizing: border-box;
+  }
+
+  // The board uses fixed coordinate geometry, so scroll it instead of
+  // shrinking it until labels and spaces become unusable.
+  .board-cont {
+    max-width: 100vw;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    padding: 0 8px 16px;
+    box-sizing: border-box;
+  }
+
+  .main-container {
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+
+  .log,
+  .game-log,
+  [class*="log-container"] {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media screen and (max-width: 380px) {
+  #player-home .player_home_block--hand > .cardbox,
+  #player-home .player_home_block--cards > .cardbox,
+  #player-home .player_home_block--setup > .cardbox,
+  #player-home .sortable-cards > div {
+    width: calc(240px * var(--card-scale, 0.32));
+    flex-basis: calc(240px * var(--card-scale, 0.32));
+  }
+
+  #player-home .player_home_block--hand > .cardbox > .filterDiv,
+  #player-home .player_home_block--cards > .cardbox > .filterDiv,
+  #player-home .player_home_block--setup > .cardbox > .filterDiv,
+  #player-home .sortable-cards .cardbox > .filterDiv {
+    transform: scale(var(--card-scale, 0.32)) !important;
+  }
+
+  #player-home input[type="checkbox"]:checked + .filterDiv,
+  #player-home input[type="radio"]:checked + .filterDiv {
+    transform: scale(var(--card-zoom-scale, 0.72)) !important;
+  }
 }
