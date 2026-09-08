@@ -1,12 +1,11 @@
-const CACHE_NAME = 'terraforming-mars-static-v1';
+const CACHE_NAME = 'terraforming-mars-static-v2';
 
 const STATIC_ASSETS = [
   '/',
   '/styles.css',
-  '/mobile.css',
   '/vendors.js',
   '/main.js',
-  '/manifest.json',
+  '/assets/manifest.json',
   '/favicon.ico',
 ];
 
@@ -50,10 +49,9 @@ serviceWorker.addEventListener('fetch', (event: any) => {
   // are picked up without serving stale application code indefinitely.
   if (url.pathname === '/'
       || url.pathname === '/styles.css'
-      || url.pathname === '/mobile.css'
       || url.pathname === '/vendors.js'
       || url.pathname === '/main.js'
-      || url.pathname === '/manifest.json'
+      || url.pathname === '/assets/manifest.json'
       || url.pathname === '/favicon.ico'
       || url.pathname.startsWith('/chunks/')) {
     event.respondWith(
