@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: terraforming-mars
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: terraforming-mars-db
+      mountPath: /usr/src/app/db
+      sizeGB: 1
