@@ -9,12 +9,9 @@ const STATIC_ASSETS = [
   '/favicon.ico',
 ];
 
-// This project uses DOM TypeScript libraries, so keep the service-worker-specific
-// browser APIs local to this file instead of changing the global tsconfig libs.
-const serviceWorker = self as unknown as {
-  skipWaiting: () => Promise<void>;
-  clients: {claim: () => Promise<void>};
-};
+// TypeScript is configured with DOM types rather than WebWorker types.
+// Keep the service-worker-specific browser APIs local to this file.
+const serviceWorker = self as any;
 
 serviceWorker.addEventListener('install', (event: any) => {
   event.waitUntil(
