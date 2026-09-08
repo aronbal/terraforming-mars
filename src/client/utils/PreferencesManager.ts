@@ -9,6 +9,7 @@ export type Preferences = {
   show_award_details: boolean,
   hide_top_bar: boolean,
   small_cards: boolean,
+  card_scale: number,
   remove_background: boolean,
   hide_active_cards: boolean,
   hide_automated_cards: boolean,
@@ -38,6 +39,7 @@ const defaults: Preferences = {
   show_award_details: true,
   hide_top_bar: false,
   small_cards: false,
+  card_scale: 0.8,
   remove_background: false,
   hide_active_cards: false,
   hide_automated_cards: false,
@@ -75,9 +77,12 @@ export class PreferencesManager {
     }
   }
 
-  private _set(key: Preference, val: string | boolean) {
+  private _set(key: Preference, val: string | boolean | number) {
     if (key === 'lang') {
       this._values.lang = String(val);
+    } else if (key === 'card_scale') {
+      const parsed = Number(val);
+      this._values.card_scale = Number.isFinite(parsed) ? Math.min(1, Math.max(0.6, parsed)) : defaults.card_scale;
     } else {
       this._values[key] = typeof(val) === 'boolean' ? val : (val === '1');
     }
@@ -89,7 +94,7 @@ export class PreferencesManager {
     return this._values;
   }
 
-  set(name: Preference, val: string | boolean, setOnChange = false): void {
+  set(name: Preference, val: string | boolean | number, setOnChange = false): void {
     // Don't set values if nothing has changed.
     if (setOnChange && this._values[name] === val) {
       return;
@@ -99,7 +104,7 @@ export class PreferencesManager {
       if (name === 'lang') {
         localStorage.setItem(name, this._values.lang);
       } else {
-        localStorage.setItem(name, val ? '1' : '0');
+        localStorage.setItem(name, String(this._values[name]));
       }
     }
   }
