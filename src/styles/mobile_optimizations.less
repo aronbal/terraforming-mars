@@ -1,0 +1,394 @@
+// Mobile Optimizations for Terraforming Mars
+// This file contains CSS rules to optimize the game for mobile devices, especially iPhones.
+// It focuses on touch-friendly layouts, responsive design, and better usability on small screens.
+
+// ============================================
+// General Mobile Layout Adjustments
+// ============================================
+
+@media (max-width: 768px) {
+  // Reset padding and margins for mobile
+  #player-home, #spectator-home {
+    padding-left: 5px;
+    padding-top: 5px;
+    background-attachment: scroll;
+  }
+
+  // Make the main container full-width on mobile
+  .main-container {
+    margin: 0;
+    width: 100%;
+  }
+
+  // ============================================
+  // Top Bar Adjustments
+  // ============================================
+  .top-bar-container {
+    position: sticky;
+    top: 0;
+    z-index: 105;
+    margin-top: 0;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .top-bar {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .top-bar-collapser {
+    padding: 5px 10px;
+    height: 40px;
+    margin-top: 5px;
+    border-radius: 0 0 10px 0;
+  }
+
+  .player-info {
+    background: @grey_850 !important;
+    border-radius: 0 0 10px 10px;
+    padding: 5px;
+    width: 100%;
+    .player-status-and-res {
+      min-width: 100% !important;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  // ============================================
+  // Player Home Blocks
+  // ============================================
+  .player_home_block {
+    margin-bottom: 10px;
+    width: 100%;
+    clear: both;
+  }
+
+  // ============================================
+  // Board and Game Board View
+  // ============================================
+  .board-cont {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 10px;
+  }
+
+  .board {
+    width: 100%;
+    min-width: 600px; // Minimum width to prevent excessive shrinking
+    transform: scale(0.8); // Scale down the board to fit on mobile
+    transform-origin: top left;
+  }
+
+  .board-outer-spaces {
+    display: none; // Hide outer spaces on mobile for simplicity
+  }
+
+  // ============================================
+  // Cards in Hand and Tableau
+  // ============================================
+  .player_home_block--hand {
+    width: 100%;
+    .hiding-card-button-row {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .hiding-card-button {
+      width: 80px;
+      height: 25px;
+      font-size: 18px;
+      margin: 5px;
+    }
+    .played-cards-count {
+      width: 60px;
+      font-size: 16px;
+    }
+    .played-cards-selection {
+      font-size: 12px;
+    }
+  }
+
+  .cardbox {
+    display: inline-block;
+    width: 80px; // Smaller width for mobile
+    margin: 5px;
+    vertical-align: top;
+  }
+
+  // ============================================
+  // Sidebar and Global Parameters
+  // ============================================
+  .sidebar {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .global-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .global-numbers-temperature,
+  .global-numbers-oxygen,
+  .global-numbers-venus,
+  .global-numbers-oceans {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .global-numbers-value {
+    font-size: 12px;
+    padding: 2px 4px;
+  }
+
+  // ============================================
+  // Players Overview
+  // ============================================
+  .player_home_block--players {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .players-overview {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 5px;
+    padding-bottom: 10px;
+  }
+
+  .player-overview {
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+
+  // ============================================
+  // Log Panel
+  // ============================================
+  .player_home_block:has(.log-panel) {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .log-panel {
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+  }
+
+  // ============================================
+  // Actions and Waiting For
+  // ============================================
+  .player_home_block--actions {
+    width: 100%;
+    text-align: center;
+  }
+
+  .waiting-for {
+    width: 100%;
+    text-align: center;
+  }
+
+  // ============================================
+  // Colonies
+  // ============================================
+  .player_home_colony_cont {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .player_home_colony {
+    width: 100px;
+  }
+
+  .colonies-fleets-cont {
+    position: relative;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .colonies-player-fleets {
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .colonies-fleet {
+    width: 50px;
+    height: 50px;
+  }
+
+  // ============================================
+  // Milestones and Awards
+  // ============================================
+  .player_home_block--milestones-and-awards {
+    width: 100%;
+    text-align: center;
+  }
+
+  .milestones_cont,
+  .awards_cont {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .ma-block {
+    width: 100px;
+    margin: 5px;
+  }
+
+  // ============================================
+  // Dynamic Title
+  // ============================================
+  .dynamic-title {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 5px;
+  }
+
+  // ============================================
+  // Buttons and Interactive Elements
+  // ============================================
+  .btn {
+    padding: 8px 12px;
+    font-size: 14px;
+    min-width: 100px;
+  }
+
+  .btn-primary {
+    min-width: 120px;
+  }
+
+  // ============================================
+  // Touch Feedback
+  // ============================================
+  .btn:active,
+  .card:active,
+  .ma-block:active {
+    transform: scale(0.95);
+    filter: brightness(0.9);
+  }
+
+  // ============================================
+  // Hide or Adjust Non-Essential Elements
+  // ============================================
+  .text-overview {
+    display: none; // Hide text overview on mobile for cleaner UI
+  }
+
+  .hiding-card-button-row .text-overview {
+    display: none;
+  }
+
+  // ============================================
+  // Adjust Card List and Filters
+  // ============================================
+  .played-cards-filters {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  // ============================================
+  // Underworld Tokens
+  // ============================================
+  .player_home_block--underground-tokens {
+    height: auto;
+    overflow-x: auto;
+  }
+
+  // ============================================
+  // Spectator Link
+  // ============================================
+  #spectator-link + span {
+    div {
+      width: 100%;
+    }
+  }
+
+  // ============================================
+  // Keyboard Shortcuts
+  // ============================================
+  .keyboard-shortcuts {
+    display: none; // Hide keyboard shortcuts on mobile
+  }
+}
+
+// ============================================
+// iPhone-Specific Adjustments
+// ============================================
+@media (max-width: 375px) {
+  .board {
+    transform: scale(0.6);
+  }
+
+  .cardbox {
+    width: 70px;
+    margin: 3px;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 80px;
+  }
+
+  .global-numbers-value {
+    font-size: 10px;
+    padding: 1px 2px;
+  }
+
+  .ma-block {
+    width: 80px;
+    margin: 3px;
+  }
+
+  .player_home_colony {
+    width: 80px;
+  }
+}
+
+// ============================================
+// Touch-Specific Styles
+// ============================================
+// Increase tap target sizes for touch devices
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 44px; // Minimum touch target size
+    min-width: 44px;
+  }
+
+  .cardbox {
+    min-width: 80px;
+    min-height: 120px;
+  }
+
+  .ma-block {
+    min-width: 100px;
+    min-height: 140px;
+  }
+
+  .player_home_colony {
+    min-width: 100px;
+  }
+
+  // Ensure all interactive elements have sufficient spacing
+  .player_home_block {
+    padding: 5px;
+  }
+}
