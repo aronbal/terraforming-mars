@@ -105,7 +105,9 @@
     "dev:server": "cross-env NODE_ENV=development tsx watch --clear-screen=false src/server/server.ts",
     "test:mobile": "playwright test tests/mobile.spec.ts",
     "test:mobile:ui": "playwright test tests/mobile.spec.ts --ui",
-    "test:mobile:headed": "playwright test tests/mobile.spec.ts --headed"
+    "test:mobile:headed": "playwright test tests/mobile.spec.ts --headed",
+    "test:mobile:debug": "playwright test tests/mobile.spec.ts --headed --debug",
+    "test:mobile:iphone": "playwright test tests/mobile.spec.ts --project=iPhone 12 --headed"
   },
   "repository": {
     "type": "git",
