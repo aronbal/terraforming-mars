@@ -6,11 +6,13 @@
           <i class="form-icon"></i> <span v-i18n>Hide awards and milestones</span>
         </label>
       </div>
-      <div class="preferences_panel_item">
-        <label class="form-switch">
-          <input type="checkbox" @change="updatePreferences" v-model="prefs.small_cards" data-test="small_cards">
-          <i class="form-icon"></i> <span v-i18n>Smaller cards</span>
+      <div class="preferences_panel_item preferences_card_scale">
+        <label for="card-scale" class="card-scale-label">
+          <span v-i18n>Card size</span>
+          <strong>{{ Math.round(prefs.card_scale * 100) }}%</strong>
         </label>
+        <input id="card-scale" class="card-scale-slider" type="range" min="0.6" max="1" step="0.05"
+          v-model.number="prefs.card_scale" @input="updatePreferences" data-test="card_scale">
       </div>
       <div class="preferences_panel_item">
         <label class="form-switch">
@@ -154,6 +156,7 @@ export default defineComponent({
         const val = this.prefs[k];
         this.preferencesManager.set(k, val, /* setOnChange */ true);
       }
+      this.syncPreferences();
     },
     syncPreferences(): void {
       const target = document.getElementById('ts-preferences-target');
@@ -162,11 +165,14 @@ export default defineComponent({
       }
 
       for (const k of Object.keys(this.prefs) as Array<Preference>) {
-        if (k === 'lang') {
+        if (k === 'lang' || k === 'card_scale') {
           continue;
         }
-        this.setBoolPreferencesCSS(target, this.prefs[k], k);
+        this.setBoolPreferencesCSS(target, this.prefs[k] as boolean, k);
       }
+
+      target.style.setProperty('--card-scale', String(this.prefs.card_scale));
+      target.style.setProperty('--card-zoom-scale', String(Math.min(1.35, this.prefs.card_scale * 1.5)));
 
       if (!target.classList.contains('language-' + this.prefs.lang)) {
         target.classList.add('language-' + this.prefs.lang);
