@@ -69,7 +69,12 @@
           </div>
           <div class="text-overview" v-i18n>[ toggle cards in hand ]</div>
         </div>
-        <SortableCards v-show="isVisible('HAND')" :playerId="playerView.id" :cards="allCardsInHand"/>
+        <div v-show="isVisible('HAND')" class="mobile-card-hand-container">
+          <MobileCardHand :cards="allCardsInHand" />
+        </div>
+        <div v-show="isVisible('HAND')" class="desktop-card-hand-container">
+          <SortableCards :playerId="playerView.id" :cards="allCardsInHand"/>
+        </div>
       </div>
 
       <div class="player_home_block player_home_block--cards">
@@ -162,6 +167,7 @@ import GameBoardView from '@/client/components/GameBoardView.vue';
 import PlayerSetupView from '@/client/components/PlayerSetupView.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
 import SortableCards from '@/client/components/SortableCards.vue';
+import MobileCardHand from '@/client/components/MobileCardHand.vue';
 import TopBar from '@/client/components/TopBar.vue';
 import StackedCards from '@/client/components/StackedCards.vue';
 import PurgeWarning from '@/client/components/common/PurgeWarning.vue';
@@ -285,6 +291,7 @@ export default defineComponent({
     Colony,
     LogPanel,
     SortableCards,
+    MobileCardHand,
     TopBar,
     GameBoardView,
     PlayerSetupView,
@@ -338,3 +345,19 @@ export default defineComponent({
 });
 
 </script>
+
+<style>
+.mobile-card-hand-container {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .mobile-card-hand-container {
+    display: block;
+  }
+
+  .desktop-card-hand-container {
+    display: none;
+  }
+}
+</style>
