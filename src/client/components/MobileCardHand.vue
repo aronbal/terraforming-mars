@@ -1,6 +1,6 @@
 <template>
   <section class="mobile-card-hand" aria-label="Cards in hand">
-    <div class="mobile-card-hand__fan" :style="fanStyle">
+    <div class="mobile-card-hand__fan">
       <button
         v-for="(card, index) in cards"
         :key="`fan-${card.name}-${index}`"
@@ -92,10 +92,6 @@ export default defineComponent({
     nextCard(): CardModel | undefined {
       return this.cards[this.selectedIndex + 1];
     },
-    fanStyle(): Record<string, string> {
-      const count = this.cards.length;
-      return {'--fan-count': count.toString()};
-    },
   },
   watch: {
     cards: {
@@ -118,16 +114,14 @@ export default defineComponent({
       if (this.selectedIndex < this.cards.length - 1) this.selectedIndex++;
     },
     fanCardStyle(index: number): Record<string, string> {
-      const count = this.cards.length;
-      const center = (count - 1) / 2;
+      const center = (this.cards.length - 1) / 2;
       const offset = index - center;
       const rotation = Math.max(-20, Math.min(20, offset * 5));
       const lift = Math.abs(offset) * 4;
       const focusLift = index === this.selectedIndex ? -12 : 0;
+      const x = offset * 48 - 120;
       return {
-        '--fan-index': index.toString(),
-        '--fan-offset': offset.toString(),
-        transform: `translateX(calc(${offset} * clamp(38px, 10vw, 58px))) translateY(${lift + focusLift}px) rotate(${rotation}deg)`,
+        transform: `translateX(${x}px) translateY(${lift + focusLift}px) rotate(${rotation}deg)`,
         zIndex: index === this.selectedIndex ? '20' : String(10 - Math.abs(Math.round(offset))),
       };
     },
@@ -189,13 +183,13 @@ export default defineComponent({
     }
   }
 
-  // The fan is an overview, not a second readable card. Keep the useful
-  // information: title, price and tags. The full text lives in the focus card.
+  // Overview cards intentionally expose only the useful scan information.
+  // Full card text is reserved for the focus card below.
   &__fan-card :deep(.card-container) {
     width: 240px;
     height: 142px;
     overflow: hidden;
-    transform: translateX(-50%) scale(.54);
+    transform: scale(.54);
     transform-origin: 50% 100%;
   }
 
