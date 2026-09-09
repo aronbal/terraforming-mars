@@ -1,25 +1,27 @@
 <template>
   <section class="mobile-card-hand" aria-label="Cards in hand">
+    <!-- Compact hand overview: a V-shaped fan with only price + tags exposed. -->
     <div class="mobile-card-hand__fan">
       <button
-        v-for="(card, index) in cards"
-        :key="`fan-${card.name}-${index}`"
+        v-for="item in visibleFanCards"
+        :key="`fan-${item.card.name}-${item.index}`"
         class="mobile-card-hand__fan-card"
-        :class="{ 'is-focused': index === selectedIndex }"
-        :style="fanCardStyle(index)"
+        :class="{ 'is-focused': item.index === selectedIndex }"
+        :style="fanCardStyle(item.position, visibleFanCards.length)"
         type="button"
-        :aria-label="`Select ${card.name}`"
-        @click="selectCard(index)"
+        :aria-label="`Select ${item.card.name}`"
+        @click="selectCard(item.index)"
       >
-        <Card :card="card" />
+        <Card :card="item.card" />
       </button>
     </div>
 
     <div class="mobile-card-hand__focus-label">
       <span>{{ selectedIndex + 1 }} / {{ cards.length }}</span>
-      <span class="mobile-card-hand__hint">Swipe to browse</span>
+      <span class="mobile-card-hand__hint">Swipe kortet</span>
     </div>
 
+    <!-- Full-size focus card: this is the primary interaction surface. -->
     <div
       class="mobile-card-hand__carousel"
       @touchstart.passive="onTouchStart"
@@ -66,6 +68,14 @@ import {defineComponent} from 'vue';
 import Card from '@/client/components/card/Card.vue';
 import {CardModel} from '@/common/models/CardModel';
 
+const MAX_FAN_CARDS = 7;
+
+type FanCard = {
+  card: CardModel;
+  index: number;
+  position: number;
+};
+
 export default defineComponent({
   name: 'MobileCardHand',
   components: {Card},
@@ -92,6 +102,18 @@ export default defineComponent({
     nextCard(): CardModel | undefined {
       return this.cards[this.selectedIndex + 1];
     },
+    visibleFanCards(): FanCard[] {
+      const count = Math.min(MAX_FAN_CARDS, this.cards.length);
+      const half = Math.floor(count / 2);
+      let start = Math.max(0, this.selectedIndex - half);
+      start = Math.min(start, Math.max(0, this.cards.length - count));
+
+      return this.cards.slice(start, start + count).map((card, position) => ({
+        card,
+        index: start + position,
+        position,
+      }));
+    },
   },
   watch: {
     cards: {
@@ -113,16 +135,18 @@ export default defineComponent({
     next(): void {
       if (this.selectedIndex < this.cards.length - 1) this.selectedIndex++;
     },
-    fanCardStyle(index: number): Record<string, string> {
-      const center = (this.cards.length - 1) / 2;
-      const offset = index - center;
-      const rotation = Math.max(-20, Math.min(20, offset * 5));
-      const lift = Math.abs(offset) * 4;
-      const focusLift = index === this.selectedIndex ? -12 : 0;
-      const x = offset * 48 - 120;
+    fanCardStyle(position: number, count: number): Record<string, string> {
+      const center = (count - 1) / 2;
+      const offset = position - center;
+      const rotation = offset * 4;
+      // Negative Y moves the outer cards upwards, creating the V shape.
+      const verticalOffset = -Math.abs(offset) * 20;
+      const horizontalOffset = offset * 54 - 120;
+      const isCenter = Math.abs(offset) < 0.1;
+
       return {
-        transform: `translateX(${x}px) translateY(${lift + focusLift}px) rotate(${rotation}deg)`,
-        zIndex: index === this.selectedIndex ? '20' : String(10 - Math.abs(Math.round(offset))),
+        transform: `translateX(${horizontalOffset}px) translateY(${verticalOffset + (isCenter ? 2 : 0)}px) rotate(${rotation}deg)`,
+        zIndex: String(20 - Math.abs(Math.round(offset))),
       };
     },
     onTouchStart(event: TouchEvent): void {
@@ -151,10 +175,15 @@ export default defineComponent({
   user-select: none;
   -webkit-user-select: none;
 
+  // ================================================================
+  // HAND OVERVIEW
+  // The overview is deliberately not a miniature readable card.
+  // It is a visual index: card silhouette + cost + tags.
+  // ================================================================
   &__fan {
     position: relative;
-    height: 148px;
-    margin: 0 -12px 4px;
+    height: 190px;
+    margin: 0 -12px 0;
     overflow: visible;
     touch-action: pan-y;
   }
@@ -179,12 +208,15 @@ export default defineComponent({
     }
 
     &:not(.is-focused) {
-      filter: brightness(.78) saturate(.88);
+      filter: brightness(.72) saturate(.82);
+    }
+
+    &.is-focused {
+      filter: brightness(1.04) saturate(1.05);
     }
   }
 
-  // Overview cards intentionally expose only the useful scan information.
-  // Full card text is reserved for the focus card below.
+  // Scale the real card down so its visual frame remains authentic.
   &__fan-card :deep(.card-container) {
     width: 240px;
     height: 142px;
@@ -193,15 +225,21 @@ export default defineComponent({
     transform-origin: 50% 100%;
   }
 
-  &__fan-card :deep(.card-content) {
+  // Hide all reading content. Price and tags are the deliberate exceptions.
+  &__fan-card :deep(.card-content-wrapper) {
     visibility: hidden;
+  }
+
+  &__fan-card :deep(.card-cost-and-tags) {
+    visibility: visible;
   }
 
   &__fan-card :deep(.card-expansion),
   &__fan-card :deep(.card-points),
   &__fan-card :deep(.card-resources-counter),
-  &__fan-card :deep(.card-extra-content) {
-    opacity: .35;
+  &__fan-card :deep(.card-extra-content),
+  &__fan-card :deep(.card-help) {
+    opacity: 0;
   }
 
   &__focus-label {
@@ -209,7 +247,7 @@ export default defineComponent({
     align-items: center;
     justify-content: center;
     gap: 12px;
-    margin: 0 0 8px;
+    margin: -2px 0 8px;
     color: rgba(255, 255, 255, .78);
     font: 600 12px/16px Ubuntu, sans-serif;
     letter-spacing: .04em;
@@ -223,6 +261,10 @@ export default defineComponent({
     letter-spacing: 0;
   }
 
+  // ================================================================
+  // FOCUS CARD
+  // Full card at the bottom. Swipe left/right to browse the hand.
+  // ================================================================
   &__carousel {
     position: relative;
     display: flex;
@@ -240,7 +282,6 @@ export default defineComponent({
     max-width: 78vw;
     display: flex;
     justify-content: center;
-    transition: transform 180ms ease;
   }
 
   &__focus-card :deep(.card-container) {
@@ -249,6 +290,7 @@ export default defineComponent({
     margin-bottom: 45px;
   }
 
+  // Small adjacent cards reinforce that the focus card is part of a deck.
   &__peek {
     position: absolute;
     top: 10px;
@@ -257,7 +299,7 @@ export default defineComponent({
     padding: 0;
     border: 0;
     background: transparent;
-    opacity: .55;
+    opacity: .42;
     z-index: 2;
     pointer-events: auto;
   }
@@ -309,8 +351,8 @@ export default defineComponent({
 
 @media (max-width: 420px) {
   .mobile-card-hand {
-    &__carousel {
-      min-height: 385px;
+    &__fan {
+      height: 172px;
     }
 
     &__focus-card {
@@ -322,7 +364,7 @@ export default defineComponent({
     }
 
     &__peek {
-      opacity: .35;
+      opacity: .30;
     }
   }
 }
