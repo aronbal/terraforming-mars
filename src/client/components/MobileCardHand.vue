@@ -1,13 +1,17 @@
 <template>
   <section class="mobile-card-hand" aria-label="Cards in hand">
-    <!-- Compact hand overview: a V-shaped fan with only price + tags exposed. -->
+    <!--
+      The hand is a compact overview, not a miniature set of readable cards.
+      The selected card sits at the bottom of the V. At either end of the hand
+      the same layout naturally becomes / or \\.
+    -->
     <div class="mobile-card-hand__fan">
       <button
         v-for="item in visibleFanCards"
         :key="`fan-${item.card.name}-${item.index}`"
         class="mobile-card-hand__fan-card"
         :class="{ 'is-focused': item.index === selectedIndex }"
-        :style="fanCardStyle(item.position, visibleFanCards.length)"
+        :style="fanCardStyle(item.index, item.position, visibleFanCards.length)"
         type="button"
         :aria-label="`Select ${item.card.name}`"
         @click="selectCard(item.index)"
@@ -21,7 +25,7 @@
       <span class="mobile-card-hand__hint">Swipe kortet</span>
     </div>
 
-    <!-- Full-size focus card: this is the primary interaction surface. -->
+    <!-- Full-size focus card: the primary interaction surface. -->
     <div
       class="mobile-card-hand__carousel"
       @touchstart.passive="onTouchStart"
@@ -53,12 +57,9 @@
       </button>
     </div>
 
-    <div class="mobile-card-hand__dots" aria-hidden="true">
-      <span
-        v-for="(_, index) in cards"
-        :key="`dot-${index}`"
-        :class="{ 'is-active': index === selectedIndex }"
-      ></span>
+    <div class="mobile-card-hand__position" aria-hidden="true">
+      <span class="mobile-card-hand__position-current">{{ selectedIndex + 1 }}</span>
+      <span>/ {{ cards.length }}</span>
     </div>
   </section>
 </template>
@@ -69,6 +70,9 @@ import Card from '@/client/components/card/Card.vue';
 import {CardModel} from '@/common/models/CardModel';
 
 const MAX_FAN_CARDS = 7;
+const SWIPE_THRESHOLD = 45;
+const SWIPE_DISTANCE = 170;
+const MAX_DRAG_FOCUS_SHIFT = 1;
 
 type FanCard = {
   card: CardModel;
@@ -90,6 +94,8 @@ export default defineComponent({
       selectedIndex: 0,
       touchStartX: 0,
       touchCurrentX: 0,
+      touchDragX: 0,
+      isDragging: false,
     };
   },
   computed: {
@@ -114,6 +120,11 @@ export default defineComponent({
         position,
       }));
     },
+    fanFocusShift(): number {
+      if (!this.isDragging) return 0;
+      const rawShift = -this.touchDragX / SWIPE_DISTANCE;
+      return Math.max(-MAX_DRAG_FOCUS_SHIFT, Math.min(MAX_DRAG_FOCUS_SHIFT, rawShift));
+    },
   },
   watch: {
     cards: {
@@ -135,30 +146,40 @@ export default defineComponent({
     next(): void {
       if (this.selectedIndex < this.cards.length - 1) this.selectedIndex++;
     },
-    fanCardStyle(position: number, count: number): Record<string, string> {
-      const center = (count - 1) / 2;
-      const offset = position - center;
-      const rotation = offset * 4;
-      // Negative Y moves the outer cards upwards, creating the V shape.
-      const verticalOffset = -Math.abs(offset) * 20;
-      const horizontalOffset = offset * 54 - 120;
-      const isCenter = Math.abs(offset) < 0.1;
+    fanCardStyle(index: number, position: number, count: number): Record<string, string> {
+      const selectedPosition = this.visibleFanCards.findIndex((item) => item.index === this.selectedIndex);
+      const relativePosition = position - selectedPosition - this.fanFocusShift;
+      const distance = Math.abs(relativePosition);
+
+      // The selected card is the lowest point. Moving the focus left/right
+      // morphs the whole fan continuously between \\, V and / while dragging.
+      const verticalOffset = -Math.pow(distance, 1.12) * 25;
+      const horizontalOffset = relativePosition * 54 - 120;
+      const rotation = relativePosition * 4.2;
+      const isCenter = distance < 0.15;
 
       return {
         transform: `translateX(${horizontalOffset}px) translateY(${verticalOffset + (isCenter ? 2 : 0)}px) rotate(${rotation}deg)`,
-        zIndex: String(20 - Math.abs(Math.round(offset))),
+        zIndex: String(30 - Math.round(distance * 2)),
       };
     },
     onTouchStart(event: TouchEvent): void {
       this.touchStartX = event.touches[0]?.clientX ?? 0;
       this.touchCurrentX = this.touchStartX;
+      this.touchDragX = 0;
+      this.isDragging = true;
     },
     onTouchMove(event: TouchEvent): void {
+      if (!this.isDragging) return;
       this.touchCurrentX = event.touches[0]?.clientX ?? this.touchCurrentX;
+      this.touchDragX = this.touchCurrentX - this.touchStartX;
     },
     onTouchEnd(): void {
       const delta = this.touchCurrentX - this.touchStartX;
-      if (Math.abs(delta) < 45) return;
+      this.isDragging = false;
+      this.touchDragX = 0;
+
+      if (Math.abs(delta) < SWIPE_THRESHOLD) return;
       if (delta < 0) this.next();
       else this.previous();
     },
@@ -177,13 +198,13 @@ export default defineComponent({
 
   // ================================================================
   // HAND OVERVIEW
-  // The overview is deliberately not a miniature readable card.
-  // It is a visual index: card silhouette + cost + tags.
+  // Selected card = bottom of V. At the first/last card this becomes
+  // a clean diagonal (\\ or /). The whole fan follows the finger.
   // ================================================================
   &__fan {
     position: relative;
     height: 190px;
-    margin: 0 -12px 0;
+    margin: 0 -12px;
     overflow: visible;
     touch-action: pan-y;
   }
@@ -199,7 +220,8 @@ export default defineComponent({
     background: transparent;
     transform-origin: 50% 100%;
     cursor: pointer;
-    transition: transform 180ms ease, filter 180ms ease;
+    transition: transform 240ms cubic-bezier(.22, .8, .2, 1), filter 180ms ease;
+    will-change: transform;
 
     &:focus-visible {
       outline: 2px solid white;
@@ -216,7 +238,7 @@ export default defineComponent({
     }
   }
 
-  // Scale the real card down so its visual frame remains authentic.
+  // Keep the real card artwork, but make the overview compact.
   &__fan-card :deep(.card-container) {
     width: 240px;
     height: 142px;
@@ -225,7 +247,7 @@ export default defineComponent({
     transform-origin: 50% 100%;
   }
 
-  // Hide all reading content. Price and tags are the deliberate exceptions.
+  // Only the cost/tags layer remains visible in the overview.
   &__fan-card :deep(.card-content-wrapper) {
     visibility: hidden;
   }
@@ -263,7 +285,6 @@ export default defineComponent({
 
   // ================================================================
   // FOCUS CARD
-  // Full card at the bottom. Swipe left/right to browse the hand.
   // ================================================================
   &__carousel {
     position: relative;
@@ -290,7 +311,6 @@ export default defineComponent({
     margin-bottom: 45px;
   }
 
-  // Small adjacent cards reinforce that the focus card is part of a deck.
   &__peek {
     position: absolute;
     top: 10px;
@@ -322,24 +342,17 @@ export default defineComponent({
     transform-origin: top center;
   }
 
-  &__dots {
+  &__position {
     display: flex;
     justify-content: center;
-    gap: 5px;
+    gap: 3px;
     margin-top: -24px;
+    color: rgba(255, 255, 255, .35);
+    font: 500 11px/16px Ubuntu, sans-serif;
+  }
 
-    span {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .25);
-      transition: transform 160ms ease, opacity 160ms ease;
-
-      &.is-active {
-        transform: scale(1.6);
-        background: rgba(255, 255, 255, .85);
-      }
-    }
+  &__position-current {
+    color: rgba(255, 255, 255, .78);
   }
 }
 
