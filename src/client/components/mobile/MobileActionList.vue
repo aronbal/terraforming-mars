@@ -63,6 +63,7 @@ import {MobileTab} from '@/client/components/mobile/MobileTab';
 import {requestTab} from '@/client/utils/mobileNavigation';
 import {CardName} from '@/common/cards/CardName';
 import {offerFor, pickedCard} from '@/client/utils/cardSelection';
+import {BoardPick, boardOfferFor, pickedBoardThing} from '@/client/utils/boardSelection';
 
 /*
  * A turn's action menu, as a phone can read it.
@@ -111,8 +112,11 @@ export default defineComponent({
     pickedCard(): CardName | undefined {
       return pickedCard.value;
     },
+    pickedBoardThing(): BoardPick | undefined {
+      return pickedBoardThing.value;
+    },
     groups(): ReadonlyArray<ActionGroup> {
-      return groupActions(this.playerinput, this.pickedCard);
+      return groupActions(this.playerinput, this.pickedCard, this.pickedBoardThing);
     },
   },
   watch: {
@@ -120,9 +124,15 @@ export default defineComponent({
     playerinput() {
       this.openIndex = undefined;
     },
-    /* A card picked on the Cards tab is a choice already made, so the entry it
-       belongs to is unfolded and waiting when the player lands here. */
+    /* A card picked on the Cards tab, or a tile picked under the board, is a choice
+       already made, so the entry it belongs to is unfolded and waiting. */
     pickedCard: {
+      handler() {
+        this.openPickedEntry();
+      },
+      immediate: true,
+    },
+    pickedBoardThing: {
       handler() {
         this.openPickedEntry();
       },
@@ -131,12 +141,19 @@ export default defineComponent({
   },
   methods: {
     openPickedEntry(): void {
-      if (this.pickedCard === undefined) {
+      const card = this.pickedCard;
+      const board = this.pickedBoardThing;
+      if (card === undefined && board === undefined) {
         return;
       }
       for (const group of this.groups) {
         for (const entry of group.entries) {
-          if (entry.elsewhere === undefined && offerFor(entry.input, this.pickedCard) !== undefined) {
+          if (entry.elsewhere !== undefined) {
+            continue;
+          }
+          const claims = (card !== undefined && offerFor(entry.input, card) !== undefined) ||
+            (board !== undefined && boardOfferFor(entry.input, board));
+          if (claims) {
             this.openIndex = entry.index;
             return;
           }
@@ -153,9 +170,15 @@ export default defineComponent({
      * Whether the entry draws its own confirm button.
      *
      * A multi-select card list labels its button with how many are selected, so it
-     * has to own it; everything else is confirmed by the button this draws.
+     * has to own it. A list of choices -- the milestones, the awards -- owns it too,
+     * because it puts the button beside the one that is chosen rather than below all
+     * six; confirming an award should not mean scrolling past five others first.
+     * Everything else is confirmed by the button this draws.
      */
     childSaves(input: PlayerInputModel): boolean {
+      if (input.type === 'or') {
+        return true;
+      }
       return input.type === 'card' && !(input.max === 1 && input.min === 1);
     },
     saved(index: number) {

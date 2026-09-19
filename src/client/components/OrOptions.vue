@@ -42,6 +42,7 @@ import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
 import {CardName} from '@/common/cards/CardName';
 import {mobileLayout} from '@/client/utils/useMobileLayout';
 import {offerFor, pickedCard} from '@/client/utils/cardSelection';
+import {BoardPick, pickedBoardThing} from '@/client/utils/boardSelection';
 
 let unique = 0;
 
@@ -100,6 +101,9 @@ export default defineComponent({
     pickedCard(): CardName | undefined {
       return pickedCard.value;
     },
+    pickedBoardThing(): BoardPick | undefined {
+      return pickedBoardThing.value;
+    },
     showOwnSaveButton(): boolean {
       const selected = this.selectedOption;
       return this.showsave && selected !== undefined && !this.showChildSaveButton(selected);
@@ -110,8 +114,15 @@ export default defineComponent({
   },
   watch: {
     // A card picked elsewhere -- on the mobile shell's Cards tab -- names the option
-    // the player meant, so open that one rather than making them find it again.
+    // the player meant, so open that one rather than making them find it again. A
+    // milestone or an award tapped under the board says the same thing.
     pickedCard: {
+      handler() {
+        this.selectPickedOption();
+      },
+      immediate: true,
+    },
+    pickedBoardThing: {
       handler() {
         this.selectPickedOption();
       },
@@ -136,14 +147,26 @@ export default defineComponent({
   },
   methods: {
     selectPickedOption(): void {
-      const name = this.pickedCard;
-      if (name === undefined) {
-        return;
-      }
-      const option = this.displayedOptions.find((each) => offerFor(each, name) !== undefined);
+      const option = this.pickedOption();
       if (option !== undefined) {
         this.selectedOption = option;
       }
+    },
+    pickedOption(): PlayerInputModel | undefined {
+      const name = this.pickedCard;
+      if (name !== undefined) {
+        const offered = this.displayedOptions.find((each) => offerFor(each, name) !== undefined);
+        if (offered !== undefined) {
+          return offered;
+        }
+      }
+      const board = this.pickedBoardThing;
+      if (board === undefined) {
+        return undefined;
+      }
+      /* A list of milestones or awards is a list of the names themselves, so the
+         option the player tapped under the board is the one titled after it. */
+      return this.displayedOptions.find((each) => each.title === board.name);
     },
     getSelectedOptionTop(): number | undefined {
       const element = this.getSelectedOptionLabelElement();

@@ -16,7 +16,7 @@
       <span class="mobile-sheet-grip"></span>
       <div class="mobile-sheet-title-row">
         <h2 class="mobile-sheet-title mobile-sheet-title--waiting">{{ title }}</h2>
-        <span class="mobile-sheet-hint" v-i18n>Drag to resize</span>
+        <span class="mobile-sheet-hint" data-test="sheet-hint">{{ $t(hint) }}</span>
       </div>
     </div>
     <div class="mobile-panel-body mobile-card-scaler" :style="cardScaleStyle" data-test="sheet-body">
@@ -105,6 +105,16 @@ export default defineComponent({
     title(): string {
       return this.actionWaiting ? this.$t('Your turn') : this.$t('Actions');
     },
+    /*
+     * What a tap on the head does, said out loud.
+     *
+     * The head is the way back out of a raised sheet, and on a phone that is not
+     * something a player can see -- so it is written where they are already looking
+     * when they want to leave.
+     */
+    hint(): string {
+      return this.snap === 'half' || this.snap === 'full' ? 'Tap to close' : 'Tap to open';
+    },
     /* Cards are chosen and played from in here, so they scale exactly as they do on
        the Cards tab. Unscaled, a corporation card is wider than the phone. */
     cardScaleStyle(): Record<string, string> {
@@ -178,8 +188,10 @@ export default defineComponent({
       }
     },
     captureHead(): void {
-      const head = this.$refs.head as HTMLElement | undefined;
-      if (head === undefined || this.boundHead === head) {
+      /* Vue leaves a ref to an element it has removed as null rather than dropping
+         it, and the head is removed every time the panel goes back to being a tab. */
+      const head = this.$refs.head as HTMLElement | null | undefined;
+      if (head === null || head === undefined || this.boundHead === head) {
         return;
       }
       head.addEventListener('pointerdown', this.onPointerDown);

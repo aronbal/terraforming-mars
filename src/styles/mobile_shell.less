@@ -470,6 +470,44 @@
 }
 
 /*
+ * The things under the board that can be acted on by tapping them.
+ *
+ * A colony tile is not a control on a desktop, where trading is done from a menu, so
+ * the button around it here has to give back everything a button brings with it.
+ */
+.mobile-board-thing {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+
+  &:disabled {
+    // Not dimmed: a colony you cannot trade with this turn is still worth reading.
+    opacity: 1;
+  }
+}
+
+/*
+ * A milestone you may claim and one you may not look identical on a desktop, because
+ * there the claiming happens in a menu. Here the tile is the button, so the ones the
+ * turn actually offers say so, and the rest are drawn exactly as they were.
+ */
+.mobile-board-thing--offered,
+.mobile-below .ma-block--offered {
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px @mobile-ochre;
+}
+
+.mobile-below .ma-block--offered {
+  // The ring sits on the tile's own edge, so hold it clear of its neighbours.
+  margin: 3px 0;
+}
+
+/*
  * Blocks scaled down to fit, by MobileFitBlock.
  *
  * The frame keeps the shell's width; the inner element keeps the block's own, so the

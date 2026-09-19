@@ -33,6 +33,12 @@ describe('MobileSettings', () => {
     expect(localStorage.getItem('mobile_layout')).eq('off');
   });
 
+  it('stores where the player wants to finish an action', () => {
+    mount().vm.setMode('play_from', 'actions');
+    expect(getPreferences().play_from).eq('actions');
+    expect(localStorage.getItem('play_from')).eq('actions');
+  });
+
   it('stores the card scale as a fraction', () => {
     const wrapper = mount();
     wrapper.vm.setCardScale({target: {value: '80'}} as unknown as Event);

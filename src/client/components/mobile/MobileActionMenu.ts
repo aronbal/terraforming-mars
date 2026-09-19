@@ -1,6 +1,7 @@
 import {ActionAnnotation} from '@/common/input/Annotation';
 import {CardName} from '@/common/cards/CardName';
 import {offerFor} from '@/client/utils/cardSelection';
+import {BoardPick, boardOfferFor} from '@/client/utils/boardSelection';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 
 /*
@@ -12,8 +13,9 @@ import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel
  * only the rest are actions with nothing on screen to point at.
  *
  * So the entries a card is the subject of are not offered here at all: they send the
- * player to the Cards tab, where the card itself is what they tap. The rest are rows
- * that open in place, grouped, and the menu fits on a phone.
+ * player to the Cards tab, where the card itself is what they tap, and the ones about
+ * something printed under the board send them there. The rest are rows that open in
+ * place, grouped, and the menu fits on a phone.
  */
 
 /** A group of menu entries, in the order they are shown. */
@@ -52,6 +54,17 @@ const ON_CARDS_TAB: Partial<Record<ActionAnnotation, string>> = {
   sellPatents: 'Choose the cards to sell',
 };
 
+/*
+ * The entries whose subject is printed under the board. Each is reached by tapping
+ * the tile itself, which is also the only place the player can read what it is worth
+ * before committing to it.
+ */
+const ON_BOARD_TAB: Partial<Record<ActionAnnotation, string>> = {
+  milestone: 'Tap a milestone under the board to claim it',
+  award: 'Tap an award under the board to fund it',
+  tradeWithColony: 'Tap a colony under the board to trade with it',
+};
+
 /** The headings, and which annotations fall under each. */
 const GROUPS: ReadonlyArray<{title: string | undefined, annotations: ReadonlyArray<ActionAnnotation>}> = [
   {title: undefined, annotations: ['convertHeat', 'convertPlants']},
@@ -77,7 +90,11 @@ function elsewhereFor(annotation: ActionAnnotation | undefined): Elsewhere | und
     return undefined;
   }
   const cards = ON_CARDS_TAB[annotation];
-  return cards === undefined ? undefined : {tab: 'cards', hint: cards};
+  if (cards !== undefined) {
+    return {tab: 'cards', hint: cards};
+  }
+  const board = ON_BOARD_TAB[annotation];
+  return board === undefined ? undefined : {tab: 'board', hint: board};
 }
 
 /**
@@ -99,15 +116,17 @@ export function isActionMenu(input: PlayerInputModel | undefined): input is OrOp
  * of its own at the end, rather than going missing because a new action was added to
  * the game and nobody thought of this file.
  */
-export function groupActions(menu: OrOptionsModel, picked?: CardName): ReadonlyArray<ActionGroup> {
+export function groupActions(menu: OrOptionsModel, picked?: CardName, boardPick?: BoardPick): ReadonlyArray<ActionGroup> {
   const entries: Array<ActionEntry> = menu.options.map((input, index) => {
     const annotation = input.annotation as ActionAnnotation | undefined;
     /*
-     * A card entry sends the player to the Cards tab -- until they come back from it
-     * having picked one. Then this is where the choice is finished, so the entry
-     * opens here instead, and the row stops pointing at the tab they just left.
+     * An entry sends the player to the tab that draws its subject -- until they come
+     * back from it having picked one. Then this is where the choice is finished, so
+     * the entry opens here instead, and the row stops pointing at the tab they just
+     * left.
      */
-    const claimed = picked !== undefined && offerFor(input, picked) !== undefined;
+    const claimed = (picked !== undefined && offerFor(input, picked) !== undefined) ||
+      (boardPick !== undefined && boardOfferFor(input, boardPick));
     return {
       index,
       input,

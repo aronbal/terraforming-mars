@@ -27,8 +27,14 @@
           <!-- No fit block: milestone and award tiles wrap on their own, and forcing
                them onto one line would only push the last few off the edge. -->
           <div class="mobile-below-block">
-            <Milestones :milestones="game.milestones"/>
-            <Awards :awards="game.awards"/>
+            <Milestones
+              :milestones="game.milestones"
+              :claimable="claimableMilestones"
+              @claim="claimBoardThing('milestone', $event)"/>
+            <Awards
+              :awards="game.awards"
+              :fundable="fundableAwards"
+              @fund="claimBoardThing('award', $event)"/>
           </div>
           <MobileFitBlock v-if="game.turmoil" class="mobile-below-block">
             <Turmoil :turmoil="game.turmoil"/>
@@ -42,9 +48,18 @@
           <div v-if="game.colonies.length > 0" class="mobile-below-block" id="shortkey-colonies">
             <DynamicTitle title="Colonies" :color="thisPlayer.color"/>
             <div class="player_home_colony_cont mobile-colony-list">
-              <MobileFitBlock v-for="colony in game.colonies" :key="colony.name" class="player_home_colony">
-                <Colony :colony="colony" :active="colony.isActive"/>
-              </MobileFitBlock>
+              <button
+                v-for="colony in game.colonies"
+                :key="colony.name"
+                class="player_home_colony mobile-board-thing"
+                :class="{'mobile-board-thing--offered': tradeableColonies.includes(colony.name)}"
+                :disabled="!tradeableColonies.includes(colony.name)"
+                data-test="board-colony"
+                @click="claimBoardThing('colony', colony.name)">
+                <MobileFitBlock>
+                  <Colony :colony="colony" :active="colony.isActive"/>
+                </MobileFitBlock>
+              </button>
             </div>
           </div>
         </div>
@@ -135,6 +150,7 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {SpaceId} from '@/common/Types';
 import {CardName} from '@/common/cards/CardName';
 import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
+import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
 import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
 import {requestedTab} from '@/client/utils/mobileNavigation';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
@@ -146,6 +162,11 @@ type DataModel = {
   belowOpen: boolean;
   /** Set when the player opens or closes the tag row by hand, until the next tab change. */
   tagRowOverride: boolean | undefined;
+  /**
+   * Set while the action menu is raised over the tab the player picked something on,
+   * rather than sitting on the Act tab where it usually lives.
+   */
+  overTab: boolean;
   preferences: Preferences;
 };
 
@@ -181,6 +202,7 @@ export default defineComponent({
       snap: getPreferences().action_sheet_peek ? 'peek' : 'closed',
       belowOpen: false,
       tagRowOverride: undefined,
+      overTab: false,
       preferences: {...getPreferences()},
     };
   },
@@ -241,7 +263,20 @@ export default defineComponent({
      * whatever they were doing, so it arrives as a sheet over it.
      */
     panelMode(): 'tab' | 'sheet' {
-      return isActionMenu(this.playerView.waitingFor) ? 'tab' : 'sheet';
+      if (!isActionMenu(this.playerView.waitingFor)) {
+        return 'sheet';
+      }
+      return this.overTab ? 'sheet' : 'tab';
+    },
+    /** The milestones the turn's menu offers, which are the ones worth tapping. */
+    claimableMilestones(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'milestone');
+    },
+    fundableAwards(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'award');
+    },
+    tradeableColonies(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'colony');
     },
     scrimVisible(): boolean {
       return this.panelMode === 'sheet' && this.snap === 'full';
@@ -251,10 +286,12 @@ export default defineComponent({
     },
   },
   watch: {
-    /* A card picked for one input must never be applied to the next one, so the pick
+    /* A thing picked for one input must never be applied to the next one, so a pick
        lasts exactly as long as the input it was made for. */
     waitingFor() {
+      this.overTab = false;
       clearPickedCard();
+      clearBoardPick();
     },
     /* The action menu sends the player to the tab that draws what an entry is about.
        It has no path back up to the shell, so it leaves the request in a store. */
@@ -270,12 +307,13 @@ export default defineComponent({
      * is where a follow-up question usually wants them anyway.
      */
     panelMode(mode: 'tab' | 'sheet') {
-      if (mode === 'sheet') {
-        if (this.tab === 'actions') {
-          this.tab = 'board';
-        }
-        this.setSnap(this.peekEnabled ? 'peek' : 'closed');
+      if (mode !== 'sheet' || this.overTab) {
+        return;
       }
+      if (this.tab === 'actions') {
+        this.tab = 'board';
+      }
+      this.setSnap(this.peekEnabled ? 'peek' : 'closed');
     },
     selectingSpace(selecting: boolean) {
       if (selecting) {
@@ -305,15 +343,43 @@ export default defineComponent({
     },
     setSnap(snap: SheetSnap): void {
       this.snap = snap;
+      /* Putting the panel down abandons what it was raised for: the menu goes back to
+         being a tab, and nothing on the board or in the hand is still shown as chosen. */
+      if (this.overTab && snap !== 'half' && snap !== 'full') {
+        this.overTab = false;
+        clearPickedCard();
+        clearBoardPick();
+      }
     },
     /*
-     * The Cards tab is where a card is chosen; the sheet is where the choice is paid
-     * for and confirmed. Raising the sheet all the way puts the payment in front of
-     * the player instead of the list they have just chosen from.
+     * A card in hand and a milestone under the board are the same move: the tab is
+     * where the thing is chosen, and the menu entry is where the choice is paid for
+     * and confirmed.
      */
     playCard(name: CardName): void {
+      clearBoardPick();
       pickCard(name);
-      this.selectTab('actions');
+      this.openPick();
+    },
+    claimBoardThing(kind: BoardThing, name: string): void {
+      clearPickedCard();
+      pickBoardThing(kind, name);
+      this.openPick();
+    },
+    /*
+     * Where the player finishes what they just started, which is theirs to choose.
+     *
+     * Over the tab they are standing on, they never leave the cards or the board they
+     * were reading; on the Act tab, the rest of the menu is in reach beside it.
+     */
+    openPick(): void {
+      if (this.preferences.play_from === 'actions') {
+        this.overTab = false;
+        this.selectTab('actions');
+        return;
+      }
+      this.overTab = true;
+      this.setSnap('full');
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;
@@ -366,6 +432,7 @@ export default defineComponent({
   },
   unmounted() {
     clearPickedCard();
+    clearBoardPick();
     document.body.classList.remove('mobile-shell-active');
   },
 });

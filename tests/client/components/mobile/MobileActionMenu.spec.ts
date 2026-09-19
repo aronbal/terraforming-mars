@@ -3,6 +3,7 @@ import {CardName} from '@/common/cards/CardName';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {groupActions, isActionMenu} from '@/client/components/mobile/MobileActionMenu';
 import {clearPickedCard, pickCard, resetPickedCardForTest} from '@/client/utils/cardSelection';
+import {clearBoardPick, resetBoardPickForTest} from '@/client/utils/boardSelection';
 
 function option(title: string, annotation?: string): PlayerInputModel {
   return {type: 'option', title, buttonLabel: 'Confirm', annotation};
@@ -27,13 +28,29 @@ function projectCard(annotation: string, ...names: Array<CardName>): PlayerInput
   };
 }
 
+function milestones(annotation: string, ...names: Array<string>): PlayerInputModel {
+  return {
+    type: 'or',
+    title: 'Claim a milestone',
+    buttonLabel: 'Claim',
+    annotation,
+    options: names.map((name) => option(name)),
+  };
+}
+
 function menu(...options: Array<PlayerInputModel>): OrOptionsModel {
   return {type: 'or', title: 'Take your first action', buttonLabel: 'Take action', options};
 }
 
 describe('MobileActionMenu', () => {
-  beforeEach(() => resetPickedCardForTest());
-  afterEach(() => clearPickedCard());
+  beforeEach(() => {
+    resetPickedCardForTest();
+    resetBoardPickForTest();
+  });
+  afterEach(() => {
+    clearPickedCard();
+    clearBoardPick();
+  });
 
   describe('isActionMenu', () => {
     it('recognises the turn menu by its entries carrying annotations', () => {
@@ -98,6 +115,28 @@ describe('MobileActionMenu', () => {
     it('still sends the player away for a card the entry does not offer', () => {
       const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), CardName.BIRDS);
       expect(groups[0].entries[0].elsewhere?.tab).eq('cards');
+    });
+
+    it('sends the board entries to the Board tab, where the tiles are drawn', () => {
+      const groups = groupActions(menu(milestones('milestone', 'Builder')));
+      expect(groups[0].entries[0].elsewhere).deep.eq({
+        tab: 'board',
+        hint: 'Tap a milestone under the board to claim it',
+      });
+    });
+
+    it('opens the board entry here once a tile has been tapped', () => {
+      const groups = groupActions(
+        menu(milestones('milestone', 'Builder')), undefined, {kind: 'milestone', name: 'Builder'});
+      expect(groups[0].entries[0].elsewhere).is.undefined;
+    });
+
+    /* Milestone and award entries are both a list of names, so only the annotation
+       keeps a milestone tap from opening the awards. */
+    it('still sends the player away for a tile the entry does not offer', () => {
+      const groups = groupActions(
+        menu(milestones('award', 'Landlord')), undefined, {kind: 'milestone', name: 'Landlord'});
+      expect(groups[0].entries[0].elsewhere?.tab).eq('board');
     });
 
     it('counts what an entry has to choose between', () => {

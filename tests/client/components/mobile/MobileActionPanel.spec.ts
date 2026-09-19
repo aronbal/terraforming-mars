@@ -63,4 +63,21 @@ describe('MobileActionPanel', () => {
     expect(wrapper.find('[data-test="sheet-head"]').exists()).is.false;
     expect(wrapper.find('[data-test="action-panel"]').classes()).includes('mobile-pane');
   });
+
+  /* The head is removed with the sheet, and Vue leaves its ref behind as null, which
+     is not the same thing as never having had one. */
+  it('survives going back to being a tab', async () => {
+    const wrapper = mount({mode: 'sheet'});
+    await wrapper.setProps({mode: 'tab'});
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.boundHead).is.undefined;
+  });
+
+  it('says what a tap on the head will do', async () => {
+    const wrapper = mount({snap: 'peek'});
+    expect(wrapper.vm.hint).eq('Tap to open');
+
+    await wrapper.setProps({snap: 'full'});
+    expect(wrapper.vm.hint).eq('Tap to close');
+  });
 });

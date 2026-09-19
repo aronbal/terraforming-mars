@@ -17,6 +17,20 @@
     </div>
 
     <div class="mobile-setting">
+      <label class="mobile-setting-label" v-i18n>Where you play</label>
+      <div class="mobile-setting-row">
+        <button
+          v-for="mode in playFromModes"
+          :key="mode"
+          class="mobile-segment-button"
+          :aria-selected="prefs.play_from === mode"
+          :data-test="'play-from-' + mode"
+          @click="setMode('play_from', mode)">{{ $t(modeLabel(mode)) }}</button>
+      </div>
+      <span class="mobile-setting-hint" v-i18n>On the tabs finishes a card, a milestone or a colony over the tab you tapped it on. In Act moves you to the Act tab first.</span>
+    </div>
+
+    <div class="mobile-setting">
       <label class="mobile-setting-label" for="mobile-card-scale">
         <span v-i18n>Card size</span> <span class="mobile-num">{{ cardScalePercent }}%</span>
       </label>
@@ -106,6 +120,8 @@ import {
   MIN_CARD_SCALE,
   MOBILE_LAYOUT_MODES,
   MobileLayoutMode,
+  PLAY_FROM_MODES,
+  PlayFromMode,
   Preference,
   Preferences,
   PreferencesManager,
@@ -190,6 +206,8 @@ const MODE_LABELS: Record<string, string> = {
   never: 'Never',
   magnify: 'Open it',
   play: 'Play it',
+  tabs: 'On the tabs',
+  actions: 'In Act',
 };
 
 type Refs = {
@@ -223,6 +241,9 @@ export default defineComponent({
     cardTapModes(): ReadonlyArray<CardTapMode> {
       return CARD_TAP_MODES;
     },
+    playFromModes(): ReadonlyArray<PlayFromMode> {
+      return PLAY_FROM_MODES;
+    },
     languages(): ReadonlyArray<{id: string, name: string}> {
       return ALL_LANGUAGES.map((id) => ({id, name: LANGUAGES[id][0]}));
     },
@@ -250,11 +271,13 @@ export default defineComponent({
       // stylesheets read these off the page, not off the preference.
       applyPreferenceClasses(this.prefs);
     },
-    setMode(name: 'mobile_layout' | 'tag_row' | 'card_tap', mode: string): void {
+    setMode(name: 'mobile_layout' | 'tag_row' | 'card_tap' | 'play_from', mode: string): void {
       if (name === 'mobile_layout') {
         this.prefs.mobile_layout = mode as MobileLayoutMode;
       } else if (name === 'tag_row') {
         this.prefs.tag_row = mode as TagRowMode;
+      } else if (name === 'play_from') {
+        this.prefs.play_from = mode as PlayFromMode;
       } else {
         this.prefs.card_tap = mode as CardTapMode;
       }

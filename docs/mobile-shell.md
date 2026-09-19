@@ -115,14 +115,17 @@ mobile/MobileTab.ts                     the tab and snap names, and the peek hei
 utils/useMobileLayout.ts                viewport width + preference -> which shell
 utils/spaceSelection.ts                 whether a tile is being placed
 utils/cardSelection.ts                  a card picked on one tab, for an input on another
+utils/boardSelection.ts                 the same, for a milestone, an award or a colony tile
 utils/mobileNavigation.ts               a tab the game asks the shell to open
 styles/mobile_shell.less                everything the shell paints
 ```
 
 `App.vue` picks the shell for `screen === 'player-home'`. Everything below it —
 `Board`, `Card`, `PlayersOverview`, `LogPanel`, `WaitingFor`, `Milestones`,
-`Awards`, `Colony`, `Turmoil`, `MoonBoard`, `PlanetaryTracks` — is reused
-unmodified. The panes are held in the DOM with `v-show` rather than `v-if`,
+`Awards`, `Colony`, `Turmoil`, `MoonBoard`, `PlanetaryTracks` — is reused as it
+is. `Milestone` and `Award` gained one optional prop each (`claimable`,
+`fundable`) and an event, so the shell can make a tile the button that claims it;
+with nothing passed they behave exactly as the desktop always had them. The panes are held in the DOM with `v-show` rather than `v-if`,
 because `SelectSpace` reaches into the board by `getElementById` and needs it
 mounted even when another tab is open.
 
@@ -136,6 +139,7 @@ New preference keys in `PreferencesManager.ts`:
 - `card_scale: number` (0.40–1.00)
 - `tag_row: 'auto' | 'always' | 'never'`
 - `card_tap: 'magnify' | 'play'` (what tapping a card on the Cards tab does)
+- `play_from: 'tabs' | 'actions'` (where an action started by a tap is finished)
 - `action_sheet_peek: boolean`
 - `mobile_tap_targets: boolean` (the 44px overlay)
 
@@ -209,12 +213,21 @@ possible because `OrOptions.toModel` now carries each option's `ActionAnnotation
 out to the client: the ids existed for the computer opponent, but every `toModel`
 dropped them, leaving the client nothing to match on but translated titles.
 
-The entries a card is the subject of — play a project card, use a played card's
-action, a CEO's action, sell patents — are not offered in the menu at all. They
-are rows that take the player to the Cards tab, where the card itself is what
-they tap. Once a card has been picked there the entry opens on the Act side
-instead, holding that card and its payment; without that, the two tabs would
-point at each other forever.
+The entries whose subject is drawn somewhere else are not offered in the menu at
+all. The card entries — play a project card, use a played card's action, a CEO's
+action, sell patents — are rows that take the player to the Cards tab; the
+milestone, award and colony entries take them to the Board tab, where those tiles
+already sit under the map. Either way the thing itself is what they tap. Once
+something has been picked there the entry opens instead of pointing away, holding
+that choice and its payment; without that, the two tabs would point at each other
+forever.
+
+**Where the choice is finished** is the player's, through `play_from`. The
+default, `tabs`, raises the menu entry over the tab they tapped on, so they never
+leave the hand or the board they were reading; `actions` takes them to the Act
+tab, where the rest of the menu is in reach beside it. Either way the entry that
+opens is the one their tap named, and putting the panel back down abandons the
+pick.
 
 **More** holds the game log, the settings and the links to another game. They are
 things a player reaches for between decisions rather than during one, so they
@@ -222,6 +235,12 @@ share the last tab instead of each taking one of the five. The settings are the
 mobile keys plus the preferences that mean something on a phone, grouped; the
 desktop `PreferencesDialog` is not embedded, because a third of its switches are
 about parts of the desktop layout the shell never draws.
+
+**The board's own tiles** take the tap directly. A milestone the turn's menu
+offers is ringed and claims itself; so does an award, and so does a colony tile
+the player can trade with. What is offered is read off the menu rather than
+recomputed — the server has already worked out what this player can afford and
+reach, and a second opinion here could only ever be wrong.
 
 A persistent header carries generation, TR, the three global parameters as
 current/max (`-16°/+8°`, `9%/14%`, `5/9`), and the six resources with their

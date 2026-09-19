@@ -1,5 +1,9 @@
 <template>
-  <div class="ma-block">
+  <div
+    class="ma-block"
+    :class="{'ma-block--offered': claimable}"
+    :role="claimable ? 'button' : undefined"
+    @click="claim($event)">
     <div class="ma-player" v-if="milestone.playerName">
       <i :title="milestone.playerName" class="board-cube" :class="`board-cube--${milestone.color}`" ></i>
     </div>
@@ -57,7 +61,17 @@ export default defineComponent({
     showDescription: {
       type: Boolean,
     },
+    /*
+     * Whether this player may claim it right now, which the mobile shell reads off
+     * the turn's action menu. The desktop leaves it alone and the tile behaves as it
+     * always has.
+     */
+    claimable: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ['claim'],
   mounted() {
     this.fitName();
   },
@@ -67,6 +81,15 @@ export default defineComponent({
     },
   },
   methods: {
+    /* Only a claimable tile takes the tap; on any other the click carries on up to
+       the list, which is what shows and hides the descriptions. */
+    claim(event: Event): void {
+      if (!this.claimable) {
+        return;
+      }
+      event.stopPropagation();
+      this.$emit('claim');
+    },
     // Size the name to fit its medal box by measuring the rendered text rather
     // than guessing from its length.
     fitName(): void {

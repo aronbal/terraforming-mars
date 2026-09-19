@@ -18,6 +18,7 @@ import {SelectColonyModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {SelectColonyResponse} from '@/common/inputs/InputResponse';
 import {ColonyName} from '@/common/colonies/ColonyName';
+import {BoardPick, pickedBoardThing} from '@/client/utils/boardSelection';
 
 type DataModel = {
   selectedColony: ColonyName | undefined,
@@ -53,6 +54,26 @@ export default defineComponent({
   components: {
     Colony,
     AppButton,
+  },
+  computed: {
+    pickedBoardThing(): BoardPick | undefined {
+      return pickedBoardThing.value;
+    },
+  },
+  watch: {
+    // A colony tapped under the board on the mobile shell is this same choice, made
+    // one screen earlier, so it arrives here already answered.
+    pickedBoardThing: {
+      handler(pick: BoardPick | undefined) {
+        if (pick?.kind !== 'colony') {
+          return;
+        }
+        if (this.playerinput.coloniesModel.some((colony) => colony.name === pick.name)) {
+          this.selectedColony = pick.name as ColonyName;
+        }
+      },
+      immediate: true,
+    },
   },
   methods: {
     canSave() {
