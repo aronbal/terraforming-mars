@@ -1,0 +1,102 @@
+<template>
+  <nav class="mobile-tabs" role="tablist">
+    <button
+      v-for="tab in tabs"
+      :key="tab.name"
+      class="mobile-tab"
+      role="tab"
+      :aria-selected="isSelected(tab.name)"
+      :data-test="'tab-' + tab.name"
+      @click="$emit('select', tab.name)">
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path v-for="(d, idx) in tab.paths" :key="idx" :d="d"/>
+      </svg>
+      <span class="mobile-tab-label">{{ $t(tab.label) }}</span>
+      <span v-if="badge(tab.name) !== ''" class="mobile-tab-badge">{{ badge(tab.name) }}</span>
+    </button>
+  </nav>
+</template>
+
+<script lang="ts">
+import {defineComponent, PropType} from 'vue';
+
+import {MobileTab} from '@/client/components/mobile/MobileTab';
+
+type TabSpec = {
+  name: MobileTab;
+  label: string;
+  paths: ReadonlyArray<string>;
+};
+
+const TABS: ReadonlyArray<TabSpec> = [
+  {
+    name: 'board',
+    label: 'Board',
+    paths: ['M12 3 20 7.5 20 16.5 12 21 4 16.5 4 7.5Z', 'M12 8 15.5 10 15.5 14 12 16 8.5 14 8.5 10Z'],
+  },
+  {
+    name: 'cards',
+    label: 'Cards',
+    paths: ['M3 8a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', 'M8 4h9a2 2 0 0 1 2 2v12'],
+  },
+  {
+    name: 'actions',
+    label: 'Act',
+    paths: ['M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z', 'M12 7.5v9M7.5 12h9'],
+  },
+  {
+    name: 'players',
+    label: 'Players',
+    paths: ['M9 5.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Z', 'M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5', 'M17 5.1a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z', 'M15 13.6c2.6-.6 5.5 1 5.5 4.4'],
+  },
+  {
+    name: 'log',
+    label: 'Log',
+    paths: ['M5 4h14v16H5Z', 'M8.5 9h7M8.5 12.5h7M8.5 16h4'],
+  },
+] as const;
+
+export default defineComponent({
+  name: 'MobileTabBar',
+  props: {
+    tab: {
+      type: String as PropType<MobileTab>,
+      required: true,
+    },
+    /** Whether the action sheet is open far enough to count as the selected tab. */
+    sheetOpen: {
+      type: Boolean,
+      required: true,
+    },
+    cardsInHandCount: {
+      type: Number,
+      required: true,
+    },
+    actionWaiting: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  emits: ['select'],
+  computed: {
+    tabs(): ReadonlyArray<TabSpec> {
+      return TABS;
+    },
+  },
+  methods: {
+    isSelected(name: MobileTab): boolean {
+      // Act is a sheet over whichever pane is open, so it lights up on its own.
+      return name === 'actions' ? this.sheetOpen : this.tab === name;
+    },
+    badge(name: MobileTab): string {
+      if (name === 'cards' && this.cardsInHandCount > 0) {
+        return String(this.cardsInHandCount);
+      }
+      if (name === 'actions' && this.actionWaiting) {
+        return '!';
+      }
+      return '';
+    },
+  },
+});
+</script>

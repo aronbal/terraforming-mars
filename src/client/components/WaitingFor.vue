@@ -253,6 +253,12 @@ export default defineComponent({
       documentTitleTimer = window.setInterval(() => this.animateTitle(), 1000);
     }
   },
+  unmounted() {
+    // Stop polling for an input nobody is waiting on any more. `window.clearTimeout`
+    // rather than the bare global, to match the `window.setTimeout` that scheduled it.
+    window.clearTimeout(ui_update_timeout_id);
+    window.clearInterval(documentTitleTimer);
+  },
   computed: {
     Phase(): typeof Phase {
       return Phase;

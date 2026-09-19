@@ -1,6 +1,7 @@
 import {expect} from 'chai';
 import {processRequest} from '../../src/server/server/requestProcessor';
 import {MockRequest, MockResponse} from '../routes/HttpMocks';
+import {statusCode} from '../../src/common/http/statusCode';
 
 describe('requestProcessor', () => {
   it('routes a request from an allowed IP to a handler', async () => {
@@ -24,5 +25,16 @@ describe('requestProcessor', () => {
 
     expect(res.content.length).greaterThan(0);
     expect(res.getHeader('Content-Length')).eq(res.content.length);
+  });
+
+  it('serves the service worker from the root, so its scope is the whole site', async () => {
+    const req = new MockRequest();
+    const res = new MockResponse();
+    req.url = '/sw.js';
+
+    await processRequest(req, res);
+
+    expect(res.statusCode).eq(statusCode.ok);
+    expect(res.getHeader('Content-Type')).eq('text/javascript');
   });
 });

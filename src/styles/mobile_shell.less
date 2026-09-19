@@ -1,0 +1,807 @@
+/*
+ * The mobile shell: a phone-shaped frame around the game's existing components.
+ *
+ * Nothing here restyles the board, the cards, the log or the players overview. The
+ * shell supplies the header, the tab bar, the action sheet and the panes; every child
+ * inside them is the same component the desktop layout renders. The board and the
+ * cards are scaled as whole units, never re-laid-out.
+ */
+
+//
+// Tokens. The desktop client runs on a dark starfield, so the shell paints every
+// surface explicitly rather than borrowing whatever is behind it.
+//
+@mobile-ground: #15100e;
+@mobile-surface: #211a17;
+@mobile-raised: #2d2320;
+@mobile-sunk: #100c0b;
+@mobile-line: #453833;
+@mobile-line-soft: #362b27;
+@mobile-text: #f2e9e2;
+@mobile-muted: #a39089;
+@mobile-dim: #7a6a64;
+
+@mobile-rust: #cb5b2e;
+@mobile-ochre: #e5a93a;
+@mobile-ice: #4fb3c4;
+
+// The tan ring the desktop client draws around the active global parameter value.
+@mobile-marker-ring: #bb8760;
+@mobile-ocean-blue: #3682b4;
+
+// Apple's minimum recommended touch target, drawn by the tap-target overlay.
+@mobile-tap: 44px;
+
+// A fixed handle, in pixels. Percentages of the sheet height made "peek" tall
+// enough to cover the tile-placement confirmation.
+@mobile-sheet-peek: 46px;
+
+@mobile-tabbar-height: 54px;
+
+/* The scalable unit: the 620x600 board artwork, plus room on each side for the
+   captions that hang off it. Measured, not guessed — the colony space labels reach
+   25px to the left of the artwork, and Ares and Venus markers reach past its right
+   edge. */
+@mobile-stage-bleed: 26px;
+@mobile-stage-width: (620px + 2 * @mobile-stage-bleed);
+@mobile-stage-height: 600px;
+
+.mobile-shell-active {
+  // The shell owns the whole viewport; the page behind it must not scroll with it.
+  overflow: hidden;
+  overscroll-behavior: none;
+
+  > .topmost-player-home > .notice,
+  > div > .notice {
+    display: none;
+  }
+}
+
+#mobile-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: @mobile-ground;
+  color: @mobile-text;
+  font-family: @font_family_main;
+  font-size: 14px;
+  overflow: hidden;
+
+  // Reused components, drawn for a 1260px column, kept inside the pane.
+  .player_home_block {
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .log-container,
+  .player-overview-container {
+    max-width: 100%;
+  }
+}
+
+// Zero specificity, so every button class below still wins.
+:where(#mobile-shell) button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mobile-num {
+  font-family: Prototype, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+//
+// Header
+//
+
+.mobile-header {
+  background: @mobile-surface;
+  border-bottom: 1px solid @mobile-line;
+  padding: calc(6px + env(safe-area-inset-top)) 8px 7px;
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding-right: 7px;
+  border-right: 1px solid @mobile-line-soft;
+  flex: none;
+}
+
+.mobile-stat-label {
+  font-family: Prototype, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+}
+
+.mobile-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mobile-stat--tr .mobile-stat-value {
+  color: @mobile-rust;
+}
+
+.mobile-globals {
+  display: flex;
+  gap: 7px;
+  margin-left: auto;
+  align-items: center;
+}
+
+.mobile-global {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  min-width: 48px;
+}
+
+// Current over maximum, so how close a parameter is to maxing out is always on screen.
+.mobile-global-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mobile-global-max {
+  font-size: 12px;
+  font-weight: 500;
+  color: @mobile-dim;
+}
+
+.mobile-global-key {
+  font-family: Prototype, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin-top: 3px;
+}
+
+.mobile-global--ocean .mobile-global-value {
+  color: @mobile-ocean-blue;
+}
+
+.mobile-global--oxygen .mobile-global-value {
+  color: @mobile-ice;
+}
+
+.mobile-global--temperature .mobile-global-value {
+  color: @mobile-rust;
+}
+
+.mobile-global--venus .mobile-global-value {
+  color: @mobile-ochre;
+}
+
+.mobile-resources {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobile-resource {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: @mobile-sunk;
+  border: 1px solid @mobile-line-soft;
+  flex: none;
+
+  .resource_icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+}
+
+.mobile-resource-count {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-resource-production {
+  font-size: 11px;
+  color: @mobile-marker-ring;
+}
+
+.mobile-gear {
+  margin-left: auto;
+  width: @mobile-tap;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid @mobile-line;
+  background: @mobile-raised;
+  color: @mobile-muted;
+  flex: none;
+}
+
+//
+// Tag row
+//
+
+.mobile-tagbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.mobile-tagbar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: Prototype, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  padding: 3px 5px;
+  border-radius: 5px;
+  border: 1px solid @mobile-line-soft;
+  flex: none;
+}
+
+.mobile-tag-list {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobile-tag {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: @mobile-sunk;
+  border: 1px solid @mobile-line-soft;
+  font-size: 12px;
+  flex: none;
+
+  .tag-count-display {
+    // The tag icons come from the players overview, already sized for a desktop row.
+    transform: scale(0.8);
+    transform-origin: left center;
+  }
+}
+
+//
+// Panes
+//
+
+.mobile-stage {
+  position: relative;
+  overflow: hidden;
+  background: @mobile-ground;
+}
+
+.mobile-pane {
+  position: absolute;
+  inset: 0;
+  /* Both axes: the players overview and the log were drawn for a 1260px column, and
+     clipping them would hide resource counts rather than let the player reach them. */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-pane--board {
+  // The board scales to fit, so only the column below it ever needs to move.
+  overflow-x: hidden;
+  // The board viewport swallows drags, so the column is scrolled by its handle.
+  overscroll-behavior: contain;
+}
+
+.mobile-board-section {
+  position: relative;
+}
+
+.mobile-board-viewport {
+  position: relative;
+  width: 100%;
+  /* Exactly the height the stage needs at full width, so the first screen is board
+     rather than letterbox, and the milestones below it start on screen. */
+  aspect-ratio: unit(@mobile-stage-width) / unit(@mobile-stage-height);
+  max-height: 62dvh;
+  overflow: hidden;
+  // Pinch and pan belong to the board, not to the browser.
+  touch-action: none;
+  background: @mobile-sunk;
+}
+
+.mobile-board-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: @mobile-stage-width;
+  height: @mobile-stage-height;
+  transform-origin: 0 0;
+  will-change: transform;
+
+  .board-cont {
+    // `flow-root`, not `block`: the artwork needs its own block formatting context or
+    // `.board`'s 85px top margin collapses out and pushes the whole picture down.
+    display: flow-root;
+    width: 620px;
+    height: 600px;
+    // Centred in the bleed, so the colony captions are not cut off at fit scale.
+    margin: 0 0 0 @mobile-stage-bleed;
+  }
+}
+
+// The 44px ring each hex would need to be a comfortable target, drawn on request so
+// the gap between it and the real 46px hex at fit scale stays measurable.
+.mobile-board-stage--tap-targets .board-space::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: @mobile-tap;
+  height: @mobile-tap;
+  margin: (-@mobile-tap / 2) 0 0 (-@mobile-tap / 2);
+  border: 1px dashed fade(@mobile-ice, 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mobile-board-readout {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: fade(@mobile-sunk, 80%);
+  border: 1px solid @mobile-line-soft;
+  font-size: 11px;
+  color: @mobile-muted;
+  pointer-events: none;
+}
+
+/* A row in the corner rather than a column up the side: stacked, the buttons ran
+   the height of the printed temperature track and hid it. */
+.mobile-board-hud {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  gap: 5px;
+}
+
+.mobile-hud-button {
+  width: @mobile-tap;
+  height: 38px;
+  border-radius: 8px;
+  background: fade(@mobile-raised, 78%);
+  border: 1px solid fade(@mobile-line, 80%);
+  color: @mobile-text;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  small {
+    font-family: Prototype, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+}
+
+// Tapping the header scrolls the column, because dragging the board cannot.
+.mobile-below-handle {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: @mobile-surface;
+  border-top: 1px solid @mobile-line;
+  border-bottom: 1px solid @mobile-line;
+  font-family: Prototype, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: @mobile-muted;
+}
+
+.mobile-below-handle-chevron {
+  margin-left: auto;
+  color: @mobile-dim;
+}
+
+.mobile-below {
+  padding: 10px 8px calc(16px + env(safe-area-inset-bottom));
+  background: @mobile-ground;
+}
+
+.mobile-below-block {
+  margin-bottom: 14px;
+}
+
+//
+// Tile placement
+//
+
+.mobile-confirm-bar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  // Above the action sheet, as a second line of defence for the confirm button.
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: @mobile-raised;
+  border: 1px solid @mobile-line;
+  box-shadow: 0 6px 18px fade(#000, 55%);
+}
+
+.mobile-confirm-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mobile-confirm-sub {
+  font-size: 11px;
+  color: @mobile-muted;
+}
+
+.mobile-button {
+  padding: 8px 12px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid @mobile-line;
+  background: @mobile-raised;
+  color: @mobile-text;
+  font-size: 13px;
+  flex: none;
+}
+
+.mobile-confirm-back {
+  margin-left: auto;
+}
+
+.mobile-button--go {
+  background: @mobile-rust;
+  border-color: @mobile-rust;
+  color: #fff;
+  font-weight: 600;
+}
+
+.mobile-shell-active dialog[open] {
+  position: fixed;
+  inset: auto 8px calc(16px + env(safe-area-inset-bottom));
+  z-index: 70;
+  max-width: none;
+  margin: 0;
+  border: 1px solid @mobile-line;
+  border-radius: 12px;
+  background: @mobile-raised;
+  color: @mobile-text;
+}
+
+//
+// Action sheet
+//
+
+.mobile-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: fade(#000, 55%);
+}
+
+.mobile-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: @mobile-surface;
+  border-top: 1px solid @mobile-line;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 24px fade(#000, 45%);
+  transition: transform 0.22s ease;
+
+  &[data-drag="1"] {
+    transition: none;
+  }
+}
+
+.mobile-sheet-head {
+  flex: none;
+  height: @mobile-sheet-peek;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  touch-action: none;
+  border-bottom: 1px solid @mobile-line-soft;
+}
+
+.mobile-sheet-grip {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: @mobile-line;
+  flex: none;
+}
+
+.mobile-sheet-title {
+  font-family: Prototype, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: @mobile-muted;
+}
+
+.mobile-sheet-flag {
+  margin-left: auto;
+  font-size: 11px;
+  color: @mobile-ochre;
+}
+
+.mobile-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+}
+
+//
+// Cards
+//
+
+.mobile-segment {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: @mobile-ground;
+  border-bottom: 1px solid @mobile-line-soft;
+}
+
+.mobile-segment-button {
+  flex: 1;
+  min-height: @mobile-tap;
+  border-radius: 8px;
+  border: 1px solid @mobile-line;
+  background: @mobile-surface;
+  color: @mobile-muted;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  &[aria-selected="true"] {
+    background: @mobile-raised;
+    color: @mobile-text;
+    border-color: @mobile-marker-ring;
+  }
+}
+
+.mobile-segment-count {
+  font-family: Prototype, sans-serif;
+  font-size: 12px;
+  color: @mobile-dim;
+}
+
+.mobile-cards-body {
+  padding: 8px calc(8px + env(safe-area-inset-left)) calc(20px + env(safe-area-inset-bottom));
+}
+
+.mobile-cards-group-title {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 10px 0 6px;
+}
+
+/*
+ * Cards scale as whole units, never re-laid-out internally.
+ *
+ * `zoom` rather than `transform: scale()` because it scales the layout box too. A
+ * transform paints a card smaller while it still reserves its full size, which leaves
+ * dead space between cards and breaks scrolling — the mistake the earlier attempts made.
+ */
+.mobile-card-scaler {
+  --mobile-card-scale: 0.62;
+
+  .cardbox {
+    zoom: var(--mobile-card-scale);
+  }
+}
+
+.mobile-card-button {
+  display: inline-block;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mobile-cards-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: @mobile-dim;
+}
+
+//
+// Magnified card
+//
+
+.mobile-magnify {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: fade(#000, 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.mobile-magnify-holder {
+  max-height: 80%;
+  overflow: auto;
+}
+
+//
+// Tab bar
+//
+
+.mobile-tabs {
+  display: flex;
+  background: @mobile-surface;
+  border-top: 1px solid @mobile-line;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-tab {
+  flex: 1;
+  min-height: @mobile-tabbar-height;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: @mobile-dim;
+  position: relative;
+
+  &[aria-selected="true"] {
+    color: @mobile-text;
+
+    .mobile-tab-icon {
+      stroke: @mobile-rust;
+    }
+  }
+}
+
+.mobile-tab-icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.mobile-tab-label {
+  font-family: Prototype, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mobile-tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 50%;
+  margin-right: -20px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: @mobile-rust;
+  color: #fff;
+  font-family: Prototype, sans-serif;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+//
+// Settings sheet
+//
+
+.mobile-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: @mobile-ground;
+  overflow-y: auto;
+  padding: calc(10px + env(safe-area-inset-top)) 10px calc(20px + env(safe-area-inset-bottom));
+}
+
+.mobile-settings-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mobile-settings-title {
+  font-family: Prototype, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: @mobile-muted;
+}
+
+.mobile-setting {
+  padding: 10px 0;
+  border-bottom: 1px solid @mobile-line-soft;
+}
+
+.mobile-setting-label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.mobile-setting-hint {
+  display: block;
+  font-size: 11px;
+  color: @mobile-dim;
+  margin-top: 4px;
+}
+
+.mobile-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+

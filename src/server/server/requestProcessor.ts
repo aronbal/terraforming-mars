@@ -126,6 +126,9 @@ const handlers: Map<string, IHandler> = new Map(
     [paths.RESET, Reset.INSTANCE],
     [paths.SPECTATOR, ServeApp.INSTANCE],
     ['styles.css', ServeAsset.INSTANCE],
+    // Serving this from the root is what gives the service worker the whole site as
+    // its scope, which is what an installed app needs.
+    ['sw.js', ServeAsset.INSTANCE],
     [paths.THE_END, ServeApp.INSTANCE],
   ],
 );

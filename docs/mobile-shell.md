@@ -3,8 +3,8 @@
 A plan for making the game playable on a phone without changing the board, the
 cards, or the desktop client.
 
-Status: **planned, not implemented.** This document is the handoff. Nothing in
-`src/` has changed yet.
+Status: **phases 1-6, 8 and 9 are implemented.** Phase 7, the entry and startup
+screens, is still open; so is the spectator view.
 
 A working reference for the target design lives at
 [`prototypes/mobile-shell-prototype.html`](prototypes/mobile-shell-prototype.html).
@@ -98,30 +98,44 @@ Global parameter limits and bonus thresholds, from `src/common/constants.ts`:
 ## Architecture
 
 ```
-PlayerHome.vue                  unchanged, desktop
-MobilePlayerHome.vue     NEW    composes the SAME children into tabs and sheets
-useMobileLayout.ts       NEW    viewport width + preference -> which shell
+PlayerHome.vue                          unchanged, desktop
+mobile/MobilePlayerHome.vue             composes the SAME children into tabs and sheets
+mobile/MobileHeader.vue                 generation, TR, globals, resources, tag row
+mobile/MobileTagRow.vue                 tag counts, from the model's own totals
+mobile/MobileBoardPane.vue              the 620x600 stage, pinch, pan, zoom HUD
+mobile/MobileActionSheet.vue            WaitingFor, on four pixel snap stops
+mobile/MobileCardsPane.vue              Hand | Played, tap to magnify
+mobile/MobileSettings.vue               the mobile keys, plus PreferencesDialog
+mobile/MobileTabBar.vue                 Board / Cards / Act / Players / Log
+mobile/MobileTab.ts                     the tab and snap names
+utils/useMobileLayout.ts                viewport width + preference -> which shell
+utils/spaceSelection.ts                 whether a tile is being placed
+styles/mobile_shell.less                everything the shell paints
 ```
 
-`App.vue` picks the shell for `screen === 'player-home'` and
-`screen === 'spectator-home'`. Everything below that — `Board`, `Card`,
-`SortableCards`, `PlayersOverview`, `LogPanel`, `WaitingFor`, `Milestones`,
-`Awards`, `Colony` — is reused unmodified.
+`App.vue` picks the shell for `screen === 'player-home'`. Everything below it —
+`Board`, `Card`, `PlayersOverview`, `LogPanel`, `WaitingFor`, `Milestones`,
+`Awards`, `Colony`, `Turmoil`, `MoonBoard`, `PlanetaryTracks` — is reused
+unmodified. The panes are held in the DOM with `v-show` rather than `v-if`,
+because `SelectSpace` reaches into the board by `getElementById` and needs it
+mounted even when another tab is open.
 
-A `--tm-scale` custom property drives board scaling and a `--tm-card-scale`
-drives card scaling. Both are applied with `transform: scale()` on a wrapper
-whose own box is sized with `calc()`, so the layout box and the painted size
-agree. This is the part the earlier branches got wrong.
+The board stage is transformed inside a clipping viewport, so the layout box
+never matters. Cards use a `--mobile-card-scale` custom property applied with
+`zoom`, which scales the layout box as well as the paint.
 
-New preference keys in `PreferencesManager.ts` (append to `Preferences`, keep the
-existing formatting — do not reformat the file):
+New preference keys in `PreferencesManager.ts`:
 
 - `mobile_layout: 'auto' | 'on' | 'off'`
 - `card_scale: number` (0.40–1.00)
 - `tag_row: 'auto' | 'always' | 'never'`
-- `confirm_tile_placement: boolean` (the existing `hide_tile_confirmation` may
-  cover this — check before adding)
 - `action_sheet_peek: boolean`
+- `mobile_tap_targets: boolean` (the 44px overlay)
+
+`hide_tile_confirmation` already covers confirming a placement, so no
+`confirm_tile_placement` key was added. The manager now stores strings and
+numbers as well as booleans; `isBooleanPreference` keeps `PreferencesDialog`
+from writing the non-boolean keys back from its own stale snapshot.
 
 ## The board pane
 
@@ -246,17 +260,21 @@ Respect the safe areas: `viewport-fit=cover` plus
 
 Each phase should build, lint and pass tests on its own.
 
-1. **Shell skeleton.** `MobilePlayerHome.vue`, `useMobileLayout.ts`, tab bar,
+1. ~~**Shell skeleton.**~~ `MobilePlayerHome.vue`, `useMobileLayout.ts`, tab bar,
    header, empty panes. Desktop untouched. Viewport meta flipped.
-2. **Board pane.** Full-artwork stage, pinch-zoom, tracks, tap-target overlay.
-3. **Placement.** Legal-space highlighting, sheet dismissal, confirm bar.
-4. **Action sheet.** Pixel snap stops, drag, the four positions.
-5. **Cards.** Hand/Played segment, tap-to-magnify, `--tm-card-scale`, tag row.
-6. **Board extras.** Milestones, awards, then colonies, turmoil, moon,
+2. ~~**Board pane.**~~ Full-artwork stage, pinch-zoom, tracks, tap-target overlay.
+3. ~~**Placement.**~~ Legal-space highlighting, sheet dismissal, confirm bar.
+4. ~~**Action sheet.**~~ Pixel snap stops, drag, the four positions.
+5. ~~**Cards.**~~ Hand/Played segment, tap-to-magnify, card scale, tag row.
+6. ~~**Board extras.**~~ Milestones, awards, then colonies, turmoil, moon,
    pathfinders.
-7. **Entry screens**, in the table's order of difficulty.
-8. **PWA**: manifest, icons, meta, optional caching.
-9. **Preferences**: the new keys, wired into `PreferencesDialog.vue`.
+7. **Entry screens**, in the table's order of difficulty. **Still open.** The
+   viewport meta is flipped, so these now render at phone width against rules
+   written for 1260px. Pinch-zoom is deliberately left enabled as the interim
+   escape hatch.
+8. ~~**PWA**: manifest, icons, meta, optional caching.~~
+9. ~~**Preferences**: the new keys.~~ They live in a mobile settings sheet that
+   embeds `PreferencesDialog.vue` rather than being added to it.
 
 ## Testing
 
@@ -270,13 +288,42 @@ Each phase should build, lint and pass tests on its own.
 - Manual check on a real phone at the end of each phase. Simulators hide
   touch-target and safe-area problems.
 
+## What was built differently
+
+Four places where the implementation departs from the plan above, and why.
+
+- **Cards scale with `zoom`, not `transform: scale()` plus `calc()`.** `zoom`
+  scales the layout box as well as the paint, which is the property the plan was
+  reaching for. The `calc()` wrapper exists only to work around `transform` not
+  having it.
+
+- **Tile placement keeps the existing `ConfirmDialog`.** `SelectSpace` already
+  confirms a tap, and honours `hide_tile_confirmation`. Rather than build a
+  second confirmation, the shell restyles that dialog to sit at the bottom of
+  the screen above the sheet, and adds a bar of its own that says a placement is
+  under way and offers a way back to the action list.
+
+- **The shell learns about a placement from `SelectSpace` itself**, through
+  `src/client/utils/spaceSelection.ts`. The top-level `waitingFor` does not show
+  a nested `SelectSpace`, and the clicks are wired onto the board's DOM rather
+  than declared in the model, so there is nothing else to watch. On that signal
+  the shell switches to the board, scrolls it into view and closes the sheet.
+
+- **Played cards are a grid, not `StackedCards`.** A stacked card's only
+  affordance is hover, which does not exist on a touch screen — the same
+  reasoning the plan applies to `magnify_cards`. The desktop grouping
+  (Corporation, Active, Automated, Events) is kept.
+
+- **Double-tap zoom is suppressed while a space is being chosen**, so it cannot
+  fight tap-to-place. A drag's trailing click is swallowed for the same reason.
+
 ## Open questions
 
 - Does the 52px scroll handle below the board feel right, or does the board read
-  as stuck?
-- Should `peek` stay on by default, or should the sheet default to closed and be
-  reached only through the Act tab?
+  as stuck? It is a tap rather than a drag: tapping it scrolls the column to the
+  milestones and back.
 - Landscape: leave it to whatever the portrait CSS does, or give the board a
   dedicated landscape layout where 620px nearly fits 1:1?
-- Where do Turmoil and Colonies go — under the board with milestones and awards,
-  or their own tab once the board column gets long?
+- Turmoil and Colonies sit under the board with milestones and awards. In a full
+  Turmoil-plus-Colonies game that column is long; it may want its own tab.
+- The spectator view still gets the desktop layout at phone width.

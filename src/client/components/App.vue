@@ -22,6 +22,11 @@
         v-else-if="screen === 'game-home' && game !== undefined"
         :game="game"
       />
+      <MobilePlayerHome
+        v-else-if="screen === 'player-home' && playerView !== undefined && mobileShell"
+        :player-view="playerView"
+        :key="'mobile-' + playerkey"
+      />
       <PlayerHome
         v-else-if="screen === 'player-home' && playerView !== undefined"
         :player-view="playerView"
@@ -65,6 +70,7 @@ const GamesOverview = defineAsyncComponent(() => import(/* webpackChunkName: "ga
 const Help = defineAsyncComponent(() => import(/* webpackChunkName: "help" */ '@/client/components/help/Help.vue'));
 const LoginHome = defineAsyncComponent(() => import(/* webpackChunkName: "login" */ '@/client/components/auth/LoginHome.vue'));
 const LoadGameForm = defineAsyncComponent(() => import(/* webpackChunkName: "load-game" */ '@/client/components/LoadGameForm.vue'));
+const MobilePlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "mobile-player-home" */ '@/client/components/mobile/MobilePlayerHome.vue'));
 const PlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "player-home" */ '@/client/components/PlayerHome.vue'));
 const SpectatorHome = defineAsyncComponent(() => import(/* webpackChunkName: "spectator-home" */ '@/client/components/SpectatorHome.vue'));
 const StartScreen = defineAsyncComponent(() => import(/* webpackChunkName: "start-screen" */ '@/client/components/StartScreen.vue'));
@@ -76,6 +82,7 @@ import {SpectatorModel} from '@/common/models/SpectatorModel';
 import {isPlayerId, isSpectatorId} from '@/common/Types';
 import {rememberGame} from '@/client/utils/RecentGamesStorage';
 import {hasShowModal, showModal, windowHasHTMLDialogElement} from './HTMLDialogElementCompatibility';
+import {mobileLayout, startMobileLayoutTracking} from '@/client/utils/useMobileLayout';
 
 import dialogPolyfill from 'dialog-polyfill';
 import {setDocumentTitle} from '../utils/documentTitle';
@@ -148,6 +155,7 @@ export default defineComponent({
   components: {
     StartScreen,
     CreateGameForm,
+    MobilePlayerHome,
     LoadGameForm,
     ContinueGame,
     GameHome,
@@ -159,6 +167,12 @@ export default defineComponent({
     Help,
     AdminHome,
     LoginHome,
+  },
+  computed: {
+    /** Whether the phone shell replaces the desktop player view. */
+    mobileShell(): boolean {
+      return mobileLayout.value;
+    },
   },
   methods: {
     showAlert(title: string, message: string, cb: () => void = () => {}): void {
@@ -259,6 +273,7 @@ export default defineComponent({
     },
   },
   mounted() {
+    startMobileLayoutTracking();
     setDocumentTitle();
     if (!windowHasHTMLDialogElement()) {
       dialogPolyfill.registerDialog(document.getElementById('alert-dialog') as HTMLDialogElement);

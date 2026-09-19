@@ -199,4 +199,35 @@ describe('ServeAsset', () => {
       expect(perRes.statusCode, `${src} should return 200`).eq(statusCode.ok);
     }
   });
+
+  it('serves every link href referenced in index.html', async () => {
+    const html = fs.readFileSync('assets/index.html', 'utf8');
+    const hrefs = [...html.matchAll(/<link[^>]+href="([^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((href) => !href.startsWith('http'));
+    expect(hrefs).to.include('assets/manifest.webmanifest');
+    for (const href of hrefs) {
+      const perRes = new MockResponse();
+      const perScaffolding = new RouteTestScaffolding();
+      instance = new ServeAsset(undefined, false, fileApi);
+      perScaffolding.url = '/' + href;
+      perScaffolding.req.headers['accept-encoding'] = '';
+      await perScaffolding.get(instance, perRes);
+      expect(perRes.statusCode, `${href} should return 200`).eq(statusCode.ok);
+    }
+  });
+
+  it('serves the icons the manifest names', async () => {
+    const manifest = JSON.parse(fs.readFileSync('assets/manifest.webmanifest', 'utf8'));
+    expect(manifest.icons).to.not.be.empty;
+    for (const icon of manifest.icons) {
+      const perRes = new MockResponse();
+      const perScaffolding = new RouteTestScaffolding();
+      instance = new ServeAsset(undefined, false, fileApi);
+      perScaffolding.url = '/' + icon.src;
+      perScaffolding.req.headers['accept-encoding'] = '';
+      await perScaffolding.get(instance, perRes);
+      expect(perRes.statusCode, `${icon.src} should return 200`).eq(statusCode.ok);
+    }
+  });
 });
