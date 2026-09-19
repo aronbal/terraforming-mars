@@ -29,6 +29,7 @@
             v-for="card in hand"
             :key="card.name"
             class="mobile-card-button"
+            :class="{'mobile-card-button--ready': offerFor(card) !== undefined}"
             data-test="hand-card"
             @click="magnified = card">
             <Card class="cardbox" :card="card"/>
@@ -44,6 +45,7 @@
               v-for="card in group.cards"
               :key="card.name"
               class="mobile-card-button"
+              :class="{'mobile-card-button--ready': offerFor(card) !== undefined}"
               data-test="played-card"
               @click="magnified = card">
               <Card
@@ -58,11 +60,21 @@
       </template>
     </div>
 
-    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
+    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="close()">
       <div class="mobile-magnify-holder">
         <Card class="cardbox" :card="magnified" :cubeColor="player.color"/>
       </div>
-      <button class="mobile-button" v-i18n>Close</button>
+      <div class="mobile-magnify-actions" @click.stop>
+        <button
+          v-if="offer !== undefined"
+          class="mobile-button mobile-button--go"
+          data-test="magnified-play"
+          @click="use()">
+          <span v-if="offer === 'play'" v-i18n>Play card</span>
+          <span v-else v-i18n>Use action</span>
+        </button>
+        <button class="mobile-button" data-test="magnified-close" @click="close()" v-i18n>Close</button>
+      </div>
     </div>
   </div>
 </template>
@@ -78,6 +90,7 @@ import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {getCardsByType, isCardActivated} from '@/client/utils/CardUtils';
 import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
+import {CardOffer, offerIn} from '@/client/utils/cardSelection';
 
 type CardGroup = {
   title: string;
@@ -91,6 +104,7 @@ type DataModel = {
 
 export default defineComponent({
   name: 'MobileCardsPane',
+  emits: ['play'],
   props: {
     playerView: {
       type: Object as PropType<PlayerViewModel>,
@@ -145,6 +159,29 @@ export default defineComponent({
     },
     isCardActivated(): typeof isCardActivated {
       return isCardActivated;
+    },
+    /** What the player's current input would do with the magnified card, if anything. */
+    offer(): CardOffer | undefined {
+      return this.magnified === undefined ? undefined : this.offerFor(this.magnified);
+    },
+  },
+  methods: {
+    offerFor(card: CardModel): CardOffer | undefined {
+      return offerIn(this.playerView.waitingFor, card.name);
+    },
+    close(): void {
+      this.magnified = undefined;
+    },
+    /*
+     * Hands the card to the action sheet rather than answering the input here: what
+     * comes next is a payment, a placement or a target, and those are the sheet's job.
+     */
+    use(): void {
+      const card = this.magnified;
+      this.magnified = undefined;
+      if (card !== undefined) {
+        this.$emit('play', card.name);
+      }
     },
   },
 });

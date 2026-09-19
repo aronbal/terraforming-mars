@@ -57,7 +57,7 @@
         role="tabpanel"
         :aria-label="$t('Cards')"
         id="shortkey-hand">
-        <MobileCardsPane :playerView="playerView" :cardScale="cardScale"/>
+        <MobileCardsPane :playerView="playerView" :cardScale="cardScale" @play="playCard($event)"/>
       </section>
 
       <section
@@ -127,6 +127,8 @@ import {MobileTab, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/Mo
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {SpaceId} from '@/common/Types';
+import {CardName} from '@/common/cards/CardName';
+import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
@@ -225,8 +227,16 @@ export default defineComponent({
     selectingSpace(): boolean {
       return selectingSpace.value;
     },
+    waitingFor(): unknown {
+      return this.playerView.waitingFor;
+    },
   },
   watch: {
+    /* A card picked for one input must never be applied to the next one, so the pick
+       lasts exactly as long as the input it was made for. */
+    waitingFor() {
+      clearPickedCard();
+    },
     selectingSpace(selecting: boolean) {
       if (selecting) {
         // Get the sheet off the map, and the map in front of the player.
@@ -253,6 +263,15 @@ export default defineComponent({
     },
     setSnap(snap: SheetSnap): void {
       this.snap = snap;
+    },
+    /*
+     * The Cards tab is where a card is chosen; the sheet is where the choice is paid
+     * for and confirmed. Raising the sheet all the way puts the payment in front of
+     * the player instead of the list they have just chosen from.
+     */
+    playCard(name: CardName): void {
+      pickCard(name);
+      this.setSnap('full');
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;
@@ -305,6 +324,7 @@ export default defineComponent({
     document.body.classList.add('mobile-shell-active');
   },
   unmounted() {
+    clearPickedCard();
     document.body.classList.remove('mobile-shell-active');
   },
 });

@@ -16,8 +16,13 @@
                               :showsave="showsave && showChildSaveButton(option)"
                               :showtitle="false" />
       </div>
+      <!-- On a phone the options are a full-width stack, so a button under the whole
+           menu is a screen of scrolling away from the option it acts on. -->
+      <div v-if="selectedIdx === idx && showOwnSaveButton && saveBesideOption" class="wf-action wf-option-save">
+        <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
+      </div>
     </div>
-    <div v-if="showsave && selectedOption && !showChildSaveButton(selectedOption)">
+    <div v-if="showOwnSaveButton && !saveBesideOption">
       <div class="wf-action wf-option-save">
         <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
       </div>
@@ -34,6 +39,9 @@ import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {getPreferences} from '@/client/utils/PreferencesManager';
 import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
+import {CardName} from '@/common/cards/CardName';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
+import {offerFor, pickedCard} from '@/client/utils/cardSelection';
 
 let unique = 0;
 
@@ -88,7 +96,27 @@ export default defineComponent({
       selectedIdx,
     };
   },
+  computed: {
+    pickedCard(): CardName | undefined {
+      return pickedCard.value;
+    },
+    showOwnSaveButton(): boolean {
+      const selected = this.selectedOption;
+      return this.showsave && selected !== undefined && !this.showChildSaveButton(selected);
+    },
+    saveBesideOption(): boolean {
+      return mobileLayout.value;
+    },
+  },
   watch: {
+    // A card picked elsewhere -- on the mobile shell's Cards tab -- names the option
+    // the player meant, so open that one rather than making them find it again.
+    pickedCard: {
+      handler() {
+        this.selectPickedOption();
+      },
+      immediate: true,
+    },
     selectedOption(newOption: PlayerInputModel) {
       this.selectedIdx = this.displayedOptions.indexOf(newOption);
       // Clicking the option can shift elements on the page.
@@ -107,6 +135,16 @@ export default defineComponent({
     },
   },
   methods: {
+    selectPickedOption(): void {
+      const name = this.pickedCard;
+      if (name === undefined) {
+        return;
+      }
+      const option = this.displayedOptions.find((each) => offerFor(each, name) !== undefined);
+      if (option !== undefined) {
+        this.selectedOption = option;
+      }
+    },
     getSelectedOptionTop(): number | undefined {
       const element = this.getSelectedOptionLabelElement();
       return element?.getBoundingClientRect().top;
