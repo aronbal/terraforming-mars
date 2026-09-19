@@ -17,6 +17,7 @@ describe('MobileCardsPane', () => {
           cardsInHand: [{name: CardName.ANTS, calculatedCost: 9}],
         }),
         cardScale,
+        tapMode: 'magnify',
       },
     });
   }

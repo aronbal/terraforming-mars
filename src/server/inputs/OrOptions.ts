@@ -16,7 +16,15 @@ export class OrOptions extends OptionsInput<undefined> {
       title: this.title,
       buttonLabel: this.buttonLabel,
       type: 'or',
-      options: this.options.map((option) => option.toModel(player)),
+      options: this.options.map((option) => {
+        const optionModel = option.toModel(player);
+        // Carry the entry's stable id out to the client. It is the only thing there
+        // that survives translation, so it is what a client groups a menu by.
+        if (option.annotation !== undefined) {
+          optionModel.annotation = option.annotation;
+        }
+        return optionModel;
+      }),
     };
     if (initialIdx > -1) {
       model.initialIdx = initialIdx;

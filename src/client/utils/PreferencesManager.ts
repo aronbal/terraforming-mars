@@ -6,6 +6,14 @@ export type MobileLayoutMode = typeof MOBILE_LAYOUT_MODES[number];
 export const TAG_ROW_MODES = ['auto', 'always', 'never'] as const;
 export type TagRowMode = typeof TAG_ROW_MODES[number];
 
+/*
+ * What tapping a card on the mobile Cards tab does: open it large enough to read, or
+ * go straight to playing it. Reading first is the default, because a mis-tap that
+ * plays a card costs a turn.
+ */
+export const CARD_TAP_MODES = ['magnify', 'play'] as const;
+export type CardTapMode = typeof CARD_TAP_MODES[number];
+
 export const MIN_CARD_SCALE = 0.4;
 export const MAX_CARD_SCALE = 1;
 
@@ -33,6 +41,7 @@ export type Preferences = {
   experimental_ui: boolean,
   mobile_layout: MobileLayoutMode,
   tag_row: TagRowMode,
+  card_tap: CardTapMode,
   card_scale: number,
   action_sheet_peek: boolean,
   mobile_tap_targets: boolean,
@@ -67,6 +76,7 @@ const defaults: Preferences = {
 
   mobile_layout: 'auto',
   tag_row: 'auto',
+  card_tap: 'magnify',
   card_scale: 0.62,
   action_sheet_peek: true,
   mobile_tap_targets: false,
@@ -81,7 +91,7 @@ const defaults: Preferences = {
  * `PreferencesDialog` renders every boolean preference as a switch and mirrors it onto a
  * `preferences_<name>` body class; these are the ones it has to leave alone.
  */
-const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_scale']);
+const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_tap', 'card_scale']);
 
 export type BooleanPreference = {[K in Preference]: Preferences[K] extends boolean ? K : never}[Preference];
 
@@ -134,6 +144,9 @@ export class PreferencesManager {
       break;
     case 'tag_row':
       this._values.tag_row = asMode(TAG_ROW_MODES, val, defaults.tag_row);
+      break;
+    case 'card_tap':
+      this._values.card_tap = asMode(CARD_TAP_MODES, val, defaults.card_tap);
       break;
     case 'card_scale':
       this._values.card_scale = asCardScale(val);

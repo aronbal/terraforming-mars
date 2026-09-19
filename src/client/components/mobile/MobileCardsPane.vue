@@ -29,9 +29,9 @@
             v-for="card in hand"
             :key="card.name"
             class="mobile-card-button"
-            :class="{'mobile-card-button--ready': offerFor(card) !== undefined}"
+            :class="cardClass(card)"
             data-test="hand-card"
-            @click="magnified = card">
+            @click="tap(card)">
             <Card class="cardbox" :card="card"/>
           </button>
         </div>
@@ -45,9 +45,9 @@
               v-for="card in group.cards"
               :key="card.name"
               class="mobile-card-button"
-              :class="{'mobile-card-button--ready': offerFor(card) !== undefined}"
+              :class="cardClass(card)"
               data-test="played-card"
-              @click="magnified = card">
+              @click="tap(card)">
               <Card
                 class="cardbox"
                 :card="card"
@@ -61,7 +61,8 @@
     </div>
 
     <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="close()">
-      <div class="mobile-magnify-holder">
+      <!-- Tapping the card puts it back down: the way out is wherever you look. -->
+      <div class="mobile-magnify-holder" data-test="magnified-holder" @click="close()">
         <Card class="cardbox" :card="magnified" :cubeColor="player.color"/>
       </div>
       <div class="mobile-magnify-actions" @click.stop>
@@ -91,6 +92,7 @@ import {getCardsByType, isCardActivated} from '@/client/utils/CardUtils';
 import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
 import {CardOffer, offerIn} from '@/client/utils/cardSelection';
+import {CardTapMode} from '@/client/utils/PreferencesManager';
 
 type CardGroup = {
   title: string;
@@ -114,6 +116,10 @@ export default defineComponent({
       type: Number,
       required: true,
     },
+    tapMode: {
+      type: String as PropType<CardTapMode>,
+      required: true,
+    },
   },
   components: {
     Card,
@@ -131,18 +137,34 @@ export default defineComponent({
     scaleStyle(): Record<string, string> {
       return {'--mobile-card-scale': String(this.cardScale)};
     },
-    /** The hand in the same order the desktop hand uses, preludes and CEOs first. */
+    /** Whether the server is waiting on this player, which is when readiness matters. */
+    actionWaiting(): boolean {
+      return this.playerView.waitingFor !== undefined;
+    },
+    /**
+     * The hand, in the desktop's order, but with what the player can do about it
+     * first.
+     *
+     * Sorting is stable, so within each half the order the player arranged their hand
+     * in survives; only the line between playable and not moves.
+     */
     hand(): ReadonlyArray<CardModel> {
       const playerView = this.playerView;
       const projectCards = CardOrderStorage.getOrdered(
         CardOrderStorage.getCardOrder(playerView.id),
         playerView.cardsInHand);
-      return [
+      const ordered = [
         ...playerView.draftedCards,
         ...playerView.preludeCardsInHand,
         ...playerView.ceoCardsInHand,
         ...projectCards,
       ];
+      if (!this.actionWaiting) {
+        return ordered;
+      }
+      const ready = ordered.filter((card) => this.offerFor(card) !== undefined);
+      const rest = ordered.filter((card) => this.offerFor(card) === undefined);
+      return [...ready, ...rest];
     },
     playedGroups(): ReadonlyArray<CardGroup> {
       const tableau = this.player.tableau;
@@ -168,6 +190,27 @@ export default defineComponent({
   methods: {
     offerFor(card: CardModel): CardOffer | undefined {
       return offerIn(this.playerView.waitingFor, card.name);
+    },
+    cardClass(card: CardModel): Record<string, boolean> {
+      const ready = this.offerFor(card) !== undefined;
+      return {
+        'mobile-card-button--ready': ready,
+        // Dimmed rather than hidden: a card you cannot play this turn is still worth
+        // reading, and planning around.
+        'mobile-card-button--idle': this.actionWaiting && !ready,
+      };
+    },
+    /*
+     * A tap reads the card, or plays it, depending on what the player asked for in
+     * settings. Reading first is the default: a mis-tap that plays a card costs a
+     * turn, and a card you have not read is not a choice you have made.
+     */
+    tap(card: CardModel): void {
+      if (this.tapMode === 'play' && this.offerFor(card) !== undefined) {
+        this.$emit('play', card.name);
+        return;
+      }
+      this.magnified = card;
     },
     close(): void {
       this.magnified = undefined;

@@ -1,15 +1,16 @@
 import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
-import MobileActionSheet from '@/client/components/mobile/MobileActionSheet.vue';
+import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
 import {fakePlayerViewModel} from '../testHelpers';
 
-describe('MobileActionSheet', () => {
+describe('MobileActionPanel', () => {
   function mount(props: Record<string, unknown> = {}) {
-    return shallowMount(MobileActionSheet, {
+    return shallowMount(MobileActionPanel, {
       ...globalConfig,
       props: {
         playerView: fakePlayerViewModel(),
+        mode: 'sheet',
         snap: 'peek',
         peekEnabled: true,
         cardScale: 0.62,
@@ -51,5 +52,15 @@ describe('MobileActionSheet', () => {
     const wrapper = mount();
     wrapper.vm.onHeadClick();
     expect(wrapper.emitted('update:snap')?.[0]).deep.eq(['half']);
+  });
+
+  it('is a sheet, with a head to drag, only while the server is asking something', () => {
+    expect(mount({mode: 'sheet'}).find('[data-test="sheet-head"]').exists()).is.true;
+  });
+
+  it('is a plain pane while it holds the turn\'s own menu', () => {
+    const wrapper = mount({mode: 'tab'});
+    expect(wrapper.find('[data-test="sheet-head"]').exists()).is.false;
+    expect(wrapper.find('[data-test="action-panel"]').classes()).includes('mobile-pane');
   });
 });

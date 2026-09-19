@@ -673,7 +673,19 @@
   color: @mobile-muted;
 }
 
-.mobile-sheet-body {
+/*
+ * The action panel is a tab while the server waits for the player to choose what to
+ * do, and a sheet while it asks a follow-up question. One element either way, so the
+ * one `WaitingFor` inside it is never torn down and rebuilt by the change.
+ */
+.mobile-action-panel {
+  &.mobile-sheet {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.mobile-panel-body {
   flex: 1;
   overflow-y: auto;
   padding: 10px 12px calc(18px + env(safe-area-inset-bottom));
@@ -728,6 +740,91 @@
   .wf-option-save {
     margin: 10px 0 14px;
   }
+}
+
+//
+// The action list
+//
+
+.mobile-actions-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 12px;
+}
+
+.mobile-action-group {
+  margin-bottom: 16px;
+}
+
+.mobile-action-group-title {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 0 0 7px;
+}
+
+// One row per entry, the size of a thumb, as the prototype draws them.
+.mobile-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  margin-bottom: 7px;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid @mobile-line-soft;
+  border-radius: 10px;
+  background: @mobile-sunk;
+
+  &[aria-expanded="true"] {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+  }
+}
+
+.mobile-action-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-action-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+// Says which tab owns the entry, for the rows that are a way there rather than a menu.
+.mobile-action-note {
+  display: block;
+  font-size: 11px;
+  color: @mobile-muted;
+  margin-top: 2px;
+}
+
+// How many cards, projects or parties the entry has to choose between.
+.mobile-action-count {
+  flex: none;
+  font-size: 13px;
+  color: @mobile-ochre;
+}
+
+.mobile-action-chevron {
+  flex: none;
+  color: @mobile-dim;
+  font-size: 18px;
+}
+
+.mobile-action--elsewhere {
+  background: none;
+  border-style: dashed;
+}
+
+.mobile-action-body {
+  padding: 2px 2px 12px;
 }
 
 //
@@ -850,16 +947,21 @@
   align-items: center;
 }
 
-/* A card the turn's input offers something for. The rest of the hand is still worth
-   looking at, so unplayable cards are shown plainly rather than dimmed. */
+// A card this turn has a move for: ringed, and sorted to the front of its group.
 .mobile-card-button--ready .cardbox {
   box-shadow: 0 0 0 2px @mobile-ochre, 0 0 10px fade(@mobile-ochre, 45%);
   border-radius: 10px;
 }
 
+/* One you cannot act on right now. Dimmed rather than hidden, because a card you
+   cannot afford this generation is still what you plan the next one around. */
+.mobile-card-button--idle .cardbox {
+  filter: brightness(0.55) saturate(0.7);
+}
+
 /* The card was chosen on the Cards tab, so the sheet shows it alone with its payment.
    This is the way back to the full list. */
-.mobile-sheet-body .wf-chosen-card {
+.mobile-panel-body .wf-chosen-card {
   margin: 4px 0 10px;
 }
 

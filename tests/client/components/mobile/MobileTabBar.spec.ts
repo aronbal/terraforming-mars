@@ -21,10 +21,16 @@ describe('MobileTabBar', () => {
     expect(mount().exists()).is.true;
   });
 
-  it('Act is selected by the sheet, not by the open pane', () => {
+  it('Act lights up for a sheet raised over another pane, which stays lit too', () => {
     const wrapper = mount({tab: 'log', sheetOpen: true});
     expect(wrapper.vm.isSelected('actions')).is.true;
     expect(wrapper.vm.isSelected('log')).is.true;
+    expect(wrapper.vm.isSelected('board')).is.false;
+  });
+
+  it('Act is also a tab of its own, when it holds the turn\'s menu', () => {
+    const wrapper = mount({tab: 'actions', sheetOpen: false});
+    expect(wrapper.vm.isSelected('actions')).is.true;
     expect(wrapper.vm.isSelected('board')).is.false;
   });
 

@@ -49,6 +49,20 @@
     </div>
 
     <div class="mobile-setting">
+      <label class="mobile-setting-label" v-i18n>Tapping a card</label>
+      <div class="mobile-setting-row">
+        <button
+          v-for="mode in cardTapModes"
+          :key="mode"
+          class="mobile-segment-button"
+          :aria-selected="prefs.card_tap === mode"
+          :data-test="'card-tap-' + mode"
+          @click="setCardTap(mode)">{{ $t(modeLabel(mode)) }}</button>
+      </div>
+      <span class="mobile-setting-hint" v-i18n>Play goes straight to playing a card you can play, without opening it first.</span>
+    </div>
+
+    <div class="mobile-setting">
       <label class="form-switch mobile-setting-label">
         <input type="checkbox" v-model="prefs.action_sheet_peek" data-test="action_sheet_peek" @change="save('action_sheet_peek')">
         <i class="form-icon"></i> <span v-i18n>Keep a sliver of the action sheet visible</span>
@@ -80,6 +94,8 @@ import {defineComponent} from 'vue';
 import PreferencesDialog from '@/client/components/PreferencesDialog.vue';
 import {
   MAX_CARD_SCALE,
+  CARD_TAP_MODES,
+  CardTapMode,
   MIN_CARD_SCALE,
   MOBILE_LAYOUT_MODES,
   MobileLayoutMode,
@@ -97,6 +113,8 @@ const MODE_LABELS: Record<string, string> = {
   off: 'Off',
   always: 'Always',
   never: 'Never',
+  magnify: 'Open it',
+  play: 'Play it',
 };
 
 export default defineComponent({
@@ -119,6 +137,9 @@ export default defineComponent({
     },
     tagRowModes(): ReadonlyArray<TagRowMode> {
       return TAG_ROW_MODES;
+    },
+    cardTapModes(): ReadonlyArray<CardTapMode> {
+      return CARD_TAP_MODES;
     },
     cardScalePercent(): number {
       return Math.round(this.prefs.card_scale * 100);
@@ -144,6 +165,10 @@ export default defineComponent({
     setTagRow(mode: TagRowMode): void {
       this.prefs.tag_row = mode;
       this.save('tag_row');
+    },
+    setCardTap(mode: CardTapMode): void {
+      this.prefs.card_tap = mode;
+      this.save('card_tap');
     },
     setCardScale(event: Event): void {
       const percent = Number((event.target as HTMLInputElement).value);

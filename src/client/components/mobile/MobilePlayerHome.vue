@@ -57,7 +57,11 @@
         role="tabpanel"
         :aria-label="$t('Cards')"
         id="shortkey-hand">
-        <MobileCardsPane :playerView="playerView" :cardScale="cardScale" @play="playCard($event)"/>
+        <MobileCardsPane
+          :playerView="playerView"
+          :cardScale="cardScale"
+          :tapMode="preferences.card_tap"
+          @play="playCard($event)"/>
       </section>
 
       <section
@@ -79,10 +83,12 @@
         <LogPanel :viewModel="playerView" :color="thisPlayer.color" :step="game.step" @spaceClicked="onSpaceClicked"/>
       </section>
 
-      <div v-show="snap === 'full'" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
+      <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
 
-      <MobileActionSheet
+      <MobileActionPanel
+        v-show="panelMode === 'sheet' || tab === 'actions'"
         :playerView="playerView"
+        :mode="panelMode"
         :snap="snap"
         :peekEnabled="peekEnabled"
         :cardScale="cardScale"
@@ -92,7 +98,7 @@
 
     <MobileTabBar
       :tab="tab"
-      :sheetOpen="snap === 'half' || snap === 'full'"
+      :sheetOpen="panelMode === 'sheet' && (snap === 'half' || snap === 'full')"
       :cardsInHandCount="cardsInHandCount"
       :actionWaiting="actionWaiting"
       @select="selectTab($event)"/>
@@ -109,7 +115,7 @@ import Colony from '@/client/components/colonies/Colony.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
 import LogPanel from '@/client/components/logpanel/LogPanel.vue';
 import Milestones from '@/client/components/Milestones.vue';
-import MobileActionSheet from '@/client/components/mobile/MobileActionSheet.vue';
+import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
@@ -129,6 +135,8 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {SpaceId} from '@/common/Types';
 import {CardName} from '@/common/cards/CardName';
 import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
+import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
+import {requestedTab} from '@/client/utils/mobileNavigation';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
@@ -157,7 +165,7 @@ export default defineComponent({
     DynamicTitle,
     LogPanel,
     Milestones,
-    MobileActionSheet,
+    MobileActionPanel,
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
@@ -230,12 +238,47 @@ export default defineComponent({
     waitingFor(): unknown {
       return this.playerView.waitingFor;
     },
+    /*
+     * The menu of what the player may do is somewhere they go, so it is a tab. Every
+     * other thing the server asks -- pick a target, pick a resource -- interrupts
+     * whatever they were doing, so it arrives as a sheet over it.
+     */
+    panelMode(): 'tab' | 'sheet' {
+      return isActionMenu(this.playerView.waitingFor) ? 'tab' : 'sheet';
+    },
+    scrimVisible(): boolean {
+      return this.panelMode === 'sheet' && this.snap === 'full';
+    },
+    requestedTab(): unknown {
+      return requestedTab.value;
+    },
   },
   watch: {
     /* A card picked for one input must never be applied to the next one, so the pick
        lasts exactly as long as the input it was made for. */
     waitingFor() {
       clearPickedCard();
+    },
+    /* The action menu sends the player to the tab that draws what an entry is about.
+       It has no path back up to the shell, so it leaves the request in a store. */
+    requestedTab(request: {tab: MobileTab} | undefined) {
+      if (request !== undefined) {
+        this.selectTab(request.tab);
+      }
+    },
+    /*
+     * The panel is a tab or a sheet depending on what the server is asking, and it
+     * cannot be both. Becoming a sheet while the player is standing on the Actions
+     * tab would leave them on an empty one, so send them back to the board -- which
+     * is where a follow-up question usually wants them anyway.
+     */
+    panelMode(mode: 'tab' | 'sheet') {
+      if (mode === 'sheet') {
+        if (this.tab === 'actions') {
+          this.tab = 'board';
+        }
+        this.setSnap(this.peekEnabled ? 'peek' : 'closed');
+      }
     },
     selectingSpace(selecting: boolean) {
       if (selecting) {
@@ -250,8 +293,10 @@ export default defineComponent({
   },
   methods: {
     selectTab(tab: MobileTab): void {
-      if (tab === 'actions') {
-        // Act is not a destination: it raises the sheet over whichever pane is open.
+      /* While the server is asking a follow-up question the panel is a sheet, and a
+         sheet is not somewhere to navigate to -- Act raises it over whichever pane
+         is open, the way it always did. */
+      if (tab === 'actions' && this.panelMode === 'sheet') {
         this.setSnap(this.snap === 'half' || this.snap === 'full' ? 'peek' : 'half');
         return;
       }
@@ -271,7 +316,7 @@ export default defineComponent({
      */
     playCard(name: CardName): void {
       pickCard(name);
-      this.setSnap('full');
+      this.selectTab('actions');
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;

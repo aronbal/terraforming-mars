@@ -1,21 +1,25 @@
 <template>
   <div
-    ref="sheet"
-    class="mobile-sheet"
-    role="dialog"
+    ref="panel"
+    class="mobile-action-panel"
+    :class="mode === 'tab' ? 'mobile-pane mobile-pane--actions' : 'mobile-sheet'"
+    :style="mode === 'sheet' ? sheetStyle : undefined"
+    :role="mode === 'sheet' ? 'dialog' : 'tabpanel'"
     :aria-label="$t('Your actions')"
     :data-drag="dragging ? '1' : '0'"
     :data-snap="snap"
-    :style="sheetStyle"
-    data-test="action-sheet">
-    <div ref="head" class="mobile-sheet-head" data-test="sheet-head" @click="onHeadClick">
+    :data-mode="mode"
+    data-test="action-panel">
+    <!-- Only a sheet has a head: as a tab the panel is already the whole screen, and
+         the tab bar says where you are. -->
+    <div v-if="mode === 'sheet'" ref="head" class="mobile-sheet-head" data-test="sheet-head" @click="onHeadClick">
       <span class="mobile-sheet-grip"></span>
       <div class="mobile-sheet-title-row">
-        <h2 class="mobile-sheet-title" :class="{'mobile-sheet-title--waiting': actionWaiting}">{{ title }}</h2>
+        <h2 class="mobile-sheet-title mobile-sheet-title--waiting">{{ title }}</h2>
         <span class="mobile-sheet-hint" v-i18n>Drag to resize</span>
       </div>
     </div>
-    <div class="mobile-sheet-body mobile-card-scaler" :style="cardScaleStyle" data-test="sheet-body">
+    <div class="mobile-panel-body mobile-card-scaler" :style="cardScaleStyle" data-test="sheet-body">
       <WaitingFor
         v-if="playerView.game.phase !== 'end'"
         :playerView="playerView"
@@ -43,13 +47,25 @@ type DataModel = {
   dragOffset: number;
   /** The sheet's height, measured on open so the stops can be computed in pixels. */
   height: number;
+  /** The head the drag listeners are on, so they come off the same element. */
+  boundHead: HTMLElement | undefined;
 };
 
 export default defineComponent({
-  name: 'MobileActionSheet',
+  name: 'MobileActionPanel',
   props: {
     playerView: {
       type: Object as PropType<PlayerViewModel>,
+      required: true,
+    },
+    /*
+     * `tab` while the server is waiting for the player to choose what to do: the
+     * menu is where they are going, so it is a screen of its own. `sheet` while the
+     * server is asking a follow-up question, which is an interruption and belongs
+     * over whatever they were looking at.
+     */
+    mode: {
+      type: String as PropType<'tab' | 'sheet'>,
       required: true,
     },
     snap: {
@@ -80,6 +96,7 @@ export default defineComponent({
       dragStartOffset: 0,
       dragOffset: 0,
       height: 0,
+      boundHead: undefined,
     };
   },
   computed: {
@@ -114,8 +131,8 @@ export default defineComponent({
       }
     },
     measure(): void {
-      const sheet = this.$refs.sheet as HTMLElement | undefined;
-      this.height = sheet?.offsetHeight ?? 0;
+      const panel = this.$refs.panel as HTMLElement | undefined;
+      this.height = panel?.offsetHeight ?? 0;
     },
     nearestSnap(offset: number): SheetSnap {
       let best: SheetSnap = 'half';
@@ -160,27 +177,48 @@ export default defineComponent({
         this.$emit('update:snap', this.nearestSnap(this.dragOffset));
       }
     },
+    captureHead(): void {
+      const head = this.$refs.head as HTMLElement | undefined;
+      if (head === undefined || this.boundHead === head) {
+        return;
+      }
+      head.addEventListener('pointerdown', this.onPointerDown);
+      head.addEventListener('pointermove', this.onPointerMove);
+      head.addEventListener('pointerup', this.onPointerUp);
+      head.addEventListener('pointercancel', this.onPointerUp);
+      this.boundHead = head;
+    },
+    releaseHead(): void {
+      const head = this.boundHead;
+      if (head === undefined) {
+        return;
+      }
+      head.removeEventListener('pointerdown', this.onPointerDown);
+      head.removeEventListener('pointermove', this.onPointerMove);
+      head.removeEventListener('pointerup', this.onPointerUp);
+      head.removeEventListener('pointercancel', this.onPointerUp);
+      this.boundHead = undefined;
+    },
+  },
+  watch: {
+    // The head only exists in sheet mode, so its listeners follow the mode.
+    mode: {
+      handler() {
+        this.$nextTick(() => {
+          this.releaseHead();
+          this.captureHead();
+          this.measure();
+        });
+      },
+      immediate: true,
+    },
   },
   mounted() {
     this.measure();
-    const head = this.$refs.head as HTMLElement | undefined;
-    if (head === undefined) {
-      return;
-    }
-    head.addEventListener('pointerdown', this.onPointerDown);
-    head.addEventListener('pointermove', this.onPointerMove);
-    head.addEventListener('pointerup', this.onPointerUp);
-    head.addEventListener('pointercancel', this.onPointerUp);
+    this.captureHead();
   },
   unmounted() {
-    const head = this.$refs.head as HTMLElement | undefined;
-    if (head === undefined) {
-      return;
-    }
-    head.removeEventListener('pointerdown', this.onPointerDown);
-    head.removeEventListener('pointermove', this.onPointerMove);
-    head.removeEventListener('pointerup', this.onPointerUp);
-    head.removeEventListener('pointercancel', this.onPointerUp);
+    this.releaseHead();
   },
 });
 </script>
