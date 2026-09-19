@@ -63,6 +63,11 @@
   z-index: 40;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* `minmax(0, 1fr)`, not the implicit `auto`: an auto column grows to the widest row
+     it holds, and the header's resource strip alone is wider than a phone. That made
+     the whole shell 22px too wide, and clipped the gear, the last tab and the right
+     edge of every pane. */
+  grid-template-columns: minmax(0, 1fr);
   background: @mobile-ground;
   color: @mobile-text;
   font-family: @font_family_main;
@@ -112,6 +117,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  // Flex items refuse to shrink past their content unless told to.
+  min-width: 0;
 }
 
 .mobile-stat {
@@ -146,6 +153,14 @@
   gap: 7px;
   margin-left: auto;
   align-items: center;
+  // Venus makes a fourth reading, which is one more than a narrow phone has room for.
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .mobile-global {
@@ -196,6 +211,7 @@
 .mobile-resources {
   display: flex;
   gap: 4px;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -317,6 +333,15 @@
      clipping them would hide resource counts rather than let the player reach them. */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+
+  /* The sheet's peek handle floats over the bottom of the pane. Scrolled to the end,
+     the last row would otherwise sit under it: reachable by eye, not by thumb.
+     `--mobile-pane-gap` is 0 when the player turns the handle off. */
+  &::after {
+    content: "";
+    display: block;
+    height: var(--mobile-pane-gap, 0px);
+  }
 }
 
 .mobile-pane--board {
@@ -444,12 +469,73 @@
 }
 
 .mobile-below {
-  padding: 10px 8px calc(16px + env(safe-area-inset-bottom));
+  padding: 10px 8px 16px;
   background: @mobile-ground;
 }
 
 .mobile-below-block {
   margin-bottom: 14px;
+}
+
+// Stacked, not the desktop's inline-block row: a colony tile is wider than a phone.
+.mobile-colony-list .player_home_colony {
+  display: block;
+  margin: 0 0 10px;
+}
+
+/*
+ * Blocks scaled down to fit, by MobileFitBlock.
+ *
+ * The frame keeps the shell's width; the inner element keeps the block's own, so the
+ * component can read one against the other. Anything still too wide once the scale
+ * hits its floor scrolls here rather than dragging the pane sideways with it.
+ */
+.mobile-fit {
+  overflow: auto hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobile-fit-inner {
+  width: max-content;
+}
+
+/*
+ * Milestones and awards.
+ *
+ * Each unclaimed spot is drawn as a 190px pill with its price nudged 70px in from the
+ * left, which lines them up along a desktop column. At phone width they wrap into a
+ * staircase of overlapping boxes, so here they are plain chips on a row that wraps.
+ */
+.mobile-below {
+  .ma-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .milestone-award-inline {
+    width: auto;
+    margin: 0;
+    padding: 1px 8px;
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .milestone-award-price {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    background-size: 26px;
+    line-height: 26px;
+    font-size: 15px;
+    transform: none;
+  }
 }
 
 //
@@ -545,43 +631,102 @@
   }
 }
 
+/* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
+   what shows: a grab bar over a line that says whose move it is. */
 .mobile-sheet-head {
   flex: none;
   height: @mobile-sheet-peek;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  padding: 6px 14px 8px;
   touch-action: none;
   border-bottom: 1px solid @mobile-line-soft;
 }
 
 .mobile-sheet-grip {
-  width: 34px;
+  display: block;
+  width: 38px;
   height: 4px;
   border-radius: 2px;
   background: @mobile-line;
-  flex: none;
+  margin: 0 auto 6px;
+}
+
+.mobile-sheet-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .mobile-sheet-title {
-  font-family: Prototype, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-muted;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
 }
 
-.mobile-sheet-flag {
+.mobile-sheet-title--waiting {
+  color: @mobile-ochre;
+}
+
+.mobile-sheet-hint {
   margin-left: auto;
   font-size: 11px;
-  color: @mobile-ochre;
+  color: @mobile-muted;
 }
 
 .mobile-sheet-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(18px + env(safe-area-inset-bottom));
+
+  /*
+   * The options come from the desktop's radio list, which is a column of bare labels.
+   * Restyled here as the rows the prototype draws: a full-width target with the mark
+   * on the left, big enough to hit without aiming.
+   */
+  .wf-options > div > .form-radio {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    margin: 0 0 7px;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid @mobile-line-soft;
+    border-radius: 10px;
+    background: @mobile-sunk;
+    font-size: 14px;
+    font-weight: 600;
+
+    .form-icon {
+      left: 13px;
+      top: 50%;
+      margin-top: -7px;
+    }
+  }
+
+  .wf-options > div > .form-radio:has(input:checked) {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+  }
+
+  // The question itself, above the rows it offers.
+  > div > .wf-root > .wf-options > label:first-child {
+    display: block;
+    font-family: Prototype, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: @mobile-dim;
+    margin: 0 0 8px;
+  }
+
+  /* The desktop indents the chosen option's own input under its radio. There is no
+     width to spare for that here. */
+  .wf-option-body {
+    margin-left: 0;
+  }
+
+  .wf-option-save {
+    margin: 8px 0 12px;
+  }
 }
 
 //
@@ -625,7 +770,16 @@
 }
 
 .mobile-cards-body {
-  padding: 8px calc(8px + env(safe-area-inset-left)) calc(20px + env(safe-area-inset-bottom));
+  padding: 8px calc(8px + env(safe-area-inset-left)) 16px;
+}
+
+/* Cards flow in rows rather than as inline-blocks: whitespace between inline elements
+   is scaled by `zoom` too, which left an unpredictable gutter that changed with the
+   card scale. */
+.mobile-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .mobile-cards-group-title {

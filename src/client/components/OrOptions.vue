@@ -8,7 +8,7 @@
         <i class="form-icon" ></i>
         <span>{{ $t(option.title) }}</span>
       </label>
-      <div v-if="selectedIdx === idx" style="margin-left: 30px">
+      <div v-if="selectedIdx === idx" class="wf-option-body">
         <PlayerInputFactory ref="inputfactory"
                               :playerView="playerView"
                               :playerinput="option"
@@ -18,7 +18,7 @@
       </div>
     </div>
     <div v-if="showsave && selectedOption && !showChildSaveButton(selectedOption)">
-      <div style="margin: 5px 30px 10px" class="wf-action">
+      <div class="wf-action wf-option-save">
         <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
       </div>
     </div>

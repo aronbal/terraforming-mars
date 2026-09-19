@@ -10,8 +10,10 @@
     data-test="action-sheet">
     <div ref="head" class="mobile-sheet-head" data-test="sheet-head" @click="onHeadClick">
       <span class="mobile-sheet-grip"></span>
-      <span class="mobile-sheet-title" v-i18n>Actions</span>
-      <span v-if="actionWaiting" class="mobile-sheet-flag" v-i18n>Your turn</span>
+      <div class="mobile-sheet-title-row">
+        <h2 class="mobile-sheet-title" :class="{'mobile-sheet-title--waiting': actionWaiting}">{{ title }}</h2>
+        <span class="mobile-sheet-hint" v-i18n>Drag to resize</span>
+      </div>
     </div>
     <div class="mobile-sheet-body mobile-card-scaler" :style="cardScaleStyle" data-test="sheet-body">
       <WaitingFor
@@ -28,16 +30,7 @@ import {defineComponent, PropType} from 'vue';
 
 import WaitingFor from '@/client/components/WaitingFor.vue';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
-import {SheetSnap, SHEET_SNAPS} from '@/client/components/mobile/MobileTab';
-
-/*
- * The handle left above the tab bar at the `peek` stop, in pixels.
- *
- * Deliberately a fixed pixel count rather than a fraction of the sheet: as a
- * percentage it grew tall enough to cover the tile-placement bar, putting the
- * confirmation out of reach.
- */
-const PEEK_PX = 46;
+import {SheetSnap, SHEET_PEEK_PX, SHEET_SNAPS} from '@/client/components/mobile/MobileTab';
 
 /** How much of the sheet the `half` and `full` stops leave off screen. */
 const HALF_FRACTION = 0.5;
@@ -90,6 +83,11 @@ export default defineComponent({
     };
   },
   computed: {
+    /* The head is all that shows at the peek stop, so it says whose move it is rather
+       than repeating the tab's own label. */
+    title(): string {
+      return this.actionWaiting ? this.$t('Your turn') : this.$t('Actions');
+    },
     /* Cards are chosen and played from in here, so they scale exactly as they do on
        the Cards tab. Unscaled, a corporation card is wider than the phone. */
     cardScaleStyle(): Record<string, string> {
@@ -108,7 +106,7 @@ export default defineComponent({
       case 'closed':
         return height;
       case 'peek':
-        return this.peekEnabled ? Math.max(0, height - PEEK_PX) : height;
+        return this.peekEnabled ? Math.max(0, height - SHEET_PEEK_PX) : height;
       case 'half':
         return Math.round(height * HALF_FRACTION);
       default:

@@ -1,5 +1,5 @@
 <template>
-  <div id="mobile-shell">
+  <div id="mobile-shell" :style="shellStyle">
     <MobileHeader
       :game="game"
       :player="thisPlayer"
@@ -25,25 +25,27 @@
           @showActions="setSnap('half')"/>
 
         <div class="mobile-below" ref="below">
+          <!-- No fit block: milestone and award tiles wrap on their own, and forcing
+               them onto one line would only push the last few off the edge. -->
           <div class="mobile-below-block">
             <Milestones :milestones="game.milestones"/>
             <Awards :awards="game.awards"/>
           </div>
-          <div v-if="game.turmoil" class="mobile-below-block">
+          <MobileFitBlock v-if="game.turmoil" class="mobile-below-block">
             <Turmoil :turmoil="game.turmoil"/>
-          </div>
-          <div v-if="game.moon" class="mobile-below-block">
+          </MobileFitBlock>
+          <MobileFitBlock v-if="game.moon" class="mobile-below-block">
             <MoonBoard :model="game.moon" :tileView="tileView" id="shortkey-moonBoard"/>
-          </div>
-          <div v-if="game.gameOptions.expansions.pathfinders" class="mobile-below-block">
+          </MobileFitBlock>
+          <MobileFitBlock v-if="game.gameOptions.expansions.pathfinders" class="mobile-below-block">
             <PlanetaryTracks :tracks="game.pathfinders" :gameOptions="game.gameOptions"/>
-          </div>
+          </MobileFitBlock>
           <div v-if="game.colonies.length > 0" class="mobile-below-block" id="shortkey-colonies">
             <DynamicTitle title="Colonies" :color="thisPlayer.color"/>
-            <div class="player_home_colony_cont">
-              <div class="player_home_colony" v-for="colony in game.colonies" :key="colony.name">
+            <div class="player_home_colony_cont mobile-colony-list">
+              <MobileFitBlock v-for="colony in game.colonies" :key="colony.name" class="player_home_colony">
                 <Colony :colony="colony" :active="colony.isActive"/>
-              </div>
+              </MobileFitBlock>
             </div>
           </div>
         </div>
@@ -64,7 +66,9 @@
         role="tabpanel"
         :aria-label="$t('Players')"
         id="shortkey-playersoverview">
-        <PlayersOverview :playerView="playerView" v-trim-whitespace/>
+        <MobileFitBlock>
+          <PlayersOverview :playerView="playerView" v-trim-whitespace/>
+        </MobileFitBlock>
       </section>
 
       <section
@@ -108,6 +112,7 @@ import Milestones from '@/client/components/Milestones.vue';
 import MobileActionSheet from '@/client/components/mobile/MobileActionSheet.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
+import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
@@ -118,7 +123,7 @@ import Turmoil from '@/client/components/turmoil/Turmoil.vue';
 
 import {GameModel} from '@/common/models/GameModel';
 import {HomeMixin} from '@/client/mixins/HomeMixin';
-import {MobileTab, SheetSnap} from '@/client/components/mobile/MobileTab';
+import {MobileTab, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/MobileTab';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {SpaceId} from '@/common/Types';
@@ -153,6 +158,7 @@ export default defineComponent({
     MobileActionSheet,
     MobileBoardPane,
     MobileCardsPane,
+    MobileFitBlock,
     MobileHeader,
     MobileSettings,
     MobileTabBar,
@@ -180,6 +186,14 @@ export default defineComponent({
     },
     cardScale(): number {
       return this.preferences.card_scale;
+    },
+    /*
+     * The sheet's peek handle floats over the bottom of whichever pane is open, so
+     * every pane leaves that much room free. Without it the last row of a pane — the
+     * final colony tile, the newest log entry — sits under the handle, out of reach.
+     */
+    shellStyle(): Record<string, string> {
+      return {'--mobile-pane-gap': (this.peekEnabled ? SHEET_PEEK_PX : 0) + 'px'};
     },
     peekEnabled(): boolean {
       return this.preferences.action_sheet_peek;

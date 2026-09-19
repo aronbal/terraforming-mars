@@ -24,30 +24,35 @@
     <div class="mobile-cards-body mobile-card-scaler" :style="scaleStyle">
       <template v-if="view === 'hand'">
         <div v-if="hand.length === 0" class="mobile-cards-empty" v-i18n>No cards in hand</div>
-        <button
-          v-for="card in hand"
-          :key="card.name"
-          class="cardbox mobile-card-button"
-          data-test="hand-card"
-          @click="magnified = card">
-          <Card :card="card"/>
-        </button>
+        <div v-else class="mobile-card-grid">
+          <button
+            v-for="card in hand"
+            :key="card.name"
+            class="mobile-card-button"
+            data-test="hand-card"
+            @click="magnified = card">
+            <Card class="cardbox" :card="card"/>
+          </button>
+        </div>
       </template>
 
       <template v-else>
         <div v-for="group in playedGroups" :key="group.title">
           <h3 class="mobile-cards-group-title">{{ $t(group.title) }} · {{ group.cards.length }}</h3>
-          <button
-            v-for="card in group.cards"
-            :key="card.name"
-            class="cardbox mobile-card-button"
-            data-test="played-card"
-            @click="magnified = card">
-            <Card
-              :card="card"
-              :actionUsed="isCardActivated(card, player)"
-              :cubeColor="player.color"/>
-          </button>
+          <div class="mobile-card-grid">
+            <button
+              v-for="card in group.cards"
+              :key="card.name"
+              class="mobile-card-button"
+              data-test="played-card"
+              @click="magnified = card">
+              <Card
+                class="cardbox"
+                :card="card"
+                :actionUsed="isCardActivated(card, player)"
+                :cubeColor="player.color"/>
+            </button>
+          </div>
         </div>
         <div v-if="player.tableau.length === 0" class="mobile-cards-empty" v-i18n>No cards played yet</div>
       </template>
@@ -55,9 +60,7 @@
 
     <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
       <div class="mobile-magnify-holder">
-        <div class="cardbox">
-          <Card :card="magnified" :cubeColor="player.color"/>
-        </div>
+        <Card class="cardbox" :card="magnified" :cubeColor="player.color"/>
       </div>
       <button class="mobile-button" v-i18n>Close</button>
     </div>
