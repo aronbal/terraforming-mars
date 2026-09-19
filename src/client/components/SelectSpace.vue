@@ -27,6 +27,7 @@ import {SelectSpaceResponse} from '@/common/inputs/InputResponse';
 import ConfirmDialog from '@/client/components/common/ConfirmDialog.vue';
 import GoToMap from '@/client/components/waitingFor/GoToMap.vue';
 import {SpaceId} from '@/common/Types';
+import {beginSpaceSelection, endSpaceSelection} from '@/client/utils/spaceSelection';
 
 
 type Refs = {
@@ -167,6 +168,9 @@ export default defineComponent({
     },
   },
   mounted() {
+    // The mobile shell has no way to see this input coming: it may be nested inside
+    // another one, and the clicks are wired onto the board's DOM rather than declared.
+    beginSpaceSelection();
     this.disableAnimation();
     const tiles = this.getSelectableSpaces();
     this.animateSpaces(tiles);
@@ -180,6 +184,9 @@ export default defineComponent({
 
       tile.onclick = () => this.onTileSelected(tile);
     }
+  },
+  unmounted() {
+    endSpaceSelection();
   },
 });
 

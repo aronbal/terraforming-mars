@@ -109,7 +109,7 @@
 <script lang="ts">
 import {defineComponent} from 'vue';
 
-import {getPreferences, PreferencesManager, Preference} from '@/client/utils/PreferencesManager';
+import {getPreferences, isBooleanPreference, PreferencesManager, Preference} from '@/client/utils/PreferencesManager';
 import BugReportDialog from '@/client/components/BugReportDialog.vue';
 
 
@@ -151,6 +151,11 @@ export default defineComponent({
     },
     updatePreferences(): void {
       for (const k of Object.keys(this.preferencesManager.values()) as Array<Preference>) {
+        // This dialog only renders the boolean switches. Writing the rest back would
+        // undo whatever set them, since `prefs` is a snapshot from when it opened.
+        if (!isBooleanPreference(k)) {
+          continue;
+        }
         const val = this.prefs[k];
         this.preferencesManager.set(k, val, /* setOnChange */ true);
       }
@@ -162,7 +167,7 @@ export default defineComponent({
       }
 
       for (const k of Object.keys(this.prefs) as Array<Preference>) {
-        if (k === 'lang') {
+        if (!isBooleanPreference(k)) {
           continue;
         }
         this.setBoolPreferencesCSS(target, this.prefs[k], k);

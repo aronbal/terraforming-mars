@@ -1,3 +1,14 @@
+/** How the mobile shell is chosen: by viewport width, or forced on or off. */
+export const MOBILE_LAYOUT_MODES = ['auto', 'on', 'off'] as const;
+export type MobileLayoutMode = typeof MOBILE_LAYOUT_MODES[number];
+
+/** When the mobile tag row is shown: on the Cards tab only, everywhere, or nowhere. */
+export const TAG_ROW_MODES = ['auto', 'always', 'never'] as const;
+export type TagRowMode = typeof TAG_ROW_MODES[number];
+
+export const MIN_CARD_SCALE = 0.4;
+export const MAX_CARD_SCALE = 1;
+
 export type Preferences = {
   learner_mode: boolean,
   enable_sounds: boolean,
@@ -20,6 +31,11 @@ export type Preferences = {
   symbol_overlay: boolean,
   animated_title: boolean,
   experimental_ui: boolean,
+  mobile_layout: MobileLayoutMode,
+  tag_row: TagRowMode,
+  card_scale: number,
+  action_sheet_peek: boolean,
+  mobile_tap_targets: boolean,
   lang: string,
 }
 
@@ -49,9 +65,42 @@ const defaults: Preferences = {
   symbol_overlay: false,
   animated_title: true,
 
+  mobile_layout: 'auto',
+  tag_row: 'auto',
+  card_scale: 0.62,
+  action_sheet_peek: true,
+  mobile_tap_targets: false,
+
   experimental_ui: false,
   debug_view: false,
 };
+
+/**
+ * Preferences whose value is not a boolean.
+ *
+ * `PreferencesDialog` renders every boolean preference as a switch and mirrors it onto a
+ * `preferences_<name>` body class; these are the ones it has to leave alone.
+ */
+const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_scale']);
+
+export type BooleanPreference = {[K in Preference]: Preferences[K] extends boolean ? K : never}[Preference];
+
+export function isBooleanPreference(key: Preference): key is BooleanPreference {
+  return !NON_BOOLEAN_PREFERENCES.has(key);
+}
+
+function asMode<T extends string>(modes: ReadonlyArray<T>, val: string | boolean | number, fallback: T): T {
+  const candidate = String(val) as T;
+  return modes.includes(candidate) ? candidate : fallback;
+}
+
+function asCardScale(val: string | boolean | number): number {
+  const parsed = typeof val === 'number' ? val : Number(val);
+  if (!Number.isFinite(parsed)) {
+    return defaults.card_scale;
+  }
+  return Math.min(MAX_CARD_SCALE, Math.max(MIN_CARD_SCALE, parsed));
+}
 
 export class PreferencesManager {
   public static INSTANCE = new PreferencesManager();
@@ -75,12 +124,28 @@ export class PreferencesManager {
     }
   }
 
-  private _set(key: Preference, val: string | boolean) {
-    if (key === 'lang') {
+  private _set(key: Preference, val: string | boolean | number) {
+    switch (key) {
+    case 'lang':
       this._values.lang = String(val);
-    } else {
+      break;
+    case 'mobile_layout':
+      this._values.mobile_layout = asMode(MOBILE_LAYOUT_MODES, val, defaults.mobile_layout);
+      break;
+    case 'tag_row':
+      this._values.tag_row = asMode(TAG_ROW_MODES, val, defaults.tag_row);
+      break;
+    case 'card_scale':
+      this._values.card_scale = asCardScale(val);
+      break;
+    default:
       this._values[key] = typeof(val) === 'boolean' ? val : (val === '1');
     }
+  }
+
+  private _serialize(key: Preference): string {
+    const value = this._values[key];
+    return typeof value === 'boolean' ? (value ? '1' : '0') : String(value);
   }
 
   // Making this Readonly means that it's Typescript-impossible to
@@ -89,18 +154,14 @@ export class PreferencesManager {
     return this._values;
   }
 
-  set(name: Preference, val: string | boolean, setOnChange = false): void {
+  set(name: Preference, val: string | boolean | number, setOnChange = false): void {
     // Don't set values if nothing has changed.
     if (setOnChange && this._values[name] === val) {
       return;
     }
     this._set(name, val);
     if (this.localStorageSupported()) {
-      if (name === 'lang') {
-        localStorage.setItem(name, this._values.lang);
-      } else {
-        localStorage.setItem(name, val ? '1' : '0');
-      }
+      localStorage.setItem(name, this._serialize(name));
     }
   }
 }

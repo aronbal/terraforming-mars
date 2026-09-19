@@ -61,5 +61,9 @@ describe('WaitingFor', () => {
       },
     });
     expect(wrapper.text()).to.include('Not your turn');
+
+    // Mounted with no input, WaitingFor starts polling for one. Left mounted, that
+    // timer outlives the test and fires into a torn-down DOM.
+    wrapper.unmount();
   });
 });
