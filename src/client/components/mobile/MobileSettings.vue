@@ -1,12 +1,9 @@
 <template>
   <section class="mobile-settings" :aria-label="$t('Settings')" data-test="mobile-settings">
-    <div class="mobile-settings-head">
-      <span class="mobile-settings-title" v-i18n>Settings</span>
-      <button class="mobile-button" data-test="close-settings" @click="$emit('close')" v-i18n>Done</button>
-    </div>
+    <h3 class="mobile-settings-group" v-i18n>Look</h3>
 
     <div class="mobile-setting">
-      <label class="mobile-setting-label" v-i18n>Mobile layout</label>
+      <label class="mobile-setting-label" v-i18n>Phone layout</label>
       <div class="mobile-setting-row">
         <button
           v-for="mode in mobileLayoutModes"
@@ -14,7 +11,7 @@
           class="mobile-segment-button"
           :aria-selected="prefs.mobile_layout === mode"
           :data-test="'mobile-layout-' + mode"
-          @click="setMobileLayout(mode)">{{ $t(modeLabel(mode)) }}</button>
+          @click="setMode('mobile_layout', mode)">{{ $t(modeLabel(mode)) }}</button>
       </div>
       <span class="mobile-setting-hint" v-i18n>Auto uses the phone layout on narrow screens.</span>
     </div>
@@ -43,10 +40,12 @@
           class="mobile-segment-button"
           :aria-selected="prefs.tag_row === mode"
           :data-test="'tag-row-' + mode"
-          @click="setTagRow(mode)">{{ $t(modeLabel(mode)) }}</button>
+          @click="setMode('tag_row', mode)">{{ $t(modeLabel(mode)) }}</button>
       </div>
       <span class="mobile-setting-hint" v-i18n>Auto opens the tag row on the Cards tab.</span>
     </div>
+
+    <h3 class="mobile-settings-group" v-i18n>Cards</h3>
 
     <div class="mobile-setting">
       <label class="mobile-setting-label" v-i18n>Tapping a card</label>
@@ -57,45 +56,53 @@
           class="mobile-segment-button"
           :aria-selected="prefs.card_tap === mode"
           :data-test="'card-tap-' + mode"
-          @click="setCardTap(mode)">{{ $t(modeLabel(mode)) }}</button>
+          @click="setMode('card_tap', mode)">{{ $t(modeLabel(mode)) }}</button>
       </div>
-      <span class="mobile-setting-hint" v-i18n>Play goes straight to playing a card you can play, without opening it first.</span>
+      <span class="mobile-setting-hint" v-i18n>Play it goes straight to playing a card you can play, without opening it first.</span>
+    </div>
+
+    <template v-for="group in switchGroups" :key="group.title">
+      <h3 v-if="group.heading" class="mobile-settings-group">{{ $t(group.title) }}</h3>
+      <div v-for="setting in group.settings" :key="setting.name" class="mobile-setting">
+        <label class="form-switch mobile-setting-label">
+          <input type="checkbox" v-model="prefs[setting.name]" :data-test="setting.name" @change="saveSwitch(setting.name)">
+          <i class="form-icon"></i> <span>{{ $t(setting.label) }}</span>
+        </label>
+        <span v-if="setting.hint !== undefined" class="mobile-setting-hint">{{ $t(setting.hint) }}</span>
+      </div>
+    </template>
+
+    <h3 class="mobile-settings-group" v-i18n>Language</h3>
+    <div class="mobile-setting">
+      <div class="mobile-language-grid">
+        <button
+          v-for="lang in languages"
+          :key="lang.id"
+          class="mobile-language"
+          :aria-selected="prefs.lang === lang.id"
+          :data-test="'lang-' + lang.id"
+          @click="setLanguage(lang.id)">{{ lang.name }}</button>
+      </div>
+      <span class="mobile-setting-hint" v-i18n>Changing the language reloads the page.</span>
     </div>
 
     <div class="mobile-setting">
-      <label class="form-switch mobile-setting-label">
-        <input type="checkbox" v-model="prefs.action_sheet_peek" data-test="action_sheet_peek" @change="save('action_sheet_peek')">
-        <i class="form-icon"></i> <span v-i18n>Keep a sliver of the action sheet visible</span>
-      </label>
+      <button class="mobile-button" data-test="report-bug" @click="showBugDialog()" v-i18n>Report a bug</button>
     </div>
-
-    <div class="mobile-setting">
-      <label class="form-switch mobile-setting-label">
-        <input type="checkbox" v-model="prefs.hide_tile_confirmation" data-test="hide_tile_confirmation" @change="save('hide_tile_confirmation')">
-        <i class="form-icon"></i> <span v-i18n>Hide tile confirmation</span>
-      </label>
-    </div>
-
-    <div class="mobile-setting">
-      <label class="form-switch mobile-setting-label">
-        <input type="checkbox" v-model="prefs.mobile_tap_targets" data-test="mobile_tap_targets" @change="save('mobile_tap_targets')">
-        <i class="form-icon"></i> <span v-i18n>Show 44px tap targets</span>
-      </label>
-      <span class="mobile-setting-hint" v-i18n>Draws the recommended touch target over every board space.</span>
-    </div>
-
-    <PreferencesDialog :preferencesManager="preferencesManager" @okButtonClicked="$emit('close')"/>
+    <BugReportDialog ref="bugDialog"/>
   </section>
 </template>
 
 <script lang="ts">
 import {defineComponent} from 'vue';
 
-import PreferencesDialog from '@/client/components/PreferencesDialog.vue';
+import BugReportDialog from '@/client/components/BugReportDialog.vue';
+import {ALL_LANGUAGES, LANGUAGES} from '@/common/constants';
 import {
-  MAX_CARD_SCALE,
+  BooleanPreference,
   CARD_TAP_MODES,
   CardTapMode,
+  MAX_CARD_SCALE,
   MIN_CARD_SCALE,
   MOBILE_LAYOUT_MODES,
   MobileLayoutMode,
@@ -104,8 +111,76 @@ import {
   PreferencesManager,
   TAG_ROW_MODES,
   TagRowMode,
+  applyPreferenceClasses,
   getPreferences,
 } from '@/client/utils/PreferencesManager';
+
+/*
+ * The settings, in the order a player looks for them rather than the order they were
+ * added to the game.
+ *
+ * This replaces `PreferencesDialog` on a phone rather than embedding it. The dialog is
+ * one flat column of fourteen switches, several of which are about parts of the
+ * desktop layout the shell never draws -- the sidebar, the hover magnifier -- and
+ * offering those here would be offering to change nothing.
+ */
+
+type SwitchSetting = {
+  name: BooleanPreference;
+  label: string;
+  hint?: string;
+};
+
+type SwitchGroup = {
+  title: string;
+  /** False for the group that continues the heading above it. */
+  heading: boolean;
+  settings: ReadonlyArray<SwitchSetting>;
+};
+
+const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
+  {
+    title: 'Cards',
+    heading: false,
+    settings: [
+      {name: 'small_cards', label: 'Smaller cards'},
+      {name: 'hide_discount_on_cards', label: 'Hide discount on cards'},
+    ],
+  },
+  {
+    title: 'Board',
+    heading: true,
+    settings: [
+      {
+        name: 'mobile_tap_targets',
+        label: 'Show 44px tap targets',
+        hint: 'Draws the recommended touch target over every board space.',
+      },
+      {name: 'hide_tile_confirmation', label: 'Hide tile confirmation'},
+      {name: 'hide_awards_and_milestones', label: 'Hide awards and milestones'},
+      {name: 'symbol_overlay', label: 'Add symbols on top of player colors'},
+      {name: 'remove_background', label: 'Remove background image'},
+    ],
+  },
+  {
+    title: 'Game',
+    heading: true,
+    settings: [
+      {name: 'enable_sounds', label: 'Enable sounds'},
+      {name: 'show_alerts', label: 'Show in-game alerts'},
+      {name: 'animated_title', label: 'Animated title', hint: 'Spins the window title on your turn.'},
+      {name: 'learner_mode', label: 'Learner mode', hint: 'Shows extra help for new players. Takes effect on the next load.'},
+    ],
+  },
+  {
+    title: 'Developer',
+    heading: true,
+    settings: [
+      {name: 'experimental_ui', label: 'Experimental UI'},
+      {name: 'debug_view', label: 'Debug view'},
+    ],
+  },
+];
 
 const MODE_LABELS: Record<string, string> = {
   auto: 'Auto',
@@ -117,11 +192,15 @@ const MODE_LABELS: Record<string, string> = {
   play: 'Play it',
 };
 
+type Refs = {
+  bugDialog: InstanceType<typeof BugReportDialog>;
+};
+
 export default defineComponent({
   name: 'MobileSettings',
-  emits: ['close'],
+  emits: ['changed'],
   components: {
-    PreferencesDialog,
+    BugReportDialog,
   },
   data(): {prefs: Preferences} {
     return {
@@ -129,8 +208,11 @@ export default defineComponent({
     };
   },
   computed: {
-    preferencesManager(): PreferencesManager {
-      return PreferencesManager.INSTANCE;
+    typedRefs(): Refs {
+      return this.$refs as unknown as Refs;
+    },
+    switchGroups(): ReadonlyArray<SwitchGroup> {
+      return SWITCH_GROUPS;
     },
     mobileLayoutModes(): ReadonlyArray<MobileLayoutMode> {
       return MOBILE_LAYOUT_MODES;
@@ -140,6 +222,9 @@ export default defineComponent({
     },
     cardTapModes(): ReadonlyArray<CardTapMode> {
       return CARD_TAP_MODES;
+    },
+    languages(): ReadonlyArray<{id: string, name: string}> {
+      return ALL_LANGUAGES.map((id) => ({id, name: LANGUAGES[id][0]}));
     },
     cardScalePercent(): number {
       return Math.round(this.prefs.card_scale * 100);
@@ -157,23 +242,36 @@ export default defineComponent({
     },
     save(name: Preference): void {
       PreferencesManager.INSTANCE.set(name, this.prefs[name]);
+      this.$emit('changed');
     },
-    setMobileLayout(mode: MobileLayoutMode): void {
-      this.prefs.mobile_layout = mode;
-      this.save('mobile_layout');
+    saveSwitch(name: BooleanPreference): void {
+      this.save(name);
+      // A switch that is only stored changes nothing until the next load: the
+      // stylesheets read these off the page, not off the preference.
+      applyPreferenceClasses(this.prefs);
     },
-    setTagRow(mode: TagRowMode): void {
-      this.prefs.tag_row = mode;
-      this.save('tag_row');
-    },
-    setCardTap(mode: CardTapMode): void {
-      this.prefs.card_tap = mode;
-      this.save('card_tap');
+    setMode(name: 'mobile_layout' | 'tag_row' | 'card_tap', mode: string): void {
+      if (name === 'mobile_layout') {
+        this.prefs.mobile_layout = mode as MobileLayoutMode;
+      } else if (name === 'tag_row') {
+        this.prefs.tag_row = mode as TagRowMode;
+      } else {
+        this.prefs.card_tap = mode as CardTapMode;
+      }
+      this.save(name);
     },
     setCardScale(event: Event): void {
       const percent = Number((event.target as HTMLInputElement).value);
       this.prefs.card_scale = percent / 100;
       this.save('card_scale');
+    },
+    setLanguage(id: string): void {
+      this.prefs.lang = id;
+      this.save('lang');
+      window.location.reload();
+    },
+    showBugDialog(): void {
+      this.typedRefs.bugDialog.show();
     },
   },
 });

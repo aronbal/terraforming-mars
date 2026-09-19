@@ -99,6 +99,29 @@ export function isBooleanPreference(key: Preference): key is BooleanPreference {
   return !NON_BOOLEAN_PREFERENCES.has(key);
 }
 
+/**
+ * Mirrors the boolean preferences onto the page as `preferences_<name>` classes.
+ *
+ * A dozen stylesheets key off those classes, so a preference that is only written to
+ * storage is a preference that does nothing until the next reload. Whatever changes
+ * one has to call this.
+ */
+export function applyPreferenceClasses(values: Readonly<Preferences> = getPreferences()): void {
+  const target = document.getElementById('ts-preferences-target');
+  if (target === null) {
+    return;
+  }
+  for (const key of Object.keys(values) as Array<Preference>) {
+    if (!isBooleanPreference(key)) {
+      continue;
+    }
+    target.classList.toggle('preferences_' + key, values[key]);
+  }
+  if (!target.classList.contains('language-' + values.lang)) {
+    target.classList.add('language-' + values.lang);
+  }
+}
+
 function asMode<T extends string>(modes: ReadonlyArray<T>, val: string | boolean | number, fallback: T): T {
   const candidate = String(val) as T;
   return modes.includes(candidate) ? candidate : fallback;

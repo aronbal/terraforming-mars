@@ -22,9 +22,9 @@ describe('MobileTabBar', () => {
   });
 
   it('Act lights up for a sheet raised over another pane, which stays lit too', () => {
-    const wrapper = mount({tab: 'log', sheetOpen: true});
+    const wrapper = mount({tab: 'players', sheetOpen: true});
     expect(wrapper.vm.isSelected('actions')).is.true;
-    expect(wrapper.vm.isSelected('log')).is.true;
+    expect(wrapper.vm.isSelected('players')).is.true;
     expect(wrapper.vm.isSelected('board')).is.false;
   });
 
@@ -38,12 +38,12 @@ describe('MobileTabBar', () => {
     const wrapper = mount({cardsInHandCount: 8, actionWaiting: true});
     expect(wrapper.vm.badge('cards')).eq('8');
     expect(wrapper.vm.badge('actions')).eq('!');
-    expect(wrapper.vm.badge('log')).eq('');
+    expect(wrapper.vm.badge('more')).eq('');
   });
 
   it('reports the tab the player picked', async () => {
     const wrapper = mount();
-    await wrapper.find('[data-test="tab-log"]').trigger('click');
-    expect(wrapper.emitted('select')?.[0]).deep.eq(['log']);
+    await wrapper.find('[data-test="tab-more"]').trigger('click');
+    expect(wrapper.emitted('select')?.[0]).deep.eq(['more']);
   });
 });

@@ -5,7 +5,6 @@
       :player="thisPlayer"
       :showTagRow="tagRowVisible"
       :tagRowOpen="tagRowOpen"
-      @openSettings="settingsOpen = true"
       @toggleTagRow="toggleTagRow()"/>
 
     <main class="mobile-stage">
@@ -76,11 +75,14 @@
       </section>
 
       <section
-        v-show="tab === 'log'"
-        class="mobile-pane mobile-pane--log"
+        v-show="tab === 'more'"
+        class="mobile-pane mobile-pane--more"
         role="tabpanel"
-        :aria-label="$t('Game log')">
-        <LogPanel :viewModel="playerView" :color="thisPlayer.color" :step="game.step" @spaceClicked="onSpaceClicked"/>
+        :aria-label="$t('More')">
+        <MobileMore
+          :playerView="playerView"
+          @settingsChanged="refreshPreferences()"
+          @spaceClicked="onSpaceClicked"/>
       </section>
 
       <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
@@ -103,7 +105,6 @@
       :actionWaiting="actionWaiting"
       @select="selectTab($event)"/>
 
-    <MobileSettings v-if="settingsOpen" @close="closeSettings()"/>
   </div>
 </template>
 
@@ -113,14 +114,13 @@ import {defineComponent, PropType} from 'vue';
 import Awards from '@/client/components/Awards.vue';
 import Colony from '@/client/components/colonies/Colony.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
-import LogPanel from '@/client/components/logpanel/LogPanel.vue';
 import Milestones from '@/client/components/Milestones.vue';
 import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
-import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
+import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
@@ -143,7 +143,6 @@ import {selectingSpace} from '@/client/utils/spaceSelection';
 type DataModel = {
   tab: MobileTab;
   snap: SheetSnap;
-  settingsOpen: boolean;
   belowOpen: boolean;
   /** Set when the player opens or closes the tag row by hand, until the next tab change. */
   tagRowOverride: boolean | undefined;
@@ -163,14 +162,13 @@ export default defineComponent({
     Awards,
     Colony,
     DynamicTitle,
-    LogPanel,
     Milestones,
     MobileActionPanel,
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
     MobileHeader,
-    MobileSettings,
+    MobileMore,
     MobileTabBar,
     MoonBoard,
     PlanetaryTracks,
@@ -181,7 +179,6 @@ export default defineComponent({
     return {
       tab: 'board',
       snap: getPreferences().action_sheet_peek ? 'peek' : 'closed',
-      settingsOpen: false,
       belowOpen: false,
       tagRowOverride: undefined,
       preferences: {...getPreferences()},
@@ -342,8 +339,7 @@ export default defineComponent({
       }
       this.scrollBoardPaneTo(pane.scrollTop > 8 ? 0 : below.offsetTop);
     },
-    closeSettings(): void {
-      this.settingsOpen = false;
+    refreshPreferences(): void {
       this.preferences = {...getPreferences()};
       refreshMobileLayoutPreference();
     },

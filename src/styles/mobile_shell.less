@@ -65,8 +65,8 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   /* `minmax(0, 1fr)`, not the implicit `auto`: an auto column grows to the widest row
      it holds, and the header's resource strip alone is wider than a phone. That made
-     the whole shell 22px too wide, and clipped the gear, the last tab and the right
-     edge of every pane. */
+     the whole shell 22px too wide, and clipped the last tab and the right edge of
+     every pane. */
   grid-template-columns: minmax(0, 1fr);
   background: @mobile-ground;
   color: @mobile-text;
@@ -245,20 +245,6 @@
 .mobile-resource-production {
   font-size: 11px;
   color: @mobile-marker-ring;
-}
-
-.mobile-gear {
-  margin-left: auto;
-  width: @mobile-tap;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  border: 1px solid @mobile-line;
-  background: @mobile-raised;
-  color: @mobile-muted;
-  flex: none;
 }
 
 //
@@ -1030,31 +1016,130 @@
 }
 
 //
-// Settings sheet
+// More: the log, the settings, and the way to another game
 //
 
-.mobile-settings {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: @mobile-ground;
-  overflow-y: auto;
-  padding: calc(10px + env(safe-area-inset-top)) 10px calc(20px + env(safe-area-inset-bottom));
+.mobile-more {
+  padding: 10px 12px 20px;
 }
 
-.mobile-settings-head {
+.mobile-more-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 12px;
+}
+
+.mobile-more-group {
+  margin-bottom: 16px;
+  border: 1px solid @mobile-line-soft;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mobile-more-group-title {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 0 0 7px;
+}
+
+.mobile-more-row {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: @mobile-sunk;
+  color: @mobile-text;
+  // A button centres its text and an anchor does not; these rows are the same row.
+  text-align: left;
+  text-decoration: none;
+
+  & + & {
+    border-top: 1px solid @mobile-line-soft;
+  }
 }
 
-.mobile-settings-title {
+.mobile-more-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-more-chevron {
+  flex: none;
+  color: @mobile-dim;
+  font-size: 18px;
+}
+
+.mobile-more-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: @mobile-dim;
+  margin: 0 2px;
+}
+
+// The way back from a screen More opened, where a phone expects it.
+.mobile-more-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* The log draws its own heading and generation picker, which is one heading too many
+   under the one More already put there, and its panel is sized for a desktop column. */
+.mobile-more .log-container > :first-child h2 {
+  display: none;
+}
+
+.mobile-more .log-panel .panel-body {
+  max-height: 70dvh;
+}
+
+.mobile-more-head-title {
   font-family: Prototype, sans-serif;
   font-size: 14px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: @mobile-muted;
+}
+
+//
+// Settings
+//
+
+.mobile-settings-group {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 18px 0 2px;
+}
+
+.mobile-language-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-language {
+  padding: 6px 10px;
+  min-height: 36px;
+  border-radius: 7px;
+  border: 1px solid @mobile-line-soft;
+  background: @mobile-sunk;
+  color: @mobile-muted;
+  font-size: 13px;
+
+  &[aria-selected="true"] {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+    color: @mobile-text;
+  }
 }
 
 .mobile-setting {

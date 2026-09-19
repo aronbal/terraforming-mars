@@ -77,7 +77,7 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.tagRowOpen).is.false;
 
     // The manual override lasts only until the next tab change.
-    wrapper.vm.selectTab('log');
+    wrapper.vm.selectTab('more');
     wrapper.vm.selectTab('cards');
     expect(wrapper.vm.tagRowOpen).is.true;
   });

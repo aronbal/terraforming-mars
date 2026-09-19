@@ -50,9 +50,9 @@ const TABS: ReadonlyArray<TabSpec> = [
     paths: ['M9 5.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Z', 'M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5', 'M17 5.1a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z', 'M15 13.6c2.6-.6 5.5 1 5.5 4.4'],
   },
   {
-    name: 'log',
-    label: 'Log',
-    paths: ['M5 4h14v16H5Z', 'M8.5 9h7M8.5 12.5h7M8.5 16h4'],
+    name: 'more',
+    label: 'More',
+    paths: ['M4 7h16M4 12h16M4 17h16'],
   },
 ] as const;
 

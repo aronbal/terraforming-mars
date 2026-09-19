@@ -28,7 +28,7 @@ describe('MobileSettings', () => {
   });
 
   it('stores the mobile layout choice', () => {
-    mount().vm.setMobileLayout('off');
+    mount().vm.setMode('mobile_layout', 'off');
     expect(getPreferences().mobile_layout).eq('off');
     expect(localStorage.getItem('mobile_layout')).eq('off');
   });

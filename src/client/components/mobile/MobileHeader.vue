@@ -32,7 +32,6 @@
           <span class="mobile-resource-production mobile-num">{{ productionLabel(resource.production) }}</span>
         </div>
       </div>
-      <button class="mobile-gear" :aria-label="$t('Settings')" @click="$emit('openSettings')">&#9881;</button>
     </div>
 
     <MobileTagRow v-if="showTagRow" :player="player" :open="tagRowOpen" @toggle="$emit('toggleTagRow')"/>
@@ -81,7 +80,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['openSettings', 'toggleTagRow'],
+  emits: ['toggleTagRow'],
   components: {
     MobileTagRow,
   },

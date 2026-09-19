@@ -1,5 +1,12 @@
-/** The panes the mobile shell can show. `actions` raises the sheet instead of switching pane. */
-export const MOBILE_TABS = ['board', 'cards', 'actions', 'players', 'log'] as const;
+/**
+ * The panes the mobile shell can show.
+ *
+ * `actions` holds the turn's own menu; it is also where a question the server asks
+ * mid-action arrives, and there it is a sheet over another pane rather than a place
+ * to navigate to. `more` is everything that is not the game in front of you: the log,
+ * the settings, and the way to another game.
+ */
+export const MOBILE_TABS = ['board', 'cards', 'actions', 'players', 'more'] as const;
 
 export type MobileTab = typeof MOBILE_TABS[number];
 
