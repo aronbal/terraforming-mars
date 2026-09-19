@@ -6,6 +6,14 @@ cards, or the desktop client.
 Status: **planned, not implemented.** This document is the handoff. Nothing in
 `src/` has changed yet.
 
+A working reference for the target design lives at
+[`prototypes/mobile-shell-prototype.html`](prototypes/mobile-shell-prototype.html).
+It is a static page, outside the build — open it in a browser at phone width.
+The players and the log are mocked; the board geometry, the track coordinates,
+the Tharsis space kinds, the milestone thresholds and the card data are taken
+from this repository. Turn on "Design notes" in its Settings panel for the
+reasoning behind each decision.
+
 ## Goal and constraints
 
 One hard constraint from the outset: **the board and the game world do not

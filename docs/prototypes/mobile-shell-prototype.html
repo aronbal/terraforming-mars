@@ -1,0 +1,2300 @@
+<!--
+  Mobile shell prototype — a static, self-contained reference for docs/mobile-shell.md.
+
+  NOT part of the build. Nothing imports it and webpack never sees it. Open it
+  directly in a browser (file:// works) and view it at phone width.
+
+  It is a mock: players, log entries and game state are invented. The geometry
+  and the card data are not — hex coordinates, the 46x51 hex box, the (93, 85)
+  field offset, the temperature and oxygen marker positions, the Tharsis space
+  kinds, the milestone thresholds and the card costs and tags are all taken
+  from this repository. See the geometry table in docs/mobile-shell.md.
+
+  What it demonstrates:
+    - the full 620x600 board artwork as one scalable unit, with the printed
+      oxygen and temperature tracks intact
+    - pinch-zoom, pan, double-tap, and a 44px tap-target overlay (Settings)
+    - an action sheet that floats over the board, with snap stops in pixels
+    - tile placement: legal-space highlighting, sheet dismissal, confirm bar
+    - the Cards tab: hand and tableau, tap-to-magnify, the collapsible tag row
+    - milestones and awards below the board
+
+  Turn on "Design notes" in Settings for the reasoning behind each decision.
+-->
+
+<title>Mars Pocket Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Single-theme by intent: this is a game console, and the real client runs on a
+   dark starfield. Every colour is painted explicitly so the page never borrows
+   the host ground. */
+:root {
+  --ground: #15100e;
+  --surface: #211a17;
+  --raised: #2d2320;
+  --sunk: #100c0b;
+  --line: #453833;
+  --line-soft: #362b27;
+  --text: #f2e9e2;
+  --muted: #a39089;
+  --dim: #7a6a64;
+
+  --rust: #cb5b2e;
+  --ochre: #e5a93a;
+  --ice: #4fb3c4;
+  --moss: #74ad57;
+  --steel-c: #b0895e;
+  --ti-c: #9aa3ad;
+  --heat-c: #e0663a;
+  --power-c: #9b6fc4;
+
+  /* The tan ring the desktop client draws around the active track value. */
+  --marker-ring: #bb8760;
+  --ocean-blue: #3682b4;
+
+  --p-blue: #4a7fd4;
+  --p-red: #cf4444;
+  --p-yellow: #d9b23c;
+  --p-green: #5aa84f;
+
+  --display: 'Saira Condensed', 'Arial Narrow', sans-serif;
+  --body: 'IBM Plex Sans', system-ui, sans-serif;
+
+  --tap: 44px;
+  --card-scale: 0.62;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
+
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; }
+
+/* ---------- App shell ---------- */
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--ground);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------- Telemetry header ---------- */
+
+.telemetry {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px 7px;
+  display: grid;
+  gap: 6px;
+}
+
+.tele-row { display: flex; align-items: center; gap: 6px; }
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding-right: 7px;
+  border-right: 1px solid var(--line-soft);
+  flex: none;
+}
+.stat-label {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.stat-val { font-size: 20px; font-weight: 700; line-height: 1; }
+.stat--tr .stat-val { color: var(--rust); }
+
+.globals { display: flex; gap: 7px; margin-left: auto; align-items: center; }
+.glob { display: flex; flex-direction: column; align-items: center; line-height: 1; min-width: 52px; }
+/* current / max, so you can always see how close a parameter is to maxing out */
+.glob-val { font-size: 15px; font-weight: 600; }
+.glob-max { font-size: 12px; font-weight: 500; color: var(--dim); }
+.glob-key {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 2px;
+}
+.glob--temp .glob-val { color: var(--heat-c); }
+.glob--oxy .glob-val { color: var(--moss); }
+.glob--ocean .glob-val { color: var(--ice); }
+
+.gear {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.gear svg { width: 18px; height: 18px; }
+.gear svg path, .gear svg circle { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+
+/* resource strip */
+.resources { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.res {
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 3px 2px 2px;
+  text-align: center;
+  position: relative;
+  border-top-width: 2px;
+}
+.res--mc { border-top-color: var(--ochre); }
+.res--steel { border-top-color: var(--steel-c); }
+.res--ti { border-top-color: var(--ti-c); }
+.res--plant { border-top-color: var(--moss); }
+.res--energy { border-top-color: var(--power-c); }
+.res--heat { border-top-color: var(--heat-c); }
+
+.res-amt { font-size: 16px; font-weight: 700; line-height: 1.05; }
+.res-key {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  line-height: 1.2;
+}
+.res-prod {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  background: var(--rust);
+  color: #fff;
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 0 3px 0 4px;
+}
+
+/* ---------- Tag bar ---------- */
+
+/* Collapsed it is one thin strip; expanded it lists every tag you hold. It
+   opens itself on the Cards tab, where you judge requirements, and folds away
+   again everywhere else. */
+.tagbar { display: grid; gap: 5px; }
+
+.tagbar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+}
+.tagbar-key {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.tagbar-peek {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tagbar-chev { color: var(--dim); font-size: 11px; transition: transform 0.16s ease; flex: none; }
+.tagbar[data-open="1"] .tagbar-chev { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .tagbar-chev { transition: none; } }
+
+.tagbar[data-open="1"] .tagbar-peek { display: none; }
+.tagbar[data-open="0"] .tag-list { display: none; }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 1px 1px; }
+.tag-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 3px;
+  border-radius: 12px;
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- Panes ---------- */
+
+.stage { position: relative; min-height: 0; overflow: hidden; }
+
+.pane { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.pane[hidden] { display: none !important; }
+.pane-pad { padding: 10px 12px 16px; }
+
+.pane-title {
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 0 0 8px;
+}
+
+/* ---------- Board pane ---------- */
+
+/* The pane itself does not scroll; the inner column does, so the confirm bar
+   can stay pinned to the bottom of the screen while you scroll the board away. */
+#pane-board { overflow: hidden; background: var(--sunk); }
+
+.board-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) { .board-scroll { scroll-behavior: auto; } }
+
+/* Leaves a strip of the milestones header showing, so there is a visible
+   handle for the content below the board. */
+.board-section { position: relative; height: calc(100% - 52px); min-height: 260px; }
+
+.board-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  background: radial-gradient(120% 90% at 50% 0%, #241a16 0%, #100c0b 70%);
+}
+
+/* The stage is the FULL 620x600 board artwork, not just the hex field, so the
+   printed oxygen and temperature tracks stay on the board exactly as they are
+   on the physical game. */
+.board-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 620px;
+  height: 600px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.board-art {
+  position: absolute;
+  inset: 0;
+  background-image: url("../../assets/board/mars.png");
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 620px 600px;
+}
+
+/* Hex hit areas: 46x51 boxes from board.less, at the coordinates in
+   board_items_positions.less, offset by the hex field's own (93, 85). */
+.hex {
+  position: absolute;
+  width: 46px;
+  height: 51px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.board-stage[data-placing="1"] .hex--legal {
+  background: rgba(111, 190, 120, 0.42);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { background: rgba(111, 190, 120, 0.28); }
+  50% { background: rgba(111, 190, 120, 0.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-stage[data-placing="1"] .hex--legal { animation: none; }
+}
+.hex--selected { background: rgba(233, 176, 58, 0.72) !important; animation: none !important; }
+
+.hex-tile {
+  width: 40px;
+  height: 45px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 9px;
+  font-weight: 700;
+  color: #10100e;
+}
+.hex-tile--city { background: linear-gradient(160deg, #d8d2cb, #9d968f); }
+.hex-tile--greenery { background: linear-gradient(160deg, #86c163, #4c8236); }
+.hex-tile--ocean { background: linear-gradient(160deg, #6fc6d8, #2b7c93); }
+.hex-tile--special { background: linear-gradient(160deg, #e0a538, #a06b15); }
+
+.hex-owner {
+  position: absolute;
+  bottom: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.5);
+}
+
+/* ---------- Global parameter tracks, printed on the board ---------- */
+
+/* One 26x26 box per reachable value, rotated to follow the printed curve —
+   same geometry the desktop client uses in globs.less. */
+.track-val {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+  text-align: center;
+  border-radius: 5px;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  pointer-events: none;
+}
+/* The step that pays out a bonus when you cross it. */
+.track-val--bonus { color: #ffd98a; box-shadow: inset 0 0 0 1px rgba(229, 169, 58, 0.75); }
+/* The current value, ringed the way the desktop client rings it. */
+.track-val--active {
+  color: #fff;
+  font-weight: 700;
+  background: #222;
+  box-shadow: 0 0 0 2px #222, 0 0 0 6px var(--marker-ring), 0 0 2px 8px #000;
+  z-index: 2;
+}
+
+.track-oceans {
+  position: absolute;
+  top: 524px;
+  left: 286px;
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--ocean-blue);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  pointer-events: none;
+}
+
+.tap-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border: 1px dashed rgba(203, 91, 46, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  display: none;
+}
+.board-stage[data-rings="1"] .tap-ring { display: block; }
+
+/* board overlay controls */
+.board-hud { position: absolute; top: 8px; right: 8px; display: grid; gap: 6px; z-index: 4; }
+.hud-btn {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 10px;
+  background: rgba(33, 26, 23, 0.9);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  backdrop-filter: blur(6px);
+}
+.hud-btn small { font-size: 10px; letter-spacing: 0.06em; }
+
+.zoom-readout {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  background: rgba(33, 26, 23, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  backdrop-filter: blur(6px);
+}
+.zoom-readout b { color: var(--text); font-weight: 600; }
+
+/* Below the board: milestones, awards — printed on the board in the real game. */
+.below-board { padding: 0 12px 20px; }
+
+.below-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 2px;
+  background: linear-gradient(to bottom, var(--sunk) 70%, rgba(16,12,11,0));
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.below-header .tagbar-chev { margin-left: auto; font-size: 13px; }
+
+.claimable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  margin-bottom: 7px;
+}
+.claimable--close { border-left-color: var(--ochre); }
+.claimable--taken { border-left-color: var(--dim); opacity: 0.66; }
+.cl-name { font-family: var(--display); font-size: 16px; font-weight: 600; line-height: 1.1; }
+.cl-desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.cl-right { text-align: right; flex: none; }
+.cl-progress { font-family: var(--display); font-size: 17px; font-weight: 700; line-height: 1; }
+.cl-progress b { color: var(--ochre); }
+.cl-state {
+  font-family: var(--display);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 3px;
+}
+.cl-bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: var(--line-soft); overflow: hidden; }
+.cl-bar span { display: block; height: 100%; background: var(--ochre); }
+
+/* placement confirm bar — outside the scroller, so it stays under your thumb */
+.confirm {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 25;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ochre);
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+}
+.confirm[hidden] { display: none !important; }
+.confirm-text { min-width: 0; flex: 1; }
+.confirm-title { font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1.1; }
+.confirm-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.btn {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 9px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  white-space: nowrap;
+}
+.btn--go { background: var(--rust); border-color: var(--rust); color: #fff; }
+.btn--ghost { color: var(--muted); }
+
+/* ---------- Tab bar ---------- */
+
+.tabs {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  position: relative;
+  z-index: 30;
+}
+.tab {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding: 6px 2px 5px;
+  color: var(--dim);
+  position: relative;
+}
+.tab-ico { width: 21px; height: 21px; display: block; }
+.tab-ico path, .tab-ico circle, .tab-ico rect, .tab-ico polygon {
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.tab-label { font-family: var(--display); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.tab[aria-selected="true"] { color: var(--rust); }
+.tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 18%; right: 18%;
+  height: 2px;
+  background: var(--rust);
+}
+.tab-badge {
+  position: absolute;
+  top: 4px;
+  right: 50%;
+  margin-right: -20px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--rust);
+  color: #fff;
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* ---------- Sheets ---------- */
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 6, 5, 0.55);
+  z-index: 18;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.scrim[hidden] { display: none !important; }
+.scrim[data-on="1"] { opacity: 1; }
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 92%;
+  z-index: 20;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -10px 34px rgba(0,0,0,0.6);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  transform: translateY(100%);
+  transition: transform 0.26s cubic-bezier(0.22, 0.9, 0.3, 1);
+  touch-action: none;
+}
+.sheet[data-drag="1"] { transition: none; }
+@media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+
+.sheet-head { padding: 6px 14px 8px; border-bottom: 1px solid var(--line-soft); }
+.grab { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 6px; }
+.sheet-title-row { display: flex; align-items: center; gap: 8px; }
+.sheet-title { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0; line-height: 1.1; }
+.sheet-hint { font-size: 11px; color: var(--muted); margin-left: auto; }
+.sheet-body { overflow-y: auto; padding: 10px 12px 18px; touch-action: pan-y; }
+
+/* action rows */
+.act {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--sunk);
+  margin-bottom: 7px;
+}
+.act:disabled { opacity: 0.42; }
+.act-cost {
+  min-width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  background: var(--ochre);
+  color: #1a1207;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 700;
+  flex: none;
+}
+.act-cost[data-free="1"] { background: var(--line); color: var(--muted); }
+.act-main { min-width: 0; flex: 1; }
+.act-name { font-weight: 600; font-size: 14px; line-height: 1.2; }
+.act-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.act-chev { color: var(--dim); font-size: 18px; flex: none; }
+
+.act-group {
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 12px 0 7px;
+}
+.act-group:first-child { margin-top: 0; }
+
+/* ---------- Segmented control ---------- */
+
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+}
+.seg button {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.seg button[aria-selected="true"], .seg button[aria-pressed="true"] {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.seg .seg-n { color: var(--dim); font-weight: 500; }
+.seg button[aria-selected="true"] .seg-n { color: var(--rust); }
+
+/* ---------- Settings ---------- */
+
+.settings { position: absolute; inset: 0; z-index: 45; background: var(--ground); overflow-y: auto; }
+.settings[hidden] { display: none !important; }
+.settings-head {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-head h2 { font-family: var(--display); font-size: 19px; font-weight: 600; margin: 0; }
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.set-row--stack { display: block; }
+.set-main { min-width: 0; flex: 1; }
+.set-name { font-size: 14px; font-weight: 500; }
+.set-note { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+
+.toggle {
+  width: 46px;
+  height: 27px;
+  border-radius: 14px;
+  background: var(--line);
+  position: relative;
+  flex: none;
+  transition: background 0.16s ease;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+.toggle[aria-pressed="true"] { background: var(--rust); }
+.toggle[aria-pressed="true"]::after { transform: translateX(19px); background: #fff; }
+@media (prefers-reduced-motion: reduce) { .toggle, .toggle::after { transition: none; } }
+
+input[type="range"] { flex: 1; accent-color: var(--rust); height: var(--tap); min-width: 0; }
+
+/* ---------- Cards ---------- */
+
+.cards-head { display: grid; gap: 9px; margin-bottom: 10px; }
+
+.card-group {
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 14px 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.card-group:first-child { margin-top: 0; }
+.card-group span { color: var(--muted); font-weight: 600; }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(240px * var(--card-scale)), 1fr));
+  gap: 10px;
+  justify-items: center;
+}
+.card-slot {
+  width: calc(240px * var(--card-scale));
+  height: calc(320px * var(--card-scale));
+  position: relative;
+  padding: 0;
+}
+.tm-card {
+  width: 240px;
+  height: 320px;
+  transform: scale(var(--card-scale));
+  transform-origin: 0 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #efe8dd;
+  color: #1c1613;
+  display: grid;
+  grid-template-rows: 44px 32px minmax(0, 1fr);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  text-align: left;
+}
+.tm-card--active { background: #dce9f2; }
+.tm-card--event { background: #f4ded6; }
+.tm-card--automated { background: #e2eedd; }
+.tm-card--corporation { background: #e8e2ea; }
+
+.c-top { display: flex; align-items: center; padding: 6px 8px; gap: 6px; background: rgba(0,0,0,0.06); }
+.c-cost {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f0c245;
+  border: 2px solid #8a6a12;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  flex: none;
+}
+.c-req {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  background: #b9422c;
+  color: #fff;
+  border-radius: 4px;
+  padding: 3px 5px;
+  max-width: 96px;
+}
+.c-req--max { background: #d6893a; }
+.c-tags { margin-left: auto; display: flex; gap: 3px; }
+.c-tag {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  border: 1px solid rgba(0,0,0,0.25);
+  flex: none;
+}
+.c-tag--space { background: #23252b; }
+.c-tag--jovian { background: #6b4b94; }
+.c-tag--science { background: #d9d3c6; color: #23252b; }
+.c-tag--microbe { background: #4f8f3c; }
+.c-tag--building { background: #8a6a45; }
+.c-tag--power { background: #6f3f8f; }
+.c-tag--city { background: #b8b2a8; color: #23252b; }
+.c-tag--event { background: #b9422c; }
+.c-tag--earth { background: #2f6f3f; }
+.c-tag--plant { background: #5aa03c; }
+.c-tag--animal { background: #7b5c2e; }
+
+.c-title {
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0 6px;
+  text-align: center;
+  background: rgba(0,0,0,0.08);
+}
+.tm-card--active .c-title { background: #7fa9c8; color: #0f1b24; }
+.tm-card--event .c-title { background: #d18a72; color: #26100a; }
+.tm-card--automated .c-title { background: #8fbd7e; color: #12200c; }
+.tm-card--corporation .c-title { background: #9a86a8; color: #180f1e; }
+
+.c-body { padding: 8px 9px 10px; font-size: 12px; line-height: 1.35; position: relative; overflow: hidden; }
+.c-effect { font-weight: 600; background: rgba(0,0,0,0.07); border-radius: 5px; padding: 5px 6px; margin-bottom: 6px; }
+.c-vp {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 5px;
+  border-radius: 50%;
+  background: #d4a439;
+  border: 2px solid #7d5b10;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+}
+.c-vp--text { border-radius: 8px; font-size: 10px; line-height: 1.05; text-align: center; padding: 3px 5px; }
+
+.card-slot[data-playable="0"] .tm-card { filter: grayscale(0.55) brightness(0.72); }
+.card-slot[data-playable="0"]::after {
+  content: "Can't afford";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 3px;
+  background: rgba(21,16,14,0.92);
+  color: var(--muted);
+  border-radius: 0 0 6px 6px;
+}
+/* A played card with an action you have not used this generation. */
+.card-slot[data-ready="1"]::before {
+  content: "Action ready";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  z-index: 2;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 2px;
+  background: var(--rust);
+  color: #fff;
+  border-radius: 6px 6px 0 0;
+}
+
+.magnify {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(10, 7, 6, 0.88);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  gap: 14px;
+  grid-template-rows: minmax(0,1fr) auto;
+}
+.magnify[hidden] { display: none !important; }
+.magnify-holder { width: 240px; height: 320px; position: relative; align-self: center; justify-self: center; }
+.magnify-holder .tm-card { transform: scale(1); box-shadow: 0 14px 40px rgba(0,0,0,0.7); }
+.magnify-actions { display: flex; gap: 8px; }
+
+/* ---------- Players pane ---------- */
+
+.pl {
+  border: 1px solid var(--line-soft);
+  border-left-width: 3px;
+  border-radius: 9px;
+  background: var(--surface);
+  padding: 9px 10px;
+  margin-bottom: 8px;
+}
+.pl--blue { border-left-color: var(--p-blue); }
+.pl--red { border-left-color: var(--p-red); }
+.pl--yellow { border-left-color: var(--p-yellow); }
+.pl--green { border-left-color: var(--p-green); }
+.pl--me { background: var(--raised); }
+
+.pl-head { display: flex; align-items: baseline; gap: 7px; }
+.pl-name { font-family: var(--display); font-size: 16px; font-weight: 600; }
+.pl-you {
+  font-family: var(--display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rust);
+  border: 1px solid var(--rust);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.pl-corp { font-size: 11px; color: var(--muted); margin-left: auto; }
+.pl-tr { font-family: var(--display); font-size: 19px; font-weight: 700; }
+
+.pl-res { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 2px 6px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+.chip i { font-style: normal; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+
+.pl-turn { margin-top: 7px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); flex: none; }
+.dot--wait { background: var(--dim); }
+
+/* ---------- Log pane ---------- */
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.log-gen { font-family: var(--display); font-size: 10px; color: var(--dim); padding-top: 2px; }
+.log-who { font-weight: 600; }
+.log-who--blue { color: var(--p-blue); }
+.log-who--red { color: var(--p-red); }
+.log-who--yellow { color: var(--p-yellow); }
+.log-who--green { color: var(--p-green); }
+.log-thing { color: var(--ochre); }
+
+/* ---------- Design notes (off by default, switched on in Settings) ---------- */
+
+.note {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ice);
+  border-radius: 8px;
+  background: rgba(79, 179, 196, 0.07);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #cfe6ea;
+}
+.note b { color: #e7f6f8; font-weight: 600; }
+.note-k {
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ice);
+  display: block;
+  margin-bottom: 3px;
+}
+.app[data-notes="0"] .note { display: none; }
+
+.note--float {
+  position: absolute;
+  left: 8px;
+  right: 60px;
+  top: 8px;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+  background: rgba(23, 42, 46, 0.92);
+  margin: 0;
+}
+</style>
+
+<div class="app" id="app" data-notes="0">
+
+  <!-- ================= TELEMETRY HEADER ================= -->
+  <header class="telemetry">
+    <div class="tele-row">
+      <div class="stat">
+        <span class="stat-label">Gen</span>
+        <span class="stat-val num">7</span>
+      </div>
+      <div class="stat stat--tr">
+        <span class="stat-label">TR</span>
+        <span class="stat-val num">28</span>
+      </div>
+      <div class="globals">
+        <div class="glob glob--temp">
+          <span><span class="glob-val num">-16°</span><span class="glob-max num">/+8°</span></span>
+          <span class="glob-key">Temp</span>
+        </div>
+        <div class="glob glob--oxy">
+          <span><span class="glob-val num">9%</span><span class="glob-max num">/14%</span></span>
+          <span class="glob-key">Oxygen</span>
+        </div>
+        <div class="glob glob--ocean">
+          <span><span class="glob-val num">5</span><span class="glob-max num">/9</span></span>
+          <span class="glob-key">Oceans</span>
+        </div>
+      </div>
+      <button class="gear" id="btnSettings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V20a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 18.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.54 14a1.7 1.7 0 0 0-1.56-1.03H2.9a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.9 3.6 1.7 1.7 0 0 0 9.94 2.04V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V8a1.7 1.7 0 0 0 1.56 1.03h.1a2 2 0 1 1 0 4h-.1A1.7 1.7 0 0 0 19.4 14z"/></svg>
+      </button>
+    </div>
+
+    <div class="resources">
+      <div class="res res--mc"><div class="res-prod num">+7</div><div class="res-amt num">41</div><div class="res-key">M€</div></div>
+      <div class="res res--steel"><div class="res-prod num">+2</div><div class="res-amt num">6</div><div class="res-key">Steel</div></div>
+      <div class="res res--ti"><div class="res-prod num">+1</div><div class="res-amt num">3</div><div class="res-key">Titan</div></div>
+      <div class="res res--plant"><div class="res-prod num">+3</div><div class="res-amt num">5</div><div class="res-key">Plant</div></div>
+      <div class="res res--energy"><div class="res-prod num">+2</div><div class="res-amt num">2</div><div class="res-key">Power</div></div>
+      <div class="res res--heat"><div class="res-prod num">+4</div><div class="res-amt num">12</div><div class="res-key">Heat</div></div>
+    </div>
+
+    <div class="tagbar" id="tagbar" data-open="0">
+      <button class="tagbar-toggle" id="tagbarToggle" aria-expanded="false" aria-controls="tagList">
+        <span class="tagbar-key">Tags</span>
+        <span class="tagbar-peek num" id="tagPeek"></span>
+        <span class="tagbar-chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="tag-list" id="tagList"></div>
+    </div>
+  </header>
+
+  <!-- ================= PANES ================= -->
+  <main class="stage" id="stage">
+
+    <!-- ---------- BOARD ---------- -->
+    <section class="pane" id="pane-board" role="tabpanel" aria-label="Board">
+      <div class="board-scroll" id="boardScroll">
+        <div class="board-section" id="boardSection">
+          <div class="board-viewport" id="boardViewport">
+            <div class="board-stage" id="boardStage" data-rings="0" data-placing="0">
+              <div class="board-art"></div>
+              <!-- hexes and track values injected here -->
+            </div>
+          </div>
+
+          <div class="zoom-readout" id="zoomReadout">Zoom <b>—</b> · hex <b>—</b></div>
+
+          <div class="board-hud">
+            <button class="hud-btn" id="btnFit" title="Fit board to screen"><small>FIT</small></button>
+            <button class="hud-btn" id="btnIn" title="Zoom in">+</button>
+            <button class="hud-btn" id="btnOut" title="Zoom out">−</button>
+          </div>
+
+          <div class="note note--float">
+            <span class="note-k">Board</span>
+            The full 620×600 board, so the printed <b>oxygen</b> and
+            <b>temperature</b> tracks stay where the physical game puts them.
+            Pinch to zoom, drag to pan, double-tap to zoom in.
+          </div>
+        </div>
+
+        <div class="below-board">
+          <button class="below-header" id="belowHeader">
+            Milestones &amp; Awards
+            <span class="tagbar-chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="note">
+            <span class="note-k">Why here</span>
+            On the physical board these are printed on the map itself, so they
+            live on the Board tab rather than hidden in a menu. Colonies and
+            Turmoil would join them here.
+          </div>
+          <h3 class="pane-title">Milestones · 8 M€ each · 3 of 3 left</h3>
+          <div id="milestoneList"></div>
+          <h3 class="pane-title" style="margin-top:16px">Awards · 8 / 14 / 20 M€ · 2 of 3 left</h3>
+          <div id="awardList"></div>
+        </div>
+      </div>
+
+      <div class="confirm" id="confirmBar" hidden>
+        <div class="confirm-text">
+          <div class="confirm-title" id="confirmTitle">Place city</div>
+          <div class="confirm-sub" id="confirmSub">Tharsis region</div>
+        </div>
+        <button class="btn btn--ghost" id="btnCancel">Cancel</button>
+        <button class="btn btn--go" id="btnPlace">Place</button>
+      </div>
+    </section>
+
+    <!-- ---------- CARDS: hand + tableau ---------- -->
+    <section class="pane" id="pane-hand" role="tabpanel" aria-label="Cards" hidden>
+      <div class="pane-pad">
+        <div class="cards-head">
+          <div class="seg" role="tablist" aria-label="Which cards">
+            <button role="tab" data-view="hand" aria-selected="true">Hand <span class="seg-n num" id="segHandN">8</span></button>
+            <button role="tab" data-view="played" aria-selected="false">Played <span class="seg-n num" id="segPlayedN">9</span></button>
+          </div>
+        </div>
+
+        <div id="viewHand">
+          <div class="note">
+            <span class="note-k">Cards</span>
+            Cards keep their exact 240×320 rendering and are scaled as whole
+            units, so every symbol stays pixel-correct. Card size lives in
+            <b>Settings</b>. Tap a card to magnify — hover-to-magnify does not
+            exist on touch.
+          </div>
+          <div class="card-grid" id="cardGrid"></div>
+        </div>
+
+        <div id="viewPlayed" hidden>
+          <div class="note">
+            <span class="note-k">Tableau</span>
+            Grouped the way the desktop client groups it — corporation, active,
+            automated, events. The tag counts above are computed from exactly
+            these cards.
+          </div>
+          <div id="tableau"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- PLAYERS ---------- -->
+    <section class="pane" id="pane-players" role="tabpanel" aria-label="Players" hidden>
+      <div class="pane-pad">
+        <div class="note">
+          <span class="note-k">Players</span>
+          One row per player, collapsed to what you check mid-turn: TR, stored
+          resources, production and whose turn it is.
+        </div>
+        <div id="playerList"></div>
+      </div>
+    </section>
+
+    <!-- ---------- LOG ---------- -->
+    <section class="pane" id="pane-log" role="tabpanel" aria-label="Game log" hidden>
+      <div class="pane-pad">
+        <h2 class="pane-title">Generation 7</h2>
+        <div id="logList"></div>
+      </div>
+    </section>
+
+    <!-- ---------- ACTION SHEET ---------- -->
+    <div class="scrim" id="scrim" hidden></div>
+    <div class="sheet" id="sheet" role="dialog" aria-label="Your actions">
+      <div class="sheet-head" id="sheetHead">
+        <div class="grab"></div>
+        <div class="sheet-title-row">
+          <h2 class="sheet-title">Your turn</h2>
+          <span class="sheet-hint">Drag to resize</span>
+        </div>
+      </div>
+      <div class="sheet-body" id="sheetBody">
+        <div class="note">
+          <span class="note-k">The key move</span>
+          This sheet <b>floats over the board</b> instead of replacing it. Drag
+          the handle to the middle stop and the map stays readable while you
+          choose. Pick something that needs a tile and the sheet gets fully out
+          of the way.
+        </div>
+
+        <div class="act-group">Standard projects</div>
+        <button class="act" data-place="city" data-label="Place city">
+          <span class="act-cost num">25</span>
+          <span class="act-main">
+            <span class="act-name">City</span>
+            <span class="act-note">Place a city tile · +1 M€ production</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+        <button class="act" data-place="greenery" data-label="Place greenery">
+          <span class="act-cost num">23</span>
+          <span class="act-main">
+            <span class="act-name">Greenery</span>
+            <span class="act-note">Place a greenery · raise oxygen 1 step</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+        <button class="act" data-raise="temp">
+          <span class="act-cost num">14</span>
+          <span class="act-main">
+            <span class="act-name">Asteroid</span>
+            <span class="act-note">Raise temperature 1 step</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+        <button class="act" data-place="ocean" data-label="Place ocean">
+          <span class="act-cost num">18</span>
+          <span class="act-main">
+            <span class="act-name">Aquifer</span>
+            <span class="act-note">Place an ocean tile</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+
+        <div class="act-group">Card actions</div>
+        <button class="act" data-place="ocean" data-label="Place ocean">
+          <span class="act-cost num">8</span>
+          <span class="act-main">
+            <span class="act-name">Aquifer Pumping</span>
+            <span class="act-note">Place an ocean tile · steel may be used</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+        <button class="act">
+          <span class="act-cost num" data-free="1">1 ⛏</span>
+          <span class="act-main">
+            <span class="act-name">Space Elevator</span>
+            <span class="act-note">Spend 1 steel to gain 5 M€</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+
+        <div class="act-group">Conversions</div>
+        <button class="act" disabled>
+          <span class="act-cost num" data-free="1">8 🌿</span>
+          <span class="act-main">
+            <span class="act-name">Plants to greenery</span>
+            <span class="act-note">You have 5 of 8 plants</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+        <button class="act" data-raise="temp">
+          <span class="act-cost num" data-free="1">8 🔥</span>
+          <span class="act-main">
+            <span class="act-name">Heat to temperature</span>
+            <span class="act-note">You have 12 heat</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+
+        <div class="act-group">Claim</div>
+        <button class="act" disabled>
+          <span class="act-cost num">8</span>
+          <span class="act-main">
+            <span class="act-name">Claim Builder milestone</span>
+            <span class="act-note">Already claimed by Mette</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+
+        <div class="act-group">End</div>
+        <button class="act">
+          <span class="act-cost num" data-free="1">—</span>
+          <span class="act-main">
+            <span class="act-name">Pass</span>
+            <span class="act-note">Take no further actions this generation</span>
+          </span>
+          <span class="act-chev">›</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ---------- SETTINGS ---------- -->
+    <section class="settings" id="settings" hidden aria-label="Settings">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="btn btn--ghost" id="btnCloseSettings" style="margin-left:auto">Done</button>
+      </div>
+      <div class="pane-pad">
+        <div class="set-row set-row--stack">
+          <div class="set-main">
+            <div class="set-name">Tag row</div>
+            <div class="set-note">Auto opens the row on the Cards tab, where you judge requirements, and folds it away elsewhere.</div>
+          </div>
+          <div class="seg" id="segTagMode" style="margin-top:8px">
+            <button data-mode="auto" aria-pressed="true">Auto</button>
+            <button data-mode="always" aria-pressed="false">Always</button>
+            <button data-mode="never" aria-pressed="false">Never</button>
+          </div>
+        </div>
+
+        <div class="set-row set-row--stack">
+          <div class="set-main">
+            <div class="set-name">Card size</div>
+            <div class="set-note">Scales cards as whole units, so symbols stay pixel-correct.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="cardScale" min="40" max="100" step="2" value="62" aria-label="Card size">
+            <span class="num" id="cardScaleOut" style="color:var(--muted);min-width:40px;text-align:right">62%</span>
+          </div>
+        </div>
+
+        <div class="set-row">
+          <div class="set-main">
+            <div class="set-name">Show 44 px tap targets</div>
+            <div class="set-note">Overlays Apple's minimum touch size on every hex. At fit-to-screen a hex is about 29 px — this is the diagnostic behind the zoom-and-confirm design.</div>
+          </div>
+          <button class="toggle" id="tglRings" aria-pressed="false" aria-label="Show 44 px tap targets"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-main">
+            <div class="set-name">Confirm before placing a tile</div>
+            <div class="set-note">Off means a single tap places immediately. Keep it on for small hexes.</div>
+          </div>
+          <button class="toggle" id="tglConfirm" aria-pressed="true" aria-label="Confirm before placing a tile"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-main">
+            <div class="set-name">Keep a sliver of the action sheet visible</div>
+            <div class="set-note">A 46 px handle sits above the tab bar as a reminder that it is your turn. Off reclaims that height; the Act tab still opens it.</div>
+          </div>
+          <button class="toggle" id="tglPeek" aria-pressed="true" aria-label="Keep a sliver of the action sheet visible"></button>
+        </div>
+
+        <div class="set-row">
+          <div class="set-main">
+            <div class="set-name">Design notes</div>
+            <div class="set-note">Shows the blue boxes explaining each design decision. Turn off to judge the layout on its own.</div>
+          </div>
+          <button class="toggle" id="tglNotes" aria-pressed="false" aria-label="Design notes"></button>
+        </div>
+
+        <p class="set-note" style="margin-top:14px">
+          In the real client this panel also holds the existing preferences —
+          learner mode, alerts, card filters, language and the rest — which today
+          live in the fixed left sidebar.
+        </p>
+      </div>
+    </section>
+
+    <!-- magnified card overlay -->
+    <div class="magnify" id="magnify" hidden>
+      <div class="magnify-holder" id="magnifyHolder"></div>
+      <div class="magnify-actions">
+        <button class="btn btn--ghost" id="btnCloseMag">Close</button>
+        <button class="btn btn--go" id="btnPlayCard">Play card</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= TAB BAR ================= -->
+  <nav class="tabs" id="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="board" aria-selected="true">
+      <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,3 20,7.5 20,16.5 12,21 4,16.5 4,7.5"/><polygon points="12,8 15.5,10 15.5,14 12,16 8.5,14 8.5,10"/></svg>
+      <span class="tab-label">Board</span>
+    </button>
+    <button class="tab" role="tab" data-tab="hand" aria-selected="false">
+      <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 4h9a2 2 0 0 1 2 2v12"/></svg>
+      <span class="tab-label">Cards</span>
+      <span class="tab-badge num">8</span>
+    </button>
+    <button class="tab" role="tab" data-tab="actions" aria-selected="false">
+      <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M7.5 12h9"/></svg>
+      <span class="tab-label">Act</span>
+      <span class="tab-badge num">!</span>
+    </button>
+    <button class="tab" role="tab" data-tab="players" aria-selected="false">
+      <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="7.5" r="2.4"/><path d="M15 13.6c2.6-.6 5.5 1 5.5 4.4"/></svg>
+      <span class="tab-label">Players</span>
+    </button>
+    <button class="tab" role="tab" data-tab="log" aria-selected="false">
+      <svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg>
+      <span class="tab-label">Log</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================================
+   Board geometry, copied verbatim from the repo so the prototype tests the
+   real thing:
+     - hex coordinates      src/styles/board_items_positions.less
+     - hex size 46x51       src/styles/board.less
+     - hex field offset     .board { margin: 85px 0 0 93px }
+     - track marker coords  src/styles/globs.less
+     - bonus thresholds     src/common/constants.ts
+   ========================================================================= */
+
+const FIELD_X = 93, FIELD_Y = 85;
+const BOARD_W = 620, BOARD_H = 600;
+
+const ROWS = [
+  {y: 34,  xs: [104, 153, 202, 251, 300]},
+  {y: 75,  xs: [80, 129, 178, 227, 276, 325]},
+  {y: 116, xs: [55, 104, 153, 202, 251, 300, 349]},
+  {y: 157, xs: [31, 80, 129, 178, 227, 276, 325, 374]},
+  {y: 198, xs: [6, 55, 104, 153, 202, 251, 300, 349, 398]},
+  {y: 239, xs: [31, 80, 129, 178, 227, 276, 325, 374]},
+  {y: 280, xs: [55, 104, 153, 202, 251, 300, 349]},
+  {y: 321, xs: [80, 129, 178, 227, 276, 325]},
+  {y: 362, xs: [104, 153, 202, 251, 300]},
+];
+
+/* Space kinds from TharsisBoard.ts: l = land, o = ocean-reserved, v = volcanic. */
+const KINDS = ['loloo', 'lvllo', 'vllllll', 'vlllllllo', 'vllooollll', 'lllllooo', 'lllllll', 'llllll', 'llllo'];
+
+const NAMED = {'1,1': 'Tharsis Tholus', '2,0': 'Ascraeus Mons', '3,0': 'Pavonis Mons', '4,0': 'Arsia Mons', '4,2': 'Noctis City'};
+
+const TILES = {
+  '4,2': {t: 'city', o: 'blue', n: 'Noctis'},
+  '0,1': {t: 'ocean'},
+  '2,6': {t: 'city', o: 'red'},
+  '3,7': {t: 'ocean'},
+  '4,4': {t: 'ocean'},
+  '4,5': {t: 'ocean'},
+  '5,6': {t: 'ocean'},
+  '3,3': {t: 'greenery', o: 'blue'},
+  '3,4': {t: 'greenery', o: 'blue'},
+  '4,7': {t: 'greenery', o: 'red'},
+  '5,2': {t: 'city', o: 'yellow'},
+  '5,1': {t: 'greenery', o: 'yellow'},
+  '6,4': {t: 'city', o: 'green'},
+  '7,2': {t: 'greenery', o: 'green'},
+  '2,4': {t: 'special', o: 'blue', n: 'MINE'},
+};
+
+const OWNER_COLORS = {blue: '#4a7fd4', red: '#cf4444', yellow: '#d9b23c', green: '#5aa84f'};
+
+/* Marker placements along the printed curves. [value, top, left, rotation]. */
+const TEMPERATURE_VALS = [
+  [-30, 508, 438, 55], [-28, 493, 458, 52], [-26, 478, 474, 48], [-24, 461, 490, 43],
+  [-22, 443, 504, 36], [-20, 423, 517, 33], [-18, 403, 528, 25], [-16, 381, 537, 22],
+  [-14, 360, 544, 17], [-12, 337, 549, 12], [-10, 314, 553, 8], [-8, 291, 554, 0],
+  [-6, 268, 554, -3], [-4, 244, 551, -11], [-2, 222, 546, -14], [0, 199, 540, -20],
+  [2, 177, 531, -24], [4, 156, 521, -30], [6, 137, 509, -33], [8, 117, 494, -40],
+];
+
+const OXYGEN_VALS = [
+  [0, 500, 125, -54], [1, 482, 104, -48], [2, 460, 82, -43], [3, 435, 64, -37],
+  [4, 411, 49, -30], [5, 383, 37, -22], [6, 355, 28, -15], [7, 325, 23, -10],
+  [8, 295, 20, -2], [9, 265, 21, 6], [10, 236, 25, 12], [11, 207, 32, 19],
+  [12, 179, 43, 25], [13, 153, 56, 31], [14, 128, 72, 37],
+];
+
+const TEMPERATURE_BONUSES = [-24, -20, 0];
+const OXYGEN_BONUSES = [8];
+
+const state = {temperature: -16, oxygen: 9, oceans: 5, tr: 28};
+
+const stage = document.getElementById('boardStage');
+const viewport = document.getElementById('boardViewport');
+
+/* ---------- board build ---------- */
+
+function buildTrack(vals, current, bonuses) {
+  const frag = document.createDocumentFragment();
+  for (const [val, top, left, rot] of vals) {
+    const el = document.createElement('div');
+    el.className = 'track-val';
+    if (bonuses.includes(val)) el.classList.add('track-val--bonus');
+    if (val === current) el.classList.add('track-val--active');
+    el.style.top = top + 'px';
+    el.style.left = left + 'px';
+    el.style.transform = 'rotate(' + rot + 'deg)';
+    el.textContent = String(val);
+    el.dataset.val = String(val);
+    frag.appendChild(el);
+  }
+  return frag;
+}
+
+function buildBoard() {
+  const frag = document.createDocumentFragment();
+
+  ROWS.forEach((row, r) => {
+    row.xs.forEach((x, c) => {
+      const key = r + ',' + c;
+      const left = x + FIELD_X, top = row.y + FIELD_Y;
+
+      const hex = document.createElement('button');
+      hex.className = 'hex';
+      hex.style.left = left + 'px';
+      hex.style.top = top + 'px';
+      hex.dataset.key = key;
+      hex.dataset.kind = KINDS[r][c];
+      hex.setAttribute('aria-label', NAMED[key] || ('Space ' + (r + 1) + '-' + (c + 1)));
+
+      const tile = TILES[key];
+      if (tile) {
+        const t = document.createElement('span');
+        t.className = 'hex-tile hex-tile--' + tile.t;
+        t.textContent = tile.n || '';
+        hex.appendChild(t);
+        if (tile.o) {
+          const dot = document.createElement('span');
+          dot.className = 'hex-owner';
+          dot.style.background = OWNER_COLORS[tile.o];
+          hex.appendChild(dot);
+        }
+      }
+
+      const ring = document.createElement('span');
+      ring.className = 'tap-ring';
+      ring.style.left = (left + 1) + 'px';
+      ring.style.top = (top + 3.5) + 'px';
+      frag.appendChild(ring);
+
+      frag.appendChild(hex);
+    });
+  });
+
+  const temp = document.createElement('div');
+  temp.id = 'trackTemperature';
+  temp.appendChild(buildTrack(TEMPERATURE_VALS, state.temperature, TEMPERATURE_BONUSES));
+  frag.appendChild(temp);
+
+  const oxy = document.createElement('div');
+  oxy.id = 'trackOxygen';
+  oxy.appendChild(buildTrack(OXYGEN_VALS, state.oxygen, OXYGEN_BONUSES));
+  frag.appendChild(oxy);
+
+  const oceans = document.createElement('div');
+  oceans.className = 'track-oceans num';
+  oceans.id = 'trackOceans';
+  oceans.textContent = state.oceans + '/9';
+  frag.appendChild(oceans);
+
+  stage.appendChild(frag);
+}
+buildBoard();
+
+function setTemperature(value) {
+  state.temperature = Math.min(8, value);
+  document.querySelectorAll('#trackTemperature .track-val').forEach((el) => {
+    el.classList.toggle('track-val--active', Number(el.dataset.val) === state.temperature);
+  });
+  document.querySelector('.glob--temp .glob-val').textContent = state.temperature + '°';
+}
+
+function setOxygen(value) {
+  state.oxygen = Math.min(14, value);
+  document.querySelectorAll('#trackOxygen .track-val').forEach((el) => {
+    el.classList.toggle('track-val--active', Number(el.dataset.val) === state.oxygen);
+  });
+  document.querySelector('.glob--oxy .glob-val').textContent = state.oxygen + '%';
+}
+
+function setOceans(value) {
+  state.oceans = Math.min(9, value);
+  document.getElementById('trackOceans').textContent = state.oceans + '/9';
+  document.querySelector('.glob--ocean .glob-val').textContent = String(state.oceans);
+}
+
+/* ---------- pan / pinch / zoom ---------- */
+
+const view = {scale: 1, x: 0, y: 0};
+let minScale = 0.4;
+const maxScale = 2.6;
+
+function applyView() {
+  stage.style.transform = 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.scale + ')';
+  document.getElementById('zoomReadout').innerHTML =
+    'Zoom <b>' + Math.round(view.scale * 100) + '%</b> · hex <b>' + Math.round(46 * view.scale) + 'px</b>';
+}
+
+function clampView() {
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  const w = BOARD_W * view.scale, h = BOARD_H * view.scale;
+  view.x = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, view.x));
+  view.y = h <= vh ? (vh - h) / 2 : Math.min(0, Math.max(vh - h, view.y));
+}
+
+function fit() {
+  const vw = viewport.clientWidth, vh = viewport.clientHeight;
+  if (!vw || !vh) return;
+  minScale = Math.min(vw / BOARD_W, vh / BOARD_H);
+  view.scale = minScale;
+  clampView();
+  applyView();
+}
+
+function zoomAt(nextScale, cx, cy) {
+  const s = Math.max(minScale, Math.min(maxScale, nextScale));
+  const rect = viewport.getBoundingClientRect();
+  const px = cx - rect.left, py = cy - rect.top;
+  view.x = px - (px - view.x) * (s / view.scale);
+  view.y = py - (py - view.y) * (s / view.scale);
+  view.scale = s;
+  clampView();
+  applyView();
+}
+
+const pointers = new Map();
+let pinchStart = null;
+let panLast = null;
+let gesture = {moved: 0, startedAt: 0, downTarget: null};
+
+viewport.addEventListener('pointerdown', (e) => {
+  viewport.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+  if (pointers.size === 1) {
+    panLast = {x: e.clientX, y: e.clientY};
+    gesture = {moved: 0, startedAt: Date.now(), downTarget: e.target.closest('.hex')};
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinchStart = {
+      dist: Math.hypot(a.x - b.x, a.y - b.y),
+      scale: view.scale,
+      cx: (a.x + b.x) / 2,
+      cy: (a.y + b.y) / 2,
+    };
+    panLast = null;
+  }
+});
+
+viewport.addEventListener('pointermove', (e) => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+
+  if (pointers.size >= 2 && pinchStart) {
+    const [a, b] = [...pointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchStart.dist > 0) zoomAt(pinchStart.scale * (dist / pinchStart.dist), pinchStart.cx, pinchStart.cy);
+    gesture.moved = 999;
+  } else if (panLast) {
+    const dx = e.clientX - panLast.x, dy = e.clientY - panLast.y;
+    gesture.moved += Math.abs(dx) + Math.abs(dy);
+    view.x += dx;
+    view.y += dy;
+    panLast = {x: e.clientX, y: e.clientY};
+    clampView();
+    applyView();
+  }
+});
+
+let lastTapAt = 0;
+
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+
+  if (pointers.size === 0) {
+    if (Date.now() - gesture.startedAt < 400 && gesture.moved < 12) {
+      const now = Date.now();
+      if (now - lastTapAt < 320) {
+        zoomAt(view.scale < 1.1 ? 1.6 : minScale, e.clientX, e.clientY);
+        lastTapAt = 0;
+      } else {
+        lastTapAt = now;
+        if (gesture.downTarget) selectHex(gesture.downTarget);
+      }
+    }
+    pinchStart = null;
+    panLast = null;
+  } else if (pointers.size === 1) {
+    const only = [...pointers.values()][0];
+    panLast = {x: only.x, y: only.y};
+    pinchStart = null;
+  }
+}
+viewport.addEventListener('pointerup', endPointer);
+viewport.addEventListener('pointercancel', endPointer);
+
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoomAt(view.scale * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX, e.clientY);
+}, {passive: false});
+
+document.getElementById('btnFit').addEventListener('click', fit);
+document.getElementById('btnIn').addEventListener('click', () => {
+  const r = viewport.getBoundingClientRect();
+  zoomAt(view.scale * 1.35, r.left + r.width / 2, r.top + r.height / 2);
+});
+document.getElementById('btnOut').addEventListener('click', () => {
+  const r = viewport.getBoundingClientRect();
+  zoomAt(view.scale / 1.35, r.left + r.width / 2, r.top + r.height / 2);
+});
+
+/* Scrolling to the milestones is a tap, not a hunt for the thin strip where
+   the board's own touch handling stops. */
+const boardScroll = document.getElementById('boardScroll');
+document.getElementById('belowHeader').addEventListener('click', () => {
+  const section = document.getElementById('boardSection');
+  boardScroll.scrollTop = boardScroll.scrollTop > 8 ? 0 : section.offsetHeight;
+});
+
+/* ---------- tile placement flow ---------- */
+
+const confirmBar = document.getElementById('confirmBar');
+let placing = null;
+let selected = null;
+let confirmPlacement = true;
+
+const KIND_TEXT = {l: 'Land', o: 'Ocean-reserved', v: 'Volcanic'};
+
+function commitPlacement() {
+  if (!placing || !selected) return;
+  const t = document.createElement('span');
+  t.className = 'hex-tile hex-tile--' + placing.kind;
+  selected.appendChild(t);
+  const dot = document.createElement('span');
+  dot.className = 'hex-owner';
+  dot.style.background = OWNER_COLORS.blue;
+  selected.appendChild(dot);
+  TILES[selected.dataset.key] = {t: placing.kind, o: 'blue'};
+
+  // Placing moves the printed tracks, which is the whole reason they are on screen.
+  if (placing.kind === 'greenery') setOxygen(state.oxygen + 1);
+  if (placing.kind === 'ocean') setOceans(state.oceans + 1);
+  endPlacement('peek');
+  renderClaimables();
+}
+
+function selectHex(hex) {
+  if (!placing) {
+    document.getElementById('confirmTitle').textContent = hex.getAttribute('aria-label');
+    document.getElementById('confirmSub').textContent = KIND_TEXT[hex.dataset.kind] || 'Land';
+    document.getElementById('btnPlace').textContent = 'Close';
+    confirmBar.hidden = false;
+    highlight(hex);
+    return;
+  }
+  if (!hex.classList.contains('hex--legal')) return;
+  highlight(hex);
+  if (!confirmPlacement) {
+    commitPlacement();
+    return;
+  }
+  document.getElementById('confirmTitle').textContent = placing.label + ' here?';
+  document.getElementById('confirmSub').textContent =
+    hex.getAttribute('aria-label') + ' · ' + (KIND_TEXT[hex.dataset.kind] || 'Land');
+  document.getElementById('btnPlace').textContent = 'Place';
+  confirmBar.hidden = false;
+}
+
+function highlight(hex) {
+  if (selected) selected.classList.remove('hex--selected');
+  selected = hex;
+  hex.classList.add('hex--selected');
+}
+
+function beginPlacement(kind, label) {
+  placing = {kind, label};
+  stage.dataset.placing = '1';
+  stage.querySelectorAll('.hex').forEach((h) => {
+    const free = !TILES[h.dataset.key];
+    const oceanOk = kind === 'ocean' ? h.dataset.kind === 'o' : h.dataset.kind !== 'o';
+    h.classList.toggle('hex--legal', free && oceanOk);
+  });
+  showTab('board');
+  boardScroll.scrollTop = 0;
+  // Fully out of the way: at the peek stop the sheet covered the confirm bar.
+  setSheet('closed');
+}
+
+function endPlacement(nextSnap) {
+  placing = null;
+  stage.dataset.placing = '0';
+  stage.querySelectorAll('.hex--legal').forEach((h) => h.classList.remove('hex--legal'));
+  if (selected) selected.classList.remove('hex--selected');
+  selected = null;
+  confirmBar.hidden = true;
+  if (nextSnap) setSheet(nextSnap);
+}
+
+document.getElementById('btnCancel').addEventListener('click', () => endPlacement('half'));
+document.getElementById('btnPlace').addEventListener('click', () => {
+  if (placing && selected) commitPlacement();
+  else endPlacement();
+});
+
+/* ---------- action sheet ---------- */
+
+/* Snap stops are computed in pixels, so "peek" is a fixed 46 px handle rather
+   than a percentage that changes with the sheet's height. */
+const sheet = document.getElementById('sheet');
+const scrim = document.getElementById('scrim');
+const sheetHead = document.getElementById('sheetHead');
+
+const PEEK_PX = 46;
+const SNAP_ORDER = ['closed', 'peek', 'half', 'full'];
+let snap = 'closed';
+let peekEnabled = true;
+
+function snapPx(name) {
+  const h = sheet.offsetHeight || 1;
+  switch (name) {
+    case 'closed': return h;
+    case 'peek': return peekEnabled ? h - PEEK_PX : h;
+    case 'half': return Math.round(h * 0.50);
+    default: return Math.round(h * 0.04);
+  }
+}
+
+function setSheet(next) {
+  snap = next;
+  sheet.style.transform = 'translateY(' + snapPx(next) + 'px)';
+  // Only the full stop dims the board; at "half" the map stays fully readable.
+  scrim.hidden = next !== 'full';
+  scrim.dataset.on = next === 'full' ? '1' : '0';
+  document.querySelector('.tab[data-tab="actions"]')
+    .setAttribute('aria-selected', String(next === 'half' || next === 'full'));
+}
+
+let drag = null;
+
+sheetHead.addEventListener('pointerdown', (e) => {
+  sheetHead.setPointerCapture(e.pointerId);
+  drag = {startY: e.clientY, startPx: snapPx(snap), px: snapPx(snap)};
+  sheet.dataset.drag = '1';
+});
+
+sheetHead.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  drag.px = Math.max(snapPx('full'), Math.min(snapPx('closed'), drag.startPx + (e.clientY - drag.startY)));
+  sheet.style.transform = 'translateY(' + drag.px + 'px)';
+});
+
+function endDrag() {
+  if (!drag) return;
+  sheet.dataset.drag = '0';
+  let best = 'half', bestD = Infinity;
+  for (const k of SNAP_ORDER) {
+    const d = Math.abs(snapPx(k) - drag.px);
+    if (d < bestD) { bestD = d; best = k; }
+  }
+  drag = null;
+  setSheet(best);
+}
+sheetHead.addEventListener('pointerup', endDrag);
+sheetHead.addEventListener('pointercancel', endDrag);
+
+scrim.addEventListener('click', () => setSheet('peek'));
+
+document.getElementById('sheetBody').addEventListener('click', (e) => {
+  const act = e.target.closest('.act');
+  if (!act || act.disabled) return;
+  if (act.dataset.place) {
+    beginPlacement(act.dataset.place, act.dataset.label);
+  } else if (act.dataset.raise === 'temp') {
+    setTemperature(state.temperature + 2);
+    showTab('board');
+    setSheet('peek');
+  } else {
+    setSheet('peek');
+  }
+});
+
+/* ---------- tabs ---------- */
+
+const PANES = {board: 'pane-board', hand: 'pane-hand', players: 'pane-players', log: 'pane-log'};
+let currentTab = 'board';
+
+function showTab(name) {
+  currentTab = name;
+  for (const [key, id] of Object.entries(PANES)) {
+    document.getElementById(id).hidden = key !== name;
+  }
+  document.querySelectorAll('.tab').forEach((t) => {
+    t.setAttribute('aria-selected', String(t.dataset.tab === name));
+  });
+  tagManualOverride = null;
+  applyTagMode();
+  if (name === 'board') requestAnimationFrame(fit);
+}
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const name = tab.dataset.tab;
+  if (name === 'actions') {
+    // Actions is not a destination — it is a sheet over wherever you already are.
+    setSheet(snap === 'half' || snap === 'full' ? 'peek' : 'half');
+    return;
+  }
+  setSheet(snap === 'full' ? 'peek' : snap);
+  showTab(name);
+});
+
+/* ---------- cards ---------- */
+
+const TAGS = {
+  building: ['Building', '▣', '#8a6a45'],
+  space: ['Space', '★', '#23252b'],
+  science: ['Science', '⚛', '#d9d3c6'],
+  power: ['Power', '⚡', '#6f3f8f'],
+  earth: ['Earth', '⊕', '#2f6f3f'],
+  jovian: ['Jovian', '◉', '#6b4b94'],
+  plant: ['Plant', '❦', '#5aa03c'],
+  microbe: ['Microbe', '🦠', '#4f8f3c'],
+  animal: ['Animal', '🐾', '#7b5c2e'],
+  city: ['City', '⌂', '#b8b2a8'],
+  event: ['Event', '⬓', '#b9422c'],
+};
+
+/* Real cards: costs, tags, types and VP taken from src/server/cards. */
+const HAND = [
+  {name: 'Asteroid Mining', cost: 30, type: 'automated', tags: ['jovian', 'space'], vp: '2',
+    body: 'Increase your titanium production 2 steps.', playable: true},
+  {name: 'Tardigrades', cost: 4, type: 'active', tags: ['microbe'], vp: '1/4',
+    effect: 'Action: Add 1 microbe to this card.',
+    body: '1 VP per 4 microbes on this card.', playable: true},
+  {name: 'Search For Life', cost: 3, type: 'active', tags: ['science'], vp: '★',
+    req: 'max 6% O₂', reqMax: true,
+    effect: 'Action: Spend 1 M€ to reveal the top card. If it has a microbe tag, put it here.',
+    body: '3 VP if you have at least 1 science resource here.', playable: true},
+  {name: 'Water Import From Europa', cost: 25, type: 'active', tags: ['jovian', 'space'], vp: '1/◉',
+    effect: 'Action: Spend 12 M€ to place an ocean tile.',
+    body: '1 VP per jovian tag you have.', playable: true},
+  {name: 'Big Asteroid', cost: 27, type: 'event', tags: ['space'],
+    body: 'Raise temperature 2 steps and gain 4 titanium. Remove up to 4 plants from any player.', playable: true},
+  {name: 'Deimos Down', cost: 31, type: 'event', tags: ['space'],
+    body: 'Raise temperature 3 steps and gain 4 steel. Remove up to 8 plants from any player.', playable: false},
+  {name: 'Colonizer Training Camp', cost: 8, type: 'automated', tags: ['jovian', 'building'], vp: '2',
+    req: 'max 5% O₂', reqMax: true,
+    body: 'Oxygen must be 5% or less.', playable: true},
+  {name: 'Power Plant', cost: 4, type: 'automated', tags: ['power', 'building'],
+    body: 'Increase your energy production 1 step.', playable: true},
+];
+
+/* The tableau. Events carry an implicit event tag, as they do in the game. */
+const TABLEAU = [
+  {name: 'Helion', cost: 0, type: 'corporation', tags: ['space'],
+    effect: 'Effect: You may use heat as M€.',
+    body: 'You start with 3 heat production and 42 M€.'},
+
+  {name: 'Aquifer Pumping', cost: 18, type: 'active', tags: ['building'], ready: true,
+    effect: 'Action: Spend 8 M€ to place an ocean tile. Steel may be used.',
+    body: ''},
+  {name: 'Space Elevator', cost: 27, type: 'active', tags: ['space', 'building'], vp: '2', ready: true,
+    effect: 'Action: Spend 1 steel to gain 5 M€.',
+    body: ''},
+  {name: 'Research Outpost', cost: 18, type: 'active', tags: ['science', 'city', 'building'],
+    effect: 'Effect: When you play a card, you pay 1 M€ less for it.',
+    body: 'Place a city tile next to no other tile.'},
+
+  {name: 'Great Dam', cost: 12, type: 'automated', tags: ['power', 'building'], vp: '1',
+    body: 'Requires 4 ocean tiles. Increase your energy production 2 steps.'},
+  {name: 'Domed Crater', cost: 24, type: 'automated', tags: ['city', 'building'], vp: '1',
+    body: 'Oxygen must be 7% or less. Gain 3 plants. Increase M€ production 3 steps. Place a city tile.'},
+  {name: 'Natural Preserve', cost: 9, type: 'automated', tags: ['science', 'building'], vp: '1',
+    body: 'Oxygen must be 4% or less. Place this tile next to no other tile. Increase M€ production 1 step.'},
+
+  {name: 'Asteroid', cost: 14, type: 'event', tags: ['space', 'event'],
+    body: 'Raise temperature 1 step and gain 2 titanium. Remove up to 3 plants from any player.'},
+  {name: 'Comet', cost: 21, type: 'event', tags: ['space', 'event'],
+    body: 'Raise temperature 1 step and place an ocean tile. Remove up to 3 plants from any player.'},
+];
+
+function cardMarkup(c) {
+  const tags = c.tags.map((t) =>
+    '<span class="c-tag c-tag--' + t + '" title="' + TAGS[t][0] + '">' + TAGS[t][1] + '</span>').join('');
+  const req = c.req
+    ? '<span class="c-req' + (c.reqMax ? ' c-req--max' : '') + '">' + c.req + '</span>' : '';
+  const vp = c.vp
+    ? '<span class="c-vp' + (c.vp.length > 1 ? ' c-vp--text' : '') + '">' + c.vp + '</span>' : '';
+  const effect = c.effect ? '<div class="c-effect">' + c.effect + '</div>' : '';
+  return '' +
+    '<div class="tm-card tm-card--' + c.type + '">' +
+      '<div class="c-top"><span class="c-cost num">' + c.cost + '</span>' + req +
+        '<span class="c-tags">' + tags + '</span></div>' +
+      '<div class="c-title">' + c.name + '</div>' +
+      '<div class="c-body">' + effect + c.body + vp + '</div>' +
+    '</div>';
+}
+
+function slotMarkup(c, source, i) {
+  return '<button class="card-slot" data-source="' + source + '" data-i="' + i + '"' +
+    ' data-playable="' + (c.playable === false ? 0 : 1) + '"' +
+    ' data-ready="' + (c.ready ? 1 : 0) + '">' + cardMarkup(c) + '</button>';
+}
+
+document.getElementById('cardGrid').innerHTML =
+  HAND.map((c, i) => slotMarkup(c, 'hand', i)).join('');
+
+/* Tableau, grouped the way the desktop client groups it. */
+const GROUPS = [
+  ['corporation', 'Corporation'],
+  ['active', 'Active'],
+  ['automated', 'Automated'],
+  ['event', 'Events'],
+];
+
+document.getElementById('tableau').innerHTML = GROUPS.map(([type, label]) => {
+  const cards = TABLEAU.map((c, i) => [c, i]).filter(([c]) => c.type === type);
+  if (cards.length === 0) return '';
+  return '<div class="card-group">' + label + ' <span class="num">' + cards.length + '</span></div>' +
+    '<div class="card-grid">' + cards.map(([c, i]) => slotMarkup(c, 'tableau', i)).join('') + '</div>';
+}).join('');
+
+document.getElementById('segPlayedN').textContent = String(TABLEAU.length);
+document.getElementById('segHandN').textContent = String(HAND.length);
+
+/* Hand / Played switch. */
+document.querySelector('.seg[role="tablist"]').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const wantPlayed = btn.dataset.view === 'played';
+  document.querySelectorAll('.seg[role="tablist"] button').forEach((b) => {
+    b.setAttribute('aria-selected', String((b.dataset.view === 'played') === wantPlayed));
+  });
+  document.getElementById('viewHand').hidden = wantPlayed;
+  document.getElementById('viewPlayed').hidden = !wantPlayed;
+});
+
+/* ---------- tag counts, computed from the tableau ---------- */
+
+function tagCounts() {
+  const counts = new Map();
+  for (const card of TABLEAU) {
+    for (const tag of card.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function renderTags() {
+  const counts = tagCounts();
+  document.getElementById('tagList').innerHTML = counts.map(([tag, n]) =>
+    '<span class="tag-count"><span class="c-tag c-tag--' + tag + '" title="' + TAGS[tag][0] + '">' +
+    TAGS[tag][1] + '</span>' + n + '</span>').join('');
+  document.getElementById('tagPeek').textContent =
+    counts.slice(0, 4).map(([tag, n]) => TAGS[tag][1] + n).join('  ');
+  return counts;
+}
+const TAG_COUNTS = renderTags();
+const tagTotal = TAG_COUNTS.reduce((sum, [, n]) => sum + n, 0);
+
+/* Auto opens the row on the Cards tab and folds it away elsewhere; Always and
+   Never override that. A tap on the strip wins until you change tabs. */
+const tagbar = document.getElementById('tagbar');
+let tagMode = 'auto';
+let tagManualOverride = null;
+
+function applyTagMode() {
+  let open;
+  if (tagManualOverride !== null) open = tagManualOverride;
+  else if (tagMode === 'always') open = true;
+  else if (tagMode === 'never') open = false;
+  else open = currentTab === 'hand';
+  tagbar.dataset.open = open ? '1' : '0';
+  document.getElementById('tagbarToggle').setAttribute('aria-expanded', String(open));
+}
+
+document.getElementById('tagbarToggle').addEventListener('click', () => {
+  tagManualOverride = tagbar.dataset.open !== '1';
+  applyTagMode();
+});
+
+document.getElementById('segTagMode').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  tagMode = btn.dataset.mode;
+  tagManualOverride = null;
+  document.querySelectorAll('#segTagMode button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.mode === tagMode));
+  });
+  applyTagMode();
+});
+
+/* ---------- magnify ---------- */
+
+const magnify = document.getElementById('magnify');
+const magnifyHolder = document.getElementById('magnifyHolder');
+
+document.getElementById('pane-hand').addEventListener('click', (e) => {
+  const slot = e.target.closest('.card-slot');
+  if (!slot) return;
+  const list = slot.dataset.source === 'hand' ? HAND : TABLEAU;
+  magnifyHolder.innerHTML = cardMarkup(list[Number(slot.dataset.i)]);
+  document.getElementById('btnPlayCard').textContent =
+    slot.dataset.source === 'hand' ? 'Play card' : 'Use action';
+  magnify.hidden = false;
+});
+document.getElementById('btnCloseMag').addEventListener('click', () => { magnify.hidden = true; });
+document.getElementById('btnPlayCard').addEventListener('click', () => {
+  magnify.hidden = true;
+  setSheet('half');
+});
+
+/* ---------- milestones and awards ---------- */
+
+/* Tharsis lists, names and thresholds from src/server/milestones and
+   src/server/awards. */
+function countTiles(type) {
+  return Object.values(TILES).filter((t) => t.t === type && t.o === 'blue').length;
+}
+
+function buildingTags() {
+  return TABLEAU.filter((c) => c.tags.includes('building')).length;
+}
+
+function scienceTags() {
+  return TABLEAU.filter((c) => c.tags.includes('science')).length;
+}
+
+function renderClaimables() {
+  const milestones = [
+    {name: 'Terraformer', desc: 'Have a terraform rating of 35', have: state.tr, need: 35},
+    {name: 'Mayor', desc: 'Own 3 city tiles', have: countTiles('city'), need: 3},
+    {name: 'Gardener', desc: 'Own 3 greenery tiles', have: countTiles('greenery'), need: 3},
+    {name: 'Builder', desc: 'Have 8 building tags in play', have: buildingTags(), need: 8, taken: 'Mette'},
+    {name: 'Planner', desc: 'Have 16 cards in your hand', have: HAND.length, need: 16},
+  ];
+
+  const awards = [
+    {name: 'Landlord', desc: 'Most tiles in play', lead: 'Mette · 6', you: '5'},
+    {name: 'Scientist', desc: 'Most science tags', lead: 'You · ' + scienceTags(), you: String(scienceTags())},
+    {name: 'Banker', desc: 'Highest M€ production', lead: 'Mette · 11', you: '7'},
+    {name: 'Thermalist', desc: 'Most heat resources', lead: 'You · 12', you: '12', taken: 'Sofie'},
+    {name: 'Miner', desc: 'Most steel and titanium', lead: 'Sofie · 13', you: '9'},
+  ];
+
+  document.getElementById('milestoneList').innerHTML = milestones.map((m) => {
+    const pct = Math.min(100, Math.round((m.have / m.need) * 100));
+    const close = !m.taken && m.have / m.need >= 0.6;
+    return '<div class="claimable' + (m.taken ? ' claimable--taken' : (close ? ' claimable--close' : '')) + '">' +
+      '<div><div class="cl-name">' + m.name + '</div><div class="cl-desc">' + m.desc + '</div></div>' +
+      '<div class="cl-right"><div class="cl-progress num"><b>' + m.have + '</b>/' + m.need + '</div>' +
+      '<div class="cl-state">' + (m.taken ? 'Claimed · ' + m.taken : (close ? 'Close' : 'Open')) + '</div></div>' +
+      '<div class="cl-bar"><span style="width:' + pct + '%"></span></div>' +
+      '</div>';
+  }).join('');
+
+  document.getElementById('awardList').innerHTML = awards.map((a) =>
+    '<div class="claimable' + (a.taken ? ' claimable--taken' : '') + '">' +
+      '<div><div class="cl-name">' + a.name + '</div><div class="cl-desc">' + a.desc + '</div></div>' +
+      '<div class="cl-right"><div class="cl-progress num">' + a.lead + '</div>' +
+      '<div class="cl-state">' + (a.taken ? 'Funded · ' + a.taken : 'Not funded') + '</div></div>' +
+    '</div>').join('');
+}
+renderClaimables();
+
+/* ---------- players ---------- */
+
+const PLAYERS = [
+  {name: 'You', color: 'blue', corp: 'Helion', tr: 28, me: true, turn: true,
+    res: [['M€', 41, '+7'], ['Steel', 6, '+2'], ['Ti', 3, '+1'], ['Plant', 5, '+3'], ['Power', 2, '+2'], ['Heat', 12, '+4']],
+    tags: TAG_COUNTS.map(([t, n]) => n + ' ' + TAGS[t][0].toLowerCase()).join(' · ') + ' · ' + tagTotal + ' total'},
+  {name: 'Mette', color: 'red', corp: 'Tharsis Republic', tr: 31, turn: false,
+    res: [['M€', 18, '+11'], ['Steel', 2, '+1'], ['Ti', 0, '+0'], ['Plant', 9, '+2'], ['Power', 4, '+3'], ['Heat', 7, '+3']],
+    tags: '8 building · 3 city · 1 earth'},
+  {name: 'Jonas', color: 'yellow', corp: 'Ecoline', tr: 24, turn: false,
+    res: [['M€', 33, '+5'], ['Steel', 1, '+0'], ['Ti', 5, '+2'], ['Plant', 12, '+6'], ['Power', 0, '+1'], ['Heat', 3, '+1']],
+    tags: '5 plant · 2 microbe · 2 animal'},
+  {name: 'Sofie', color: 'green', corp: 'Interplanetary Cinematics', tr: 26, turn: false,
+    res: [['M€', 52, '+4'], ['Steel', 11, '+4'], ['Ti', 2, '+1'], ['Plant', 3, '+2'], ['Power', 6, '+4'], ['Heat', 9, '+2']],
+    tags: '8 building · 2 event · 1 science'},
+];
+
+document.getElementById('playerList').innerHTML = PLAYERS.map((p) => '' +
+  '<div class="pl pl--' + p.color + (p.me ? ' pl--me' : '') + '">' +
+    '<div class="pl-head">' +
+      '<span class="pl-name">' + p.name + '</span>' +
+      (p.me ? '<span class="pl-you">You</span>' : '') +
+      '<span class="pl-corp">' + p.corp + '</span>' +
+      '<span class="pl-tr num">' + p.tr + '</span>' +
+    '</div>' +
+    '<div class="pl-res">' +
+      p.res.map((r) => '<span class="chip"><i>' + r[0] + '</i>' + r[1] +
+        '<i style="color:var(--rust)">' + r[2] + '</i></span>').join('') +
+    '</div>' +
+    '<div class="pl-turn"><span class="dot' + (p.turn ? '' : ' dot--wait') + '"></span>' +
+      (p.turn ? 'Taking their turn' : 'Waiting') + ' · ' + p.tags + '</div>' +
+  '</div>').join('');
+
+/* ---------- log ---------- */
+
+const LOG = [
+  ['7', 'blue', 'You', 'played <span class="log-thing">Comet</span>'],
+  ['7', 'red', 'Mette', 'placed a <span class="log-thing">city</span> on Tharsis Tholus'],
+  ['7', 'yellow', 'Jonas', 'converted 8 plants into a <span class="log-thing">greenery</span>'],
+  ['7', 'yellow', 'Jonas', 'raised oxygen to <span class="log-thing">9%</span>'],
+  ['7', 'green', 'Sofie', 'played <span class="log-thing">Power Plant</span>'],
+  ['7', 'blue', 'You', 'used <span class="log-thing">Space Elevator</span> to gain 5 M€'],
+  ['6', 'red', 'Mette', 'claimed the <span class="log-thing">Builder</span> milestone'],
+  ['6', 'green', 'Sofie', 'funded the <span class="log-thing">Thermalist</span> award'],
+  ['6', 'blue', 'You', 'placed an <span class="log-thing">ocean</span> near Noctis City'],
+  ['6', 'yellow', 'Jonas', 'passed'],
+];
+
+document.getElementById('logList').innerHTML = LOG.map((l) =>
+  '<div class="log-entry"><span class="log-gen">G' + l[0] + '</span>' +
+  '<span><span class="log-who log-who--' + l[1] + '">' + l[2] + '</span> ' + l[3] + '</span></div>').join('');
+
+/* ---------- settings ---------- */
+
+const settings = document.getElementById('settings');
+document.getElementById('btnSettings').addEventListener('click', () => { settings.hidden = false; });
+document.getElementById('btnCloseSettings').addEventListener('click', () => {
+  settings.hidden = true;
+  if (!document.getElementById('pane-board').hidden) requestAnimationFrame(fit);
+});
+
+function wireToggle(id, onChange) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', () => {
+    const next = el.getAttribute('aria-pressed') !== 'true';
+    el.setAttribute('aria-pressed', String(next));
+    onChange(next);
+  });
+}
+
+wireToggle('tglRings', (on) => { stage.dataset.rings = on ? '1' : '0'; });
+wireToggle('tglConfirm', (on) => { confirmPlacement = on; });
+wireToggle('tglNotes', (on) => { document.getElementById('app').dataset.notes = on ? '1' : '0'; });
+wireToggle('tglPeek', (on) => {
+  peekEnabled = on;
+  if (snap === 'peek' || snap === 'closed') setSheet(on ? 'peek' : 'closed');
+});
+
+const scaleInput = document.getElementById('cardScale');
+scaleInput.addEventListener('input', () => {
+  const v = Number(scaleInput.value);
+  document.documentElement.style.setProperty('--card-scale', String(v / 100));
+  document.getElementById('cardScaleOut').textContent = v + '%';
+});
+
+/* ---------- boot ---------- */
+
+window.addEventListener('resize', () => {
+  if (!document.getElementById('pane-board').hidden) fit();
+  setSheet(snap);
+});
+
+fit();
+applyTagMode();
+setSheet('peek');
+</script>
