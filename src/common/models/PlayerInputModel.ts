@@ -17,6 +17,14 @@ export type BaseInputModel = {
   warning?: string | Message;
   buttonLabel: string;
   optional?: boolean;
+  /**
+   * Identifies this input's entry in the player's action menu, when it has one.
+   *
+   * The server sets these from `ActionAnnotation`; they are stable where the title
+   * is translated, so a client that has to reason about a menu entry -- to group it,
+   * to give it an icon, to send it to another screen -- has something to match on.
+   */
+  annotation?: string;
 }
 
 export type AndOptionsModel = BaseInputModel & {

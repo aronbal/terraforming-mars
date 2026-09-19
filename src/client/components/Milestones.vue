@@ -19,8 +19,10 @@
                     v-for="milestone in milestones"
                     :key="milestone.name"
                     :milestone="milestone"
+                    :claimable="claimable.includes(milestone.name)"
                     :showScores="showScores"
                     :showDescription="showDescription"
+                    @claim="$emit('claim', milestone.name)"
                   />
               </div>
             </span>
@@ -51,7 +53,13 @@ export default defineComponent({
       type: Object as () => Readonly<Preferences>,
       default: () => PreferencesManager.INSTANCE.values(),
     },
+    /** The milestones this player may claim right now, which the mobile shell fills in. */
+    claimable: {
+      type: Array as () => ReadonlyArray<string>,
+      default: () => [],
+    },
   },
+  emits: ['claim'],
   data() {
     return {
       showMilestoneDetails: (this.milestones.filter((milestone) => milestone.playerName).length === MAX_MILESTONES ? false : this.preferences?.show_milestone_details),

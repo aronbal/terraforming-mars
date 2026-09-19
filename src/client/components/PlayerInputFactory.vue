@@ -34,6 +34,9 @@ import SelectResource from '@/client/components/SelectResource.vue';
 import SelectResources from '@/client/components/SelectResources.vue';
 import SelectClaimedUndergroundToken from '@/client/components/SelectClaimedUndergroundToken.vue';
 import DeltaProjectInput from '@/client/components/delta/DeltaProjectInput.vue';
+import MobileActionList from '@/client/components/mobile/MobileActionList.vue';
+import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
 
 // Shared contract every input component must satisfy. `playerinput` and
 // `onsave` are narrowed to the discriminated variant whose `type` matches K.
@@ -114,6 +117,14 @@ export default defineComponent({
     },
     resolvedComponent(): Component {
       const input = this.playerinput;
+      /*
+       * A turn's action menu gets its own component on a phone. The desktop's radio
+       * list unfolds the chosen entry's whole input beneath it, which at this width
+       * puts a screen of scrolling between one entry and the next.
+       */
+      if (mobileLayout.value && isActionMenu(input)) {
+        return MobileActionList;
+      }
       return inputComponents[input.type];
     },
   },

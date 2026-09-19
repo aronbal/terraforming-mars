@@ -50,9 +50,9 @@ const TABS: ReadonlyArray<TabSpec> = [
     paths: ['M9 5.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Z', 'M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5', 'M17 5.1a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z', 'M15 13.6c2.6-.6 5.5 1 5.5 4.4'],
   },
   {
-    name: 'log',
-    label: 'Log',
-    paths: ['M5 4h14v16H5Z', 'M8.5 9h7M8.5 12.5h7M8.5 16h4'],
+    name: 'more',
+    label: 'More',
+    paths: ['M4 7h16M4 12h16M4 17h16'],
   },
 ] as const;
 
@@ -63,7 +63,11 @@ export default defineComponent({
       type: String as PropType<MobileTab>,
       required: true,
     },
-    /** Whether the action sheet is open far enough to count as the selected tab. */
+    /*
+     * Whether the action panel is a sheet raised over another pane rather than the
+     * tab the player is on. Act lights up either way, but only one of the two is a
+     * place they navigated to.
+     */
     sheetOpen: {
       type: Boolean,
       required: true,
@@ -85,8 +89,10 @@ export default defineComponent({
   },
   methods: {
     isSelected(name: MobileTab): boolean {
-      // Act is a sheet over whichever pane is open, so it lights up on its own.
-      return name === 'actions' ? this.sheetOpen : this.tab === name;
+      /* Act lights up as the tab the player is on, and also when the panel is a sheet
+         raised over another pane -- which leaves both lit, because the pane behind a
+         half-open sheet is still where they are. */
+      return name === 'actions' ? this.tab === 'actions' || this.sheetOpen : this.tab === name;
     },
     badge(name: MobileTab): string {
       if (name === 'cards' && this.cardsInHandCount > 0) {

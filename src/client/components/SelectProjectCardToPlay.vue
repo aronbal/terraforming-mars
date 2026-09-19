@@ -1,10 +1,13 @@
 <template>
 <div class="payments_cont">
   <div v-if="showtitle === true">{{ $t(playerinput.title) }}</div>
-  <label v-for="availableCard in cards" class="payments_cards" :key="availableCard.name">
+  <label v-for="availableCard in visibleCards" class="payments_cards" :key="availableCard.name">
     <input v-if="!availableCard.isDisabled" class="hidden" type="radio" v-model="cardName" :value="availableCard.name" >
     <Card class="cardbox" :card="availableCard" />
   </label>
+  <div v-if="preselected" class="wf-chosen-card">
+    <AppButton size="tiny" :title="$t('Choose another card')" data-test="show-all-cards" @click="preselected = false" />
+  </div>
   <template v-if="card !== undefined && card.additionalProjectCosts">
     <div v-if="card.additionalProjectCosts.aeronGenomicsResources" class="card-warning"
       v-i18n="[$t(card.name), card.additionalProjectCosts.aeronGenomicsResources, 'animals', $t(CardName.AERON_GENOMICS)]"
@@ -52,6 +55,8 @@ import {SelectProjectCardToPlayResponse} from '@/common/inputs/InputResponse';
 import WarningsComponent from '@/client/components/WarningsComponent.vue';
 import PaymentForm from '@/client/components/PaymentForm.vue';
 import {Ledger} from '@/client/components/PaymentLedger';
+import AppButton from '@/client/components/common/AppButton.vue';
+import {pickedCard} from '@/client/utils/cardSelection';
 
 export default defineComponent({
   name: 'SelectProjectCardToPlay',
@@ -77,6 +82,20 @@ export default defineComponent({
     },
   },
   computed: {
+    /*
+     * Just the chosen card once one has been picked elsewhere -- on the mobile shell's
+     * Cards tab. Listing the whole hand again under a card the player has already
+     * chosen is the step that picking it there was meant to save.
+     */
+    pickedCard(): CardName | undefined {
+      return pickedCard.value;
+    },
+    visibleCards(): ReadonlyArray<CardModel> {
+      if (!this.preselected) {
+        return this.cards;
+      }
+      return this.cards.filter((card) => card.name === this.cardName);
+    },
     order(): ReadonlyArray<SpendableResource> {
       return ([
         'steel',
@@ -105,6 +124,12 @@ export default defineComponent({
     },
   },
   watch: {
+    pickedCard: {
+      handler() {
+        this.selectPickedCard();
+      },
+      immediate: true,
+    },
     // Vue runs watchers before re-rendering the component that owns them, so
     // available units are updated before PaymentForm remounts via :key and reads them.
     cardName(newVal: string | undefined) {
@@ -137,9 +162,12 @@ export default defineComponent({
       cost: card?.calculatedCost ?? 0,
       tags: card !== undefined ? getCardOrThrow(card.name).tags : [],
       available: Units.of({}),
+      // Set when the card came from somewhere other than this list.
+      preselected: false,
     };
   },
   components: {
+    AppButton,
     Card,
     PaymentForm,
     WarningsComponent,
@@ -151,6 +179,17 @@ export default defineComponent({
     this.updateAvailableUnits();
   },
   methods: {
+    selectPickedCard(): void {
+      const name = pickedCard.value;
+      if (name === undefined) {
+        return;
+      }
+      if (!this.cards.some((card) => card.name === name && card.isDisabled !== true)) {
+        return;
+      }
+      this.cardName = name;
+      this.preselected = true;
+    },
     getCard() {
       const card = this.cards.find((c) => c.name === this.cardName);
       if (card === undefined) {

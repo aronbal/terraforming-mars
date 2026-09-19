@@ -37,8 +37,10 @@
             v-for="award in awards"
             :key="award.name"
             :award="award"
+            :fundable="fundable.includes(award.name)"
             :showScores="showScores"
             :showDescription="showDescription"
+            @fund="$emit('fund', award.name)"
           />
         </div>
       </span>
@@ -69,7 +71,13 @@ export default defineComponent({
       type: Object as () => Readonly<Preferences>,
       default: () => PreferencesManager.INSTANCE.values(),
     },
+    /** The awards this player may fund right now, which the mobile shell fills in. */
+    fundable: {
+      type: Array as () => ReadonlyArray<string>,
+      default: () => [],
+    },
   },
+  emits: ['fund'],
   data() {
     return {
       showAwardDetails: this.preferences?.show_award_details,

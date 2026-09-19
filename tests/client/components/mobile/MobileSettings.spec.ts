@@ -28,9 +28,15 @@ describe('MobileSettings', () => {
   });
 
   it('stores the mobile layout choice', () => {
-    mount().vm.setMobileLayout('off');
+    mount().vm.setMode('mobile_layout', 'off');
     expect(getPreferences().mobile_layout).eq('off');
     expect(localStorage.getItem('mobile_layout')).eq('off');
+  });
+
+  it('stores where the player wants to finish an action', () => {
+    mount().vm.setMode('play_from', 'actions');
+    expect(getPreferences().play_from).eq('actions');
+    expect(localStorage.getItem('play_from')).eq('actions');
   });
 
   it('stores the card scale as a fraction', () => {

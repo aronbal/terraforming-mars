@@ -1,5 +1,9 @@
 <template>
-  <div class="ma-block">
+  <div
+    class="ma-block"
+    :class="{'ma-block--offered': fundable}"
+    :role="fundable ? 'button' : undefined"
+    @click="fund($event)">
     <div class="ma-player" v-if="award.playerName">
       <i :title="award.playerName" class="board-cube" :class="`board-cube--${award.color}`" ></i>
     </div>
@@ -58,7 +62,16 @@ export default defineComponent({
     showDescription: {
       type: Boolean,
     },
+    /*
+     * Whether this player may fund it right now, which the mobile shell reads off the
+     * turn's action menu. The desktop leaves it alone.
+     */
+    fundable: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ['fund'],
   mounted() {
     this.fitName();
   },
@@ -68,6 +81,15 @@ export default defineComponent({
     },
   },
   methods: {
+    /* Only a fundable tile takes the tap; on any other the click carries on up to
+       the list, which is what shows and hides the descriptions. */
+    fund(event: Event): void {
+      if (!this.fundable) {
+        return;
+      }
+      event.stopPropagation();
+      this.$emit('fund');
+    },
     playerSymbol(color: Color) {
       return playerSymbol(color);
     },

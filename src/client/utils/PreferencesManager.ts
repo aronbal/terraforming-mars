@@ -6,6 +6,25 @@ export type MobileLayoutMode = typeof MOBILE_LAYOUT_MODES[number];
 export const TAG_ROW_MODES = ['auto', 'always', 'never'] as const;
 export type TagRowMode = typeof TAG_ROW_MODES[number];
 
+/*
+ * What tapping a card on the mobile Cards tab does: open it large enough to read, or
+ * go straight to playing it. Reading first is the default, because a mis-tap that
+ * plays a card costs a turn.
+ */
+export const CARD_TAP_MODES = ['magnify', 'play'] as const;
+export type CardTapMode = typeof CARD_TAP_MODES[number];
+
+/*
+ * Where the mobile shell finishes an action the player started by tapping the thing
+ * it is about -- a card in hand, a milestone under the board.
+ *
+ * 'tabs' finishes it over the tab they tapped it on, so they never leave the cards or
+ * the board they were reading. 'actions' takes them to the Act tab first, where every
+ * other entry of the menu is also in reach.
+ */
+export const PLAY_FROM_MODES = ['tabs', 'actions'] as const;
+export type PlayFromMode = typeof PLAY_FROM_MODES[number];
+
 export const MIN_CARD_SCALE = 0.4;
 export const MAX_CARD_SCALE = 1;
 
@@ -33,6 +52,8 @@ export type Preferences = {
   experimental_ui: boolean,
   mobile_layout: MobileLayoutMode,
   tag_row: TagRowMode,
+  card_tap: CardTapMode,
+  play_from: PlayFromMode,
   card_scale: number,
   action_sheet_peek: boolean,
   mobile_tap_targets: boolean,
@@ -67,6 +88,8 @@ const defaults: Preferences = {
 
   mobile_layout: 'auto',
   tag_row: 'auto',
+  card_tap: 'magnify',
+  play_from: 'tabs',
   card_scale: 0.62,
   action_sheet_peek: true,
   mobile_tap_targets: false,
@@ -81,12 +104,35 @@ const defaults: Preferences = {
  * `PreferencesDialog` renders every boolean preference as a switch and mirrors it onto a
  * `preferences_<name>` body class; these are the ones it has to leave alone.
  */
-const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_scale']);
+const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_tap', 'play_from', 'card_scale']);
 
 export type BooleanPreference = {[K in Preference]: Preferences[K] extends boolean ? K : never}[Preference];
 
 export function isBooleanPreference(key: Preference): key is BooleanPreference {
   return !NON_BOOLEAN_PREFERENCES.has(key);
+}
+
+/**
+ * Mirrors the boolean preferences onto the page as `preferences_<name>` classes.
+ *
+ * A dozen stylesheets key off those classes, so a preference that is only written to
+ * storage is a preference that does nothing until the next reload. Whatever changes
+ * one has to call this.
+ */
+export function applyPreferenceClasses(values: Readonly<Preferences> = getPreferences()): void {
+  const target = document.getElementById('ts-preferences-target');
+  if (target === null) {
+    return;
+  }
+  for (const key of Object.keys(values) as Array<Preference>) {
+    if (!isBooleanPreference(key)) {
+      continue;
+    }
+    target.classList.toggle('preferences_' + key, values[key]);
+  }
+  if (!target.classList.contains('language-' + values.lang)) {
+    target.classList.add('language-' + values.lang);
+  }
 }
 
 function asMode<T extends string>(modes: ReadonlyArray<T>, val: string | boolean | number, fallback: T): T {
@@ -134,6 +180,12 @@ export class PreferencesManager {
       break;
     case 'tag_row':
       this._values.tag_row = asMode(TAG_ROW_MODES, val, defaults.tag_row);
+      break;
+    case 'card_tap':
+      this._values.card_tap = asMode(CARD_TAP_MODES, val, defaults.card_tap);
+      break;
+    case 'play_from':
+      this._values.play_from = asMode(PLAY_FROM_MODES, val, defaults.play_from);
       break;
     case 'card_scale':
       this._values.card_scale = asCardScale(val);

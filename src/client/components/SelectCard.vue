@@ -1,7 +1,7 @@
 <template>
     <div class="wf-component wf-component--select-card">
         <div v-if="showtitle === true" class="nofloat wf-component-title">{{ $t(playerinput.title) }}</div>
-        <label v-for="card in getOrderedCards()" :key="card.name" :class="getCardBoxClass(card)">
+        <label v-for="card in visibleCards" :key="card.name" :class="getCardBoxClass(card)">
             <template v-if="!card.isDisabled">
               <input v-if="selectOnlyOneCard" type="radio" v-model="cards" :value="card" >
               <input v-else type="checkbox" v-model="cards" :value="card" :disabled="playerinput.max !== undefined && Array.isArray(cards) && cards.length >= playerinput.max && cards.includes(card) === false" >
@@ -41,6 +41,7 @@ import {SelectCardModel} from '@/common/models/PlayerInputModel';
 import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
 import {SelectCardResponse} from '@/common/inputs/InputResponse';
 import {Warning} from '@/common/cards/Warning';
+import {pickedCard} from '@/client/utils/cardSelection';
 
 type Owner = {
   name: string;
@@ -93,11 +94,28 @@ export default defineComponent({
     AppButton,
   },
   watch: {
+    pickedCard: {
+      handler() {
+        this.selectPickedCard();
+      },
+      immediate: true,
+    },
     cards() {
       this.$emit('cardschanged', this.getData());
     },
   },
   methods: {
+    selectPickedCard(): void {
+      const name = this.pickedCard;
+      if (name === undefined || !this.playerinput.selectBlueCardAction) {
+        return;
+      }
+      const card = this.playerinput.cards.find((each) => each.name === name && each.isDisabled !== true);
+      if (card === undefined) {
+        return;
+      }
+      this.cards = this.selectOnlyOneCard ? card : [card];
+    },
     cardsSelected(): number {
       if (Array.isArray(this.cards)) {
         return this.cards.length;
@@ -205,6 +223,23 @@ export default defineComponent({
     },
   },
   computed: {
+    pickedCard(): CardName | undefined {
+      return pickedCard.value;
+    },
+    /*
+     * Only the card the player picked elsewhere -- on the mobile shell's Cards tab --
+     * once they have. Nothing is left to choose at that point, so listing the rest of
+     * the tableau again would only bury the button that takes the action.
+     */
+    visibleCards(): ReadonlyArray<CardModel> {
+      const ordered = this.getOrderedCards();
+      const name = this.pickedCard;
+      if (name === undefined || !this.playerinput.selectBlueCardAction) {
+        return ordered;
+      }
+      const picked = ordered.filter((card) => card.name === name && card.isDisabled !== true);
+      return picked.length > 0 ? picked : ordered;
+    },
     selectOnlyOneCard() : boolean {
       return this.playerinput.max === 1 && this.playerinput.min === 1;
     },

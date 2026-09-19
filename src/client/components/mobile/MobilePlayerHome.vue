@@ -1,11 +1,10 @@
 <template>
-  <div id="mobile-shell">
+  <div id="mobile-shell" :style="shellStyle">
     <MobileHeader
       :game="game"
       :player="thisPlayer"
       :showTagRow="tagRowVisible"
       :tagRowOpen="tagRowOpen"
-      @openSettings="settingsOpen = true"
       @toggleTagRow="toggleTagRow()"/>
 
     <main class="mobile-stage">
@@ -25,25 +24,42 @@
           @showActions="setSnap('half')"/>
 
         <div class="mobile-below" ref="below">
+          <!-- No fit block: milestone and award tiles wrap on their own, and forcing
+               them onto one line would only push the last few off the edge. -->
           <div class="mobile-below-block">
-            <Milestones :milestones="game.milestones"/>
-            <Awards :awards="game.awards"/>
+            <Milestones
+              :milestones="game.milestones"
+              :claimable="claimableMilestones"
+              @claim="claimBoardThing('milestone', $event)"/>
+            <Awards
+              :awards="game.awards"
+              :fundable="fundableAwards"
+              @fund="claimBoardThing('award', $event)"/>
           </div>
-          <div v-if="game.turmoil" class="mobile-below-block">
+          <MobileFitBlock v-if="game.turmoil" class="mobile-below-block">
             <Turmoil :turmoil="game.turmoil"/>
-          </div>
-          <div v-if="game.moon" class="mobile-below-block">
+          </MobileFitBlock>
+          <MobileFitBlock v-if="game.moon" class="mobile-below-block">
             <MoonBoard :model="game.moon" :tileView="tileView" id="shortkey-moonBoard"/>
-          </div>
-          <div v-if="game.gameOptions.expansions.pathfinders" class="mobile-below-block">
+          </MobileFitBlock>
+          <MobileFitBlock v-if="game.gameOptions.expansions.pathfinders" class="mobile-below-block">
             <PlanetaryTracks :tracks="game.pathfinders" :gameOptions="game.gameOptions"/>
-          </div>
+          </MobileFitBlock>
           <div v-if="game.colonies.length > 0" class="mobile-below-block" id="shortkey-colonies">
             <DynamicTitle title="Colonies" :color="thisPlayer.color"/>
-            <div class="player_home_colony_cont">
-              <div class="player_home_colony" v-for="colony in game.colonies" :key="colony.name">
-                <Colony :colony="colony" :active="colony.isActive"/>
-              </div>
+            <div class="player_home_colony_cont mobile-colony-list">
+              <button
+                v-for="colony in game.colonies"
+                :key="colony.name"
+                class="player_home_colony mobile-board-thing"
+                :class="{'mobile-board-thing--offered': tradeableColonies.includes(colony.name)}"
+                :disabled="!tradeableColonies.includes(colony.name)"
+                data-test="board-colony"
+                @click="claimBoardThing('colony', colony.name)">
+                <MobileFitBlock>
+                  <Colony :colony="colony" :active="colony.isActive"/>
+                </MobileFitBlock>
+              </button>
             </div>
           </div>
         </div>
@@ -55,7 +71,11 @@
         role="tabpanel"
         :aria-label="$t('Cards')"
         id="shortkey-hand">
-        <MobileCardsPane :playerView="playerView" :cardScale="cardScale"/>
+        <MobileCardsPane
+          :playerView="playerView"
+          :cardScale="cardScale"
+          :tapMode="preferences.card_tap"
+          @play="playCard($event)"/>
       </section>
 
       <section
@@ -64,21 +84,28 @@
         role="tabpanel"
         :aria-label="$t('Players')"
         id="shortkey-playersoverview">
-        <PlayersOverview :playerView="playerView" v-trim-whitespace/>
+        <MobileFitBlock>
+          <PlayersOverview :playerView="playerView" v-trim-whitespace/>
+        </MobileFitBlock>
       </section>
 
       <section
-        v-show="tab === 'log'"
-        class="mobile-pane mobile-pane--log"
+        v-show="tab === 'more'"
+        class="mobile-pane mobile-pane--more"
         role="tabpanel"
-        :aria-label="$t('Game log')">
-        <LogPanel :viewModel="playerView" :color="thisPlayer.color" :step="game.step" @spaceClicked="onSpaceClicked"/>
+        :aria-label="$t('More')">
+        <MobileMore
+          :playerView="playerView"
+          @settingsChanged="refreshPreferences()"
+          @spaceClicked="onSpaceClicked"/>
       </section>
 
-      <div v-show="snap === 'full'" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
+      <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
 
-      <MobileActionSheet
+      <MobileActionPanel
+        v-show="panelMode === 'sheet' || tab === 'actions'"
         :playerView="playerView"
+        :mode="panelMode"
         :snap="snap"
         :peekEnabled="peekEnabled"
         :cardScale="cardScale"
@@ -88,12 +115,11 @@
 
     <MobileTabBar
       :tab="tab"
-      :sheetOpen="snap === 'half' || snap === 'full'"
+      :sheetOpen="panelMode === 'sheet' && (snap === 'half' || snap === 'full')"
       :cardsInHandCount="cardsInHandCount"
       :actionWaiting="actionWaiting"
       @select="selectTab($event)"/>
 
-    <MobileSettings v-if="settingsOpen" @close="closeSettings()"/>
   </div>
 </template>
 
@@ -103,13 +129,13 @@ import {defineComponent, PropType} from 'vue';
 import Awards from '@/client/components/Awards.vue';
 import Colony from '@/client/components/colonies/Colony.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
-import LogPanel from '@/client/components/logpanel/LogPanel.vue';
 import Milestones from '@/client/components/Milestones.vue';
-import MobileActionSheet from '@/client/components/mobile/MobileActionSheet.vue';
+import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
+import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
-import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
+import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
@@ -118,20 +144,29 @@ import Turmoil from '@/client/components/turmoil/Turmoil.vue';
 
 import {GameModel} from '@/common/models/GameModel';
 import {HomeMixin} from '@/client/mixins/HomeMixin';
-import {MobileTab, SheetSnap} from '@/client/components/mobile/MobileTab';
+import {MobileTab, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/MobileTab';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {SpaceId} from '@/common/Types';
+import {CardName} from '@/common/cards/CardName';
+import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
+import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
+import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
+import {requestedTab} from '@/client/utils/mobileNavigation';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
 type DataModel = {
   tab: MobileTab;
   snap: SheetSnap;
-  settingsOpen: boolean;
   belowOpen: boolean;
   /** Set when the player opens or closes the tag row by hand, until the next tab change. */
   tagRowOverride: boolean | undefined;
+  /**
+   * Set while the action menu is raised over the tab the player picked something on,
+   * rather than sitting on the Act tab where it usually lives.
+   */
+  overTab: boolean;
   preferences: Preferences;
 };
 
@@ -148,13 +183,13 @@ export default defineComponent({
     Awards,
     Colony,
     DynamicTitle,
-    LogPanel,
     Milestones,
-    MobileActionSheet,
+    MobileActionPanel,
     MobileBoardPane,
     MobileCardsPane,
+    MobileFitBlock,
     MobileHeader,
-    MobileSettings,
+    MobileMore,
     MobileTabBar,
     MoonBoard,
     PlanetaryTracks,
@@ -165,9 +200,9 @@ export default defineComponent({
     return {
       tab: 'board',
       snap: getPreferences().action_sheet_peek ? 'peek' : 'closed',
-      settingsOpen: false,
       belowOpen: false,
       tagRowOverride: undefined,
+      overTab: false,
       preferences: {...getPreferences()},
     };
   },
@@ -180,6 +215,14 @@ export default defineComponent({
     },
     cardScale(): number {
       return this.preferences.card_scale;
+    },
+    /*
+     * The sheet's peek handle floats over the bottom of whichever pane is open, so
+     * every pane leaves that much room free. Without it the last row of a pane — the
+     * final colony tile, the newest log entry — sits under the handle, out of reach.
+     */
+    shellStyle(): Record<string, string> {
+      return {'--mobile-pane-gap': (this.peekEnabled ? SHEET_PEEK_PX : 0) + 'px'};
     },
     peekEnabled(): boolean {
       return this.preferences.action_sheet_peek;
@@ -211,8 +254,67 @@ export default defineComponent({
     selectingSpace(): boolean {
       return selectingSpace.value;
     },
+    waitingFor(): unknown {
+      return this.playerView.waitingFor;
+    },
+    /*
+     * The menu of what the player may do is somewhere they go, so it is a tab. Every
+     * other thing the server asks -- pick a target, pick a resource -- interrupts
+     * whatever they were doing, so it arrives as a sheet over it.
+     */
+    panelMode(): 'tab' | 'sheet' {
+      if (!isActionMenu(this.playerView.waitingFor)) {
+        return 'sheet';
+      }
+      return this.overTab ? 'sheet' : 'tab';
+    },
+    /** The milestones the turn's menu offers, which are the ones worth tapping. */
+    claimableMilestones(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'milestone');
+    },
+    fundableAwards(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'award');
+    },
+    tradeableColonies(): ReadonlyArray<string> {
+      return boardNamesIn(this.playerView.waitingFor, 'colony');
+    },
+    scrimVisible(): boolean {
+      return this.panelMode === 'sheet' && this.snap === 'full';
+    },
+    requestedTab(): unknown {
+      return requestedTab.value;
+    },
   },
   watch: {
+    /* A thing picked for one input must never be applied to the next one, so a pick
+       lasts exactly as long as the input it was made for. */
+    waitingFor() {
+      this.overTab = false;
+      clearPickedCard();
+      clearBoardPick();
+    },
+    /* The action menu sends the player to the tab that draws what an entry is about.
+       It has no path back up to the shell, so it leaves the request in a store. */
+    requestedTab(request: {tab: MobileTab} | undefined) {
+      if (request !== undefined) {
+        this.selectTab(request.tab);
+      }
+    },
+    /*
+     * The panel is a tab or a sheet depending on what the server is asking, and it
+     * cannot be both. Becoming a sheet while the player is standing on the Actions
+     * tab would leave them on an empty one, so send them back to the board -- which
+     * is where a follow-up question usually wants them anyway.
+     */
+    panelMode(mode: 'tab' | 'sheet') {
+      if (mode !== 'sheet' || this.overTab) {
+        return;
+      }
+      if (this.tab === 'actions') {
+        this.tab = 'board';
+      }
+      this.setSnap(this.peekEnabled ? 'peek' : 'closed');
+    },
     selectingSpace(selecting: boolean) {
       if (selecting) {
         // Get the sheet off the map, and the map in front of the player.
@@ -226,8 +328,10 @@ export default defineComponent({
   },
   methods: {
     selectTab(tab: MobileTab): void {
-      if (tab === 'actions') {
-        // Act is not a destination: it raises the sheet over whichever pane is open.
+      /* While the server is asking a follow-up question the panel is a sheet, and a
+         sheet is not somewhere to navigate to -- Act raises it over whichever pane
+         is open, the way it always did. */
+      if (tab === 'actions' && this.panelMode === 'sheet') {
         this.setSnap(this.snap === 'half' || this.snap === 'full' ? 'peek' : 'half');
         return;
       }
@@ -239,6 +343,43 @@ export default defineComponent({
     },
     setSnap(snap: SheetSnap): void {
       this.snap = snap;
+      /* Putting the panel down abandons what it was raised for: the menu goes back to
+         being a tab, and nothing on the board or in the hand is still shown as chosen. */
+      if (this.overTab && snap !== 'half' && snap !== 'full') {
+        this.overTab = false;
+        clearPickedCard();
+        clearBoardPick();
+      }
+    },
+    /*
+     * A card in hand and a milestone under the board are the same move: the tab is
+     * where the thing is chosen, and the menu entry is where the choice is paid for
+     * and confirmed.
+     */
+    playCard(name: CardName): void {
+      clearBoardPick();
+      pickCard(name);
+      this.openPick();
+    },
+    claimBoardThing(kind: BoardThing, name: string): void {
+      clearPickedCard();
+      pickBoardThing(kind, name);
+      this.openPick();
+    },
+    /*
+     * Where the player finishes what they just started, which is theirs to choose.
+     *
+     * Over the tab they are standing on, they never leave the cards or the board they
+     * were reading; on the Act tab, the rest of the menu is in reach beside it.
+     */
+    openPick(): void {
+      if (this.preferences.play_from === 'actions') {
+        this.overTab = false;
+        this.selectTab('actions');
+        return;
+      }
+      this.overTab = true;
+      this.setSnap('full');
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;
@@ -264,8 +405,7 @@ export default defineComponent({
       }
       this.scrollBoardPaneTo(pane.scrollTop > 8 ? 0 : below.offsetTop);
     },
-    closeSettings(): void {
-      this.settingsOpen = false;
+    refreshPreferences(): void {
       this.preferences = {...getPreferences()};
       refreshMobileLayoutPreference();
     },
@@ -291,6 +431,8 @@ export default defineComponent({
     document.body.classList.add('mobile-shell-active');
   },
   unmounted() {
+    clearPickedCard();
+    clearBoardPick();
     document.body.classList.remove('mobile-shell-active');
   },
 });

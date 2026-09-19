@@ -63,6 +63,11 @@
   z-index: 40;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* `minmax(0, 1fr)`, not the implicit `auto`: an auto column grows to the widest row
+     it holds, and the header's resource strip alone is wider than a phone. That made
+     the whole shell 22px too wide, and clipped the last tab and the right edge of
+     every pane. */
+  grid-template-columns: minmax(0, 1fr);
   background: @mobile-ground;
   color: @mobile-text;
   font-family: @font_family_main;
@@ -112,6 +117,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  // Flex items refuse to shrink past their content unless told to.
+  min-width: 0;
 }
 
 .mobile-stat {
@@ -146,6 +153,14 @@
   gap: 7px;
   margin-left: auto;
   align-items: center;
+  // Venus makes a fourth reading, which is one more than a narrow phone has room for.
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .mobile-global {
@@ -196,6 +211,7 @@
 .mobile-resources {
   display: flex;
   gap: 4px;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -229,20 +245,6 @@
 .mobile-resource-production {
   font-size: 11px;
   color: @mobile-marker-ring;
-}
-
-.mobile-gear {
-  margin-left: auto;
-  width: @mobile-tap;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  border: 1px solid @mobile-line;
-  background: @mobile-raised;
-  color: @mobile-muted;
-  flex: none;
 }
 
 //
@@ -317,6 +319,15 @@
      clipping them would hide resource counts rather than let the player reach them. */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+
+  /* The sheet's peek handle floats over the bottom of the pane. Scrolled to the end,
+     the last row would otherwise sit under it: reachable by eye, not by thumb.
+     `--mobile-pane-gap` is 0 when the player turns the handle off. */
+  &::after {
+    content: "";
+    display: block;
+    height: var(--mobile-pane-gap, 0px);
+  }
 }
 
 .mobile-pane--board {
@@ -444,12 +455,111 @@
 }
 
 .mobile-below {
-  padding: 10px 8px calc(16px + env(safe-area-inset-bottom));
+  padding: 10px 8px 16px;
   background: @mobile-ground;
 }
 
 .mobile-below-block {
   margin-bottom: 14px;
+}
+
+// Stacked, not the desktop's inline-block row: a colony tile is wider than a phone.
+.mobile-colony-list .player_home_colony {
+  display: block;
+  margin: 0 0 10px;
+}
+
+/*
+ * The things under the board that can be acted on by tapping them.
+ *
+ * A colony tile is not a control on a desktop, where trading is done from a menu, so
+ * the button around it here has to give back everything a button brings with it.
+ */
+.mobile-board-thing {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+
+  &:disabled {
+    // Not dimmed: a colony you cannot trade with this turn is still worth reading.
+    opacity: 1;
+  }
+}
+
+/*
+ * A milestone you may claim and one you may not look identical on a desktop, because
+ * there the claiming happens in a menu. Here the tile is the button, so the ones the
+ * turn actually offers say so, and the rest are drawn exactly as they were.
+ */
+.mobile-board-thing--offered,
+.mobile-below .ma-block--offered {
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px @mobile-ochre;
+}
+
+.mobile-below .ma-block--offered {
+  // The ring sits on the tile's own edge, so hold it clear of its neighbours.
+  margin: 3px 0;
+}
+
+/*
+ * Blocks scaled down to fit, by MobileFitBlock.
+ *
+ * The frame keeps the shell's width; the inner element keeps the block's own, so the
+ * component can read one against the other. Anything still too wide once the scale
+ * hits its floor scrolls here rather than dragging the pane sideways with it.
+ */
+.mobile-fit {
+  overflow: auto hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobile-fit-inner {
+  width: max-content;
+}
+
+/*
+ * Milestones and awards.
+ *
+ * Each unclaimed spot is drawn as a 190px pill with its price nudged 70px in from the
+ * left, which lines them up along a desktop column. At phone width they wrap into a
+ * staircase of overlapping boxes, so here they are plain chips on a row that wraps.
+ */
+.mobile-below {
+  .ma-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .milestone-award-inline {
+    width: auto;
+    margin: 0;
+    padding: 1px 8px;
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .milestone-award-price {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    background-size: 26px;
+    line-height: 26px;
+    font-size: 15px;
+    transform: none;
+  }
 }
 
 //
@@ -545,43 +655,200 @@
   }
 }
 
+/* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
+   what shows: a grab bar over a line that says whose move it is. */
 .mobile-sheet-head {
   flex: none;
   height: @mobile-sheet-peek;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  padding: 6px 14px 8px;
   touch-action: none;
   border-bottom: 1px solid @mobile-line-soft;
 }
 
 .mobile-sheet-grip {
-  width: 34px;
+  display: block;
+  width: 38px;
   height: 4px;
   border-radius: 2px;
   background: @mobile-line;
-  flex: none;
+  margin: 0 auto 6px;
+}
+
+.mobile-sheet-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .mobile-sheet-title {
-  font-family: Prototype, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-muted;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
 }
 
-.mobile-sheet-flag {
-  margin-left: auto;
-  font-size: 11px;
+.mobile-sheet-title--waiting {
   color: @mobile-ochre;
 }
 
-.mobile-sheet-body {
+.mobile-sheet-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: @mobile-muted;
+}
+
+/*
+ * The action panel is a tab while the server waits for the player to choose what to
+ * do, and a sheet while it asks a follow-up question. One element either way, so the
+ * one `WaitingFor` inside it is never torn down and rebuilt by the change.
+ */
+.mobile-action-panel {
+  &.mobile-sheet {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.mobile-panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 10px calc(14px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(18px + env(safe-area-inset-bottom));
+
+  /*
+   * The options come from the desktop's radio list, which is a column of bare labels.
+   * Restyled here as the rows the prototype draws: a full-width target with the mark
+   * on the left, big enough to hit without aiming.
+   */
+  .wf-options > div > .form-radio {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    margin: 0 0 7px;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid @mobile-line-soft;
+    border-radius: 10px;
+    background: @mobile-sunk;
+    font-size: 14px;
+    font-weight: 600;
+
+    .form-icon {
+      left: 13px;
+      top: 50%;
+      margin-top: -7px;
+    }
+  }
+
+  .wf-options > div > .form-radio:has(input:checked) {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+  }
+
+  // The question itself, above the rows it offers.
+  > div > .wf-root > .wf-options > label:first-child {
+    display: block;
+    font-family: Prototype, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: @mobile-dim;
+    margin: 0 0 8px;
+  }
+
+  /* The desktop indents the chosen option's own input under its radio. There is no
+     width to spare for that here. */
+  .wf-option-body {
+    margin-left: 0;
+  }
+
+  // OrOptions puts this right under the option it acts on when the shell is mobile.
+  .wf-option-save {
+    margin: 10px 0 14px;
+  }
+}
+
+//
+// The action list
+//
+
+.mobile-actions-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 12px;
+}
+
+.mobile-action-group {
+  margin-bottom: 16px;
+}
+
+.mobile-action-group-title {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 0 0 7px;
+}
+
+// One row per entry, the size of a thumb, as the prototype draws them.
+.mobile-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  margin-bottom: 7px;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid @mobile-line-soft;
+  border-radius: 10px;
+  background: @mobile-sunk;
+
+  &[aria-expanded="true"] {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+  }
+}
+
+.mobile-action-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-action-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+// Says which tab owns the entry, for the rows that are a way there rather than a menu.
+.mobile-action-note {
+  display: block;
+  font-size: 11px;
+  color: @mobile-muted;
+  margin-top: 2px;
+}
+
+// How many cards, projects or parties the entry has to choose between.
+.mobile-action-count {
+  flex: none;
+  font-size: 13px;
+  color: @mobile-ochre;
+}
+
+.mobile-action-chevron {
+  flex: none;
+  color: @mobile-dim;
+  font-size: 18px;
+}
+
+.mobile-action--elsewhere {
+  background: none;
+  border-style: dashed;
+}
+
+.mobile-action-body {
+  padding: 2px 2px 12px;
 }
 
 //
@@ -625,7 +892,16 @@
 }
 
 .mobile-cards-body {
-  padding: 8px calc(8px + env(safe-area-inset-left)) calc(20px + env(safe-area-inset-bottom));
+  padding: 8px calc(8px + env(safe-area-inset-left)) 16px;
+}
+
+/* Cards flow in rows rather than as inline-blocks: whitespace between inline elements
+   is scaled by `zoom` too, which left an unpredictable gutter that changed with the
+   card scale. */
+.mobile-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .mobile-cards-group-title {
@@ -685,8 +961,32 @@
 }
 
 .mobile-magnify-holder {
-  max-height: 80%;
+  max-height: 72%;
   overflow: auto;
+}
+
+.mobile-magnify-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+// A card this turn has a move for: ringed, and sorted to the front of its group.
+.mobile-card-button--ready .cardbox {
+  box-shadow: 0 0 0 2px @mobile-ochre, 0 0 10px fade(@mobile-ochre, 45%);
+  border-radius: 10px;
+}
+
+/* One you cannot act on right now. Dimmed rather than hidden, because a card you
+   cannot afford this generation is still what you plan the next one around. */
+.mobile-card-button--idle .cardbox {
+  filter: brightness(0.55) saturate(0.7);
+}
+
+/* The card was chosen on the Cards tab, so the sheet shows it alone with its payment.
+   This is the way back to the full list. */
+.mobile-panel-body .wf-chosen-card {
+  margin: 4px 0 10px;
 }
 
 //
@@ -754,31 +1054,130 @@
 }
 
 //
-// Settings sheet
+// More: the log, the settings, and the way to another game
 //
 
-.mobile-settings {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: @mobile-ground;
-  overflow-y: auto;
-  padding: calc(10px + env(safe-area-inset-top)) 10px calc(20px + env(safe-area-inset-bottom));
+.mobile-more {
+  padding: 10px 12px 20px;
 }
 
-.mobile-settings-head {
+.mobile-more-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 12px;
+}
+
+.mobile-more-group {
+  margin-bottom: 16px;
+  border: 1px solid @mobile-line-soft;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mobile-more-group-title {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 0 0 7px;
+}
+
+.mobile-more-row {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  min-height: 52px;
+  padding: 8px 12px;
+  background: @mobile-sunk;
+  color: @mobile-text;
+  // A button centres its text and an anchor does not; these rows are the same row.
+  text-align: left;
+  text-decoration: none;
+
+  & + & {
+    border-top: 1px solid @mobile-line-soft;
+  }
 }
 
-.mobile-settings-title {
+.mobile-more-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-more-chevron {
+  flex: none;
+  color: @mobile-dim;
+  font-size: 18px;
+}
+
+.mobile-more-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: @mobile-dim;
+  margin: 0 2px;
+}
+
+// The way back from a screen More opened, where a phone expects it.
+.mobile-more-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* The log draws its own heading and generation picker, which is one heading too many
+   under the one More already put there, and its panel is sized for a desktop column. */
+.mobile-more .log-container > :first-child h2 {
+  display: none;
+}
+
+.mobile-more .log-panel .panel-body {
+  max-height: 70dvh;
+}
+
+.mobile-more-head-title {
   font-family: Prototype, sans-serif;
   font-size: 14px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: @mobile-muted;
+}
+
+//
+// Settings
+//
+
+.mobile-settings-group {
+  font-family: Prototype, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @mobile-dim;
+  margin: 18px 0 2px;
+}
+
+.mobile-language-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-language {
+  padding: 6px 10px;
+  min-height: 36px;
+  border-radius: 7px;
+  border: 1px solid @mobile-line-soft;
+  background: @mobile-sunk;
+  color: @mobile-muted;
+  font-size: 13px;
+
+  &[aria-selected="true"] {
+    background: @mobile-raised;
+    border-color: @mobile-marker-ring;
+    color: @mobile-text;
+  }
 }
 
 .mobile-setting {

@@ -8,7 +8,7 @@
         <i class="form-icon" ></i>
         <span>{{ $t(option.title) }}</span>
       </label>
-      <div v-if="selectedIdx === idx" style="margin-left: 30px">
+      <div v-if="selectedIdx === idx" class="wf-option-body">
         <PlayerInputFactory ref="inputfactory"
                               :playerView="playerView"
                               :playerinput="option"
@@ -16,9 +16,14 @@
                               :showsave="showsave && showChildSaveButton(option)"
                               :showtitle="false" />
       </div>
+      <!-- On a phone the options are a full-width stack, so a button under the whole
+           menu is a screen of scrolling away from the option it acts on. -->
+      <div v-if="selectedIdx === idx && showOwnSaveButton && saveBesideOption" class="wf-action wf-option-save">
+        <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
+      </div>
     </div>
-    <div v-if="showsave && selectedOption && !showChildSaveButton(selectedOption)">
-      <div style="margin: 5px 30px 10px" class="wf-action">
+    <div v-if="showOwnSaveButton && !saveBesideOption">
+      <div class="wf-action wf-option-save">
         <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
       </div>
     </div>
@@ -34,6 +39,10 @@ import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {getPreferences} from '@/client/utils/PreferencesManager';
 import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
+import {CardName} from '@/common/cards/CardName';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
+import {offerFor, pickedCard} from '@/client/utils/cardSelection';
+import {BoardPick, pickedBoardThing} from '@/client/utils/boardSelection';
 
 let unique = 0;
 
@@ -88,7 +97,37 @@ export default defineComponent({
       selectedIdx,
     };
   },
+  computed: {
+    pickedCard(): CardName | undefined {
+      return pickedCard.value;
+    },
+    pickedBoardThing(): BoardPick | undefined {
+      return pickedBoardThing.value;
+    },
+    showOwnSaveButton(): boolean {
+      const selected = this.selectedOption;
+      return this.showsave && selected !== undefined && !this.showChildSaveButton(selected);
+    },
+    saveBesideOption(): boolean {
+      return mobileLayout.value;
+    },
+  },
   watch: {
+    // A card picked elsewhere -- on the mobile shell's Cards tab -- names the option
+    // the player meant, so open that one rather than making them find it again. A
+    // milestone or an award tapped under the board says the same thing.
+    pickedCard: {
+      handler() {
+        this.selectPickedOption();
+      },
+      immediate: true,
+    },
+    pickedBoardThing: {
+      handler() {
+        this.selectPickedOption();
+      },
+      immediate: true,
+    },
     selectedOption(newOption: PlayerInputModel) {
       this.selectedIdx = this.displayedOptions.indexOf(newOption);
       // Clicking the option can shift elements on the page.
@@ -107,6 +146,28 @@ export default defineComponent({
     },
   },
   methods: {
+    selectPickedOption(): void {
+      const option = this.pickedOption();
+      if (option !== undefined) {
+        this.selectedOption = option;
+      }
+    },
+    pickedOption(): PlayerInputModel | undefined {
+      const name = this.pickedCard;
+      if (name !== undefined) {
+        const offered = this.displayedOptions.find((each) => offerFor(each, name) !== undefined);
+        if (offered !== undefined) {
+          return offered;
+        }
+      }
+      const board = this.pickedBoardThing;
+      if (board === undefined) {
+        return undefined;
+      }
+      /* A list of milestones or awards is a list of the names themselves, so the
+         option the player tapped under the board is the one titled after it. */
+      return this.displayedOptions.find((each) => each.title === board.name);
+    },
     getSelectedOptionTop(): number | undefined {
       const element = this.getSelectedOptionLabelElement();
       return element?.getBoundingClientRect().top;

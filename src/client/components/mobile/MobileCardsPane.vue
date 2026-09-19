@@ -24,42 +24,58 @@
     <div class="mobile-cards-body mobile-card-scaler" :style="scaleStyle">
       <template v-if="view === 'hand'">
         <div v-if="hand.length === 0" class="mobile-cards-empty" v-i18n>No cards in hand</div>
-        <button
-          v-for="card in hand"
-          :key="card.name"
-          class="cardbox mobile-card-button"
-          data-test="hand-card"
-          @click="magnified = card">
-          <Card :card="card"/>
-        </button>
+        <div v-else class="mobile-card-grid">
+          <button
+            v-for="card in hand"
+            :key="card.name"
+            class="mobile-card-button"
+            :class="cardClass(card)"
+            data-test="hand-card"
+            @click="tap(card)">
+            <Card class="cardbox" :card="card"/>
+          </button>
+        </div>
       </template>
 
       <template v-else>
         <div v-for="group in playedGroups" :key="group.title">
           <h3 class="mobile-cards-group-title">{{ $t(group.title) }} · {{ group.cards.length }}</h3>
-          <button
-            v-for="card in group.cards"
-            :key="card.name"
-            class="cardbox mobile-card-button"
-            data-test="played-card"
-            @click="magnified = card">
-            <Card
-              :card="card"
-              :actionUsed="isCardActivated(card, player)"
-              :cubeColor="player.color"/>
-          </button>
+          <div class="mobile-card-grid">
+            <button
+              v-for="card in group.cards"
+              :key="card.name"
+              class="mobile-card-button"
+              :class="cardClass(card)"
+              data-test="played-card"
+              @click="tap(card)">
+              <Card
+                class="cardbox"
+                :card="card"
+                :actionUsed="isCardActivated(card, player)"
+                :cubeColor="player.color"/>
+            </button>
+          </div>
         </div>
         <div v-if="player.tableau.length === 0" class="mobile-cards-empty" v-i18n>No cards played yet</div>
       </template>
     </div>
 
-    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
-      <div class="mobile-magnify-holder">
-        <div class="cardbox">
-          <Card :card="magnified" :cubeColor="player.color"/>
-        </div>
+    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="close()">
+      <!-- Tapping the card puts it back down: the way out is wherever you look. -->
+      <div class="mobile-magnify-holder" data-test="magnified-holder" @click="close()">
+        <Card class="cardbox" :card="magnified" :cubeColor="player.color"/>
       </div>
-      <button class="mobile-button" v-i18n>Close</button>
+      <div class="mobile-magnify-actions" @click.stop>
+        <button
+          v-if="offer !== undefined"
+          class="mobile-button mobile-button--go"
+          data-test="magnified-play"
+          @click="use()">
+          <span v-if="offer === 'play'" v-i18n>Play card</span>
+          <span v-else v-i18n>Use action</span>
+        </button>
+        <button class="mobile-button" data-test="magnified-close" @click="close()" v-i18n>Close</button>
+      </div>
     </div>
   </div>
 </template>
@@ -75,6 +91,8 @@ import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {getCardsByType, isCardActivated} from '@/client/utils/CardUtils';
 import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
+import {CardOffer, offerIn} from '@/client/utils/cardSelection';
+import {CardTapMode} from '@/client/utils/PreferencesManager';
 
 type CardGroup = {
   title: string;
@@ -88,6 +106,7 @@ type DataModel = {
 
 export default defineComponent({
   name: 'MobileCardsPane',
+  emits: ['play'],
   props: {
     playerView: {
       type: Object as PropType<PlayerViewModel>,
@@ -95,6 +114,10 @@ export default defineComponent({
     },
     cardScale: {
       type: Number,
+      required: true,
+    },
+    tapMode: {
+      type: String as PropType<CardTapMode>,
       required: true,
     },
   },
@@ -114,18 +137,34 @@ export default defineComponent({
     scaleStyle(): Record<string, string> {
       return {'--mobile-card-scale': String(this.cardScale)};
     },
-    /** The hand in the same order the desktop hand uses, preludes and CEOs first. */
+    /** Whether the server is waiting on this player, which is when readiness matters. */
+    actionWaiting(): boolean {
+      return this.playerView.waitingFor !== undefined;
+    },
+    /**
+     * The hand, in the desktop's order, but with what the player can do about it
+     * first.
+     *
+     * Sorting is stable, so within each half the order the player arranged their hand
+     * in survives; only the line between playable and not moves.
+     */
     hand(): ReadonlyArray<CardModel> {
       const playerView = this.playerView;
       const projectCards = CardOrderStorage.getOrdered(
         CardOrderStorage.getCardOrder(playerView.id),
         playerView.cardsInHand);
-      return [
+      const ordered = [
         ...playerView.draftedCards,
         ...playerView.preludeCardsInHand,
         ...playerView.ceoCardsInHand,
         ...projectCards,
       ];
+      if (!this.actionWaiting) {
+        return ordered;
+      }
+      const ready = ordered.filter((card) => this.offerFor(card) !== undefined);
+      const rest = ordered.filter((card) => this.offerFor(card) === undefined);
+      return [...ready, ...rest];
     },
     playedGroups(): ReadonlyArray<CardGroup> {
       const tableau = this.player.tableau;
@@ -142,6 +181,50 @@ export default defineComponent({
     },
     isCardActivated(): typeof isCardActivated {
       return isCardActivated;
+    },
+    /** What the player's current input would do with the magnified card, if anything. */
+    offer(): CardOffer | undefined {
+      return this.magnified === undefined ? undefined : this.offerFor(this.magnified);
+    },
+  },
+  methods: {
+    offerFor(card: CardModel): CardOffer | undefined {
+      return offerIn(this.playerView.waitingFor, card.name);
+    },
+    cardClass(card: CardModel): Record<string, boolean> {
+      const ready = this.offerFor(card) !== undefined;
+      return {
+        'mobile-card-button--ready': ready,
+        // Dimmed rather than hidden: a card you cannot play this turn is still worth
+        // reading, and planning around.
+        'mobile-card-button--idle': this.actionWaiting && !ready,
+      };
+    },
+    /*
+     * A tap reads the card, or plays it, depending on what the player asked for in
+     * settings. Reading first is the default: a mis-tap that plays a card costs a
+     * turn, and a card you have not read is not a choice you have made.
+     */
+    tap(card: CardModel): void {
+      if (this.tapMode === 'play' && this.offerFor(card) !== undefined) {
+        this.$emit('play', card.name);
+        return;
+      }
+      this.magnified = card;
+    },
+    close(): void {
+      this.magnified = undefined;
+    },
+    /*
+     * Hands the card to the action sheet rather than answering the input here: what
+     * comes next is a payment, a placement or a target, and those are the sheet's job.
+     */
+    use(): void {
+      const card = this.magnified;
+      this.magnified = undefined;
+      if (card !== undefined) {
+        this.$emit('play', card.name);
+      }
     },
   },
 });
