@@ -102,6 +102,10 @@
 
       <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
 
+      <!-- The card or tile being acted on, over a faded board. The panel below it is
+           then only the price and the button. -->
+      <MobileFocusStage :playerView="playerView" @dismiss="setSnap('peek')"/>
+
       <MobileActionPanel
         v-show="panelMode === 'sheet' || tab === 'actions'"
         :playerView="playerView"
@@ -134,6 +138,7 @@ import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue'
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
@@ -151,6 +156,7 @@ import {SpaceId} from '@/common/Types';
 import {CardName} from '@/common/cards/CardName';
 import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
+import {pickFocused, setPickFocus, setTabRouting} from '@/client/utils/mobileFocus';
 import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
 import {requestedTab} from '@/client/utils/mobileNavigation';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
@@ -162,11 +168,6 @@ type DataModel = {
   belowOpen: boolean;
   /** Set when the player opens or closes the tag row by hand, until the next tab change. */
   tagRowOverride: boolean | undefined;
-  /**
-   * Set while the action menu is raised over the tab the player picked something on,
-   * rather than sitting on the Act tab where it usually lives.
-   */
-  overTab: boolean;
   preferences: Preferences;
 };
 
@@ -188,6 +189,7 @@ export default defineComponent({
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
+    MobileFocusStage,
     MobileHeader,
     MobileMore,
     MobileTabBar,
@@ -202,7 +204,6 @@ export default defineComponent({
       snap: getPreferences().action_sheet_peek ? 'peek' : 'closed',
       belowOpen: false,
       tagRowOverride: undefined,
-      overTab: false,
       preferences: {...getPreferences()},
     };
   },
@@ -262,6 +263,16 @@ export default defineComponent({
      * other thing the server asks -- pick a target, pick a resource -- interrupts
      * whatever they were doing, so it arrives as a sheet over it.
      */
+    /**
+     * Whether the menu is raised over the tab the player picked something on, rather
+     * than sitting on the Act tab where it otherwise lives.
+     *
+     * The action list reads the same flag to show that one entry alone, so it is kept
+     * where both can see it rather than in this component's own data.
+     */
+    overTab(): boolean {
+      return pickFocused.value;
+    },
     panelMode(): 'tab' | 'sheet' {
       if (!isActionMenu(this.playerView.waitingFor)) {
         return 'sheet';
@@ -289,9 +300,7 @@ export default defineComponent({
     /* A thing picked for one input must never be applied to the next one, so a pick
        lasts exactly as long as the input it was made for. */
     waitingFor() {
-      this.overTab = false;
-      clearPickedCard();
-      clearBoardPick();
+      this.forgetPick();
     },
     /* The action menu sends the player to the tab that draws what an entry is about.
        It has no path back up to the shell, so it leaves the request in a store. */
@@ -346,9 +355,7 @@ export default defineComponent({
       /* Putting the panel down abandons what it was raised for: the menu goes back to
          being a tab, and nothing on the board or in the hand is still shown as chosen. */
       if (this.overTab && snap !== 'half' && snap !== 'full') {
-        this.overTab = false;
-        clearPickedCard();
-        clearBoardPick();
+        this.forgetPick();
       }
     },
     /*
@@ -359,12 +366,14 @@ export default defineComponent({
     playCard(name: CardName): void {
       clearBoardPick();
       pickCard(name);
-      this.openPick();
+      this.openPick(true);
     },
     claimBoardThing(kind: BoardThing, name: string): void {
       clearPickedCard();
       pickBoardThing(kind, name);
-      this.openPick();
+      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
+         is nothing to hold up over the board and the panel needs the whole screen. */
+      this.openPick(kind !== 'colony');
     },
     /*
      * Where the player finishes what they just started, which is theirs to choose.
@@ -372,14 +381,19 @@ export default defineComponent({
      * Over the tab they are standing on, they never leave the cards or the board they
      * were reading; on the Act tab, the rest of the menu is in reach beside it.
      */
-    openPick(): void {
+    openPick(staged: boolean): void {
       if (this.preferences.play_from === 'actions') {
-        this.overTab = false;
+        setPickFocus('none');
         this.selectTab('actions');
         return;
       }
-      this.overTab = true;
-      this.setSnap('full');
+      setPickFocus(staged ? 'staged' : 'panel');
+      this.setSnap(staged ? 'half' : 'full');
+    },
+    forgetPick(): void {
+      setPickFocus('none');
+      clearPickedCard();
+      clearBoardPick();
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;
@@ -407,6 +421,9 @@ export default defineComponent({
     },
     refreshPreferences(): void {
       this.preferences = {...getPreferences()};
+      /* The menu is drawn several components deep and cannot be told through props,
+         so where the player wants to act is left where it can read it. */
+      setTabRouting(this.preferences.play_from === 'tabs');
       refreshMobileLayoutPreference();
     },
     /* Brings the space a log entry names into view, the way the desktop log does. */
@@ -427,12 +444,14 @@ export default defineComponent({
       }
     },
   },
+  created() {
+    setTabRouting(this.preferences.play_from === 'tabs');
+  },
   mounted() {
     document.body.classList.add('mobile-shell-active');
   },
   unmounted() {
-    clearPickedCard();
-    clearBoardPick();
+    this.forgetPick();
     document.body.classList.remove('mobile-shell-active');
   },
 });

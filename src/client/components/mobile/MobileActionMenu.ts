@@ -109,6 +109,22 @@ export function isActionMenu(input: PlayerInputModel | undefined): input is OrOp
     input.options.some((option) => option.annotation !== undefined);
 }
 
+/** What the shell knows that the menu itself does not. */
+export type MenuContext = {
+  /** The card picked on the Cards tab, if any. */
+  card?: CardName;
+  /** The tile tapped under the board, if any. */
+  board?: BoardPick;
+  /**
+   * Whether an entry may send the player to the tab its subject is drawn on.
+   *
+   * False when they have asked to take their turn on the Act tab: there every entry
+   * unfolds in place, because a menu that sends you away is not one you can work
+   * from. Defaults to true.
+   */
+  routes?: boolean;
+};
+
 /**
  * Arranges a menu into the groups above.
  *
@@ -116,7 +132,9 @@ export function isActionMenu(input: PlayerInputModel | undefined): input is OrOp
  * of its own at the end, rather than going missing because a new action was added to
  * the game and nobody thought of this file.
  */
-export function groupActions(menu: OrOptionsModel, picked?: CardName, boardPick?: BoardPick): ReadonlyArray<ActionGroup> {
+export function groupActions(menu: OrOptionsModel, context: MenuContext = {}): ReadonlyArray<ActionGroup> {
+  const {card, board} = context;
+  const routes = context.routes ?? true;
   const entries: Array<ActionEntry> = menu.options.map((input, index) => {
     const annotation = input.annotation as ActionAnnotation | undefined;
     /*
@@ -125,13 +143,13 @@ export function groupActions(menu: OrOptionsModel, picked?: CardName, boardPick?
      * the entry opens here instead, and the row stops pointing at the tab they just
      * left.
      */
-    const claimed = (picked !== undefined && offerFor(input, picked) !== undefined) ||
-      (boardPick !== undefined && boardOfferFor(input, boardPick));
+    const claimed = (card !== undefined && offerFor(input, card) !== undefined) ||
+      (board !== undefined && boardOfferFor(input, board));
     return {
       index,
       input,
       annotation,
-      elsewhere: claimed ? undefined : elsewhereFor(annotation),
+      elsewhere: claimed || !routes ? undefined : elsewhereFor(annotation),
       count: countFor(input),
     };
   });

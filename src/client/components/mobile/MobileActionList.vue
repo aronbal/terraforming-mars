@@ -1,5 +1,26 @@
 <template>
   <div class="mobile-actions" data-test="action-list">
+    <!-- The player has already said what they are doing, so this is only the price
+         and the confirmation for it. -->
+    <template v-if="focused !== undefined">
+      <!-- One line, because the thing it names is already on the stage above. It
+           stays for the price, which nothing else in here says. -->
+      <p class="mobile-focus-caption">{{ $t(focused.input.title) }}</p>
+      <div class="mobile-action-body mobile-action-body--focused" data-test="focused-body">
+        <PlayerInputFactory
+          ref="openInput"
+          :playerView="playerView"
+          :playerinput="focused.input"
+          :onsave="saved(focused.index)"
+          :showsave="showsave && childSaves(focused.input)"
+          :showtitle="false"/>
+        <div v-if="showsave && !childSaves(focused.input)" class="wf-action">
+          <AppButton :title="$t(focused.input.buttonLabel)" type="submit" size="normal" @click="save()"/>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
     <h2 class="mobile-actions-title">{{ $t(playerinput.title) }}</h2>
 
     <div v-for="group in groups" :key="group.title ?? ''" class="mobile-action-group">
@@ -48,6 +69,7 @@
         </template>
       </template>
     </div>
+    </template>
   </div>
 </template>
 
@@ -64,6 +86,8 @@ import {requestTab} from '@/client/utils/mobileNavigation';
 import {CardName} from '@/common/cards/CardName';
 import {offerFor, pickedCard} from '@/client/utils/cardSelection';
 import {BoardPick, boardOfferFor, pickedBoardThing} from '@/client/utils/boardSelection';
+import {ActionEntry} from '@/client/components/mobile/MobileActionMenu';
+import {pickFocused, tabRouting} from '@/client/utils/mobileFocus';
 
 /*
  * A turn's action menu, as a phone can read it.
@@ -116,7 +140,18 @@ export default defineComponent({
       return pickedBoardThing.value;
     },
     groups(): ReadonlyArray<ActionGroup> {
-      return groupActions(this.playerinput, this.pickedCard, this.pickedBoardThing);
+      return groupActions(this.playerinput, {
+        card: this.pickedCard,
+        board: this.pickedBoardThing,
+        routes: tabRouting.value,
+      });
+    },
+    /**
+     * The one entry to show, when the shell raised this over the tab a choice was
+     * made on. Undefined means show the whole menu, which is the Act tab's job.
+     */
+    focused(): ActionEntry | undefined {
+      return pickFocused.value ? this.pickedEntry() : undefined;
     },
   },
   watch: {
@@ -140,11 +175,12 @@ export default defineComponent({
     },
   },
   methods: {
-    openPickedEntry(): void {
+    /** The entry that answers what the player picked, if the menu holds one. */
+    pickedEntry(): ActionEntry | undefined {
       const card = this.pickedCard;
       const board = this.pickedBoardThing;
       if (card === undefined && board === undefined) {
-        return;
+        return undefined;
       }
       for (const group of this.groups) {
         for (const entry of group.entries) {
@@ -154,10 +190,16 @@ export default defineComponent({
           const claims = (card !== undefined && offerFor(entry.input, card) !== undefined) ||
             (board !== undefined && boardOfferFor(entry.input, board));
           if (claims) {
-            this.openIndex = entry.index;
-            return;
+            return entry;
           }
         }
+      }
+      return undefined;
+    },
+    openPickedEntry(): void {
+      const entry = this.pickedEntry();
+      if (entry !== undefined) {
+        this.openIndex = entry.index;
       }
     },
     goto(tab: MobileTab): void {

@@ -1,8 +1,8 @@
 <template>
-  <div class='wf-options'>
+  <div class="wf-options" :class="{'wf-options--narrowed': narrowedTo !== undefined}">
     <label v-if="showtitle"><div>{{ $t(playerinput.title) }}</div></label>
     <label v-if="playerinput.warning !== undefined" class="card-warning"><div>({{ $t(playerinput.warning) }})</div></label>
-    <div v-for="(option, idx) in displayedOptions" :key="idx">
+    <div v-for="(option, idx) in displayedOptions" :key="idx" v-show="isVisible(option)">
       <label class="form-radio" ref="optionLabels">
         <input v-model="selectedOption" type="radio" :name="radioElementName" :value="option" >
         <i class="form-icon" ></i>
@@ -43,6 +43,7 @@ import {CardName} from '@/common/cards/CardName';
 import {mobileLayout} from '@/client/utils/useMobileLayout';
 import {offerFor, pickedCard} from '@/client/utils/cardSelection';
 import {BoardPick, pickedBoardThing} from '@/client/utils/boardSelection';
+import {pickFocused} from '@/client/utils/mobileFocus';
 
 let unique = 0;
 
@@ -111,6 +112,16 @@ export default defineComponent({
     saveBesideOption(): boolean {
       return mobileLayout.value;
     },
+    /**
+     * The single option to show, when the player reached this by tapping the thing it
+     * is about.
+     *
+     * They chose a milestone by name on the board; listing the other five underneath
+     * it asks them to choose it again. Nothing sets this outside the mobile shell.
+     */
+    narrowedTo(): PlayerInputModel | undefined {
+      return pickFocused.value ? this.pickedOption() : undefined;
+    },
   },
   watch: {
     // A card picked elsewhere -- on the mobile shell's Cards tab -- names the option
@@ -146,6 +157,10 @@ export default defineComponent({
     },
   },
   methods: {
+    isVisible(option: PlayerInputModel): boolean {
+      const only = this.narrowedTo;
+      return only === undefined || only === option;
+    },
     selectPickedOption(): void {
       const option = this.pickedOption();
       if (option !== undefined) {

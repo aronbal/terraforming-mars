@@ -2,7 +2,7 @@
   <div
     ref="panel"
     class="mobile-action-panel"
-    :class="mode === 'tab' ? 'mobile-pane mobile-pane--actions' : 'mobile-sheet'"
+    :class="mode === 'tab' ? 'mobile-pane mobile-pane--actions' : ['mobile-sheet', {'mobile-sheet--compact': compact}]"
     :style="mode === 'sheet' ? sheetStyle : undefined"
     :role="mode === 'sheet' ? 'dialog' : 'tabpanel'"
     :aria-label="$t('Your actions')"
@@ -35,6 +35,7 @@ import {defineComponent, PropType} from 'vue';
 import WaitingFor from '@/client/components/WaitingFor.vue';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {SheetSnap, SHEET_PEEK_PX, SHEET_SNAPS} from '@/client/components/mobile/MobileTab';
+import {pickFocus} from '@/client/utils/mobileFocus';
 
 /** How much of the sheet the `half` and `full` stops leave off screen. */
 const HALF_FRACTION = 0.5;
@@ -115,12 +116,25 @@ export default defineComponent({
     hint(): string {
       return this.snap === 'half' || this.snap === 'full' ? 'Tap to close' : 'Tap to open';
     },
+    /*
+     * Whether the panel is only the price and the button for something already held
+     * up above it. Then it takes the room that needs and no more: half a screen of
+     * empty surface under one button is the clutter this was meant to remove.
+     */
+    compact(): boolean {
+      return this.mode === 'sheet' && pickFocus.value === 'staged';
+    },
     /* Cards are chosen and played from in here, so they scale exactly as they do on
        the Cards tab. Unscaled, a corporation card is wider than the phone. */
     cardScaleStyle(): Record<string, string> {
       return {'--mobile-card-scale': String(this.cardScale)};
     },
     sheetStyle(): Record<string, string> {
+      /* A compact panel is as tall as its contents and sits on the bottom edge, so
+         there is no stop to translate it to: it is either up or it is dismissed. */
+      if (this.compact) {
+        return {};
+      }
       const offset = this.dragging ? this.dragOffset : this.offsetFor(this.snap);
       return {transform: `translateY(${offset}px)`};
     },

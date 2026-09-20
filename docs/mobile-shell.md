@@ -108,6 +108,7 @@ mobile/MobileActionList.vue             the turn's menu as grouped rows
 mobile/MobileActionMenu.ts              which entries group where, and which live elsewhere
 mobile/MobileCardsPane.vue              Hand | Played, ready cards first
 mobile/MobileFitBlock.vue               scales a desktop-width block down to the phone
+mobile/MobileFocusStage.vue             the card or tile being acted on, over a faded board
 mobile/MobileMore.vue                   the log, the settings, the way to another game
 mobile/MobileSettings.vue               the preferences that mean something on a phone
 mobile/MobileTabBar.vue                 Board / Cards / Act / Players / More
@@ -116,6 +117,7 @@ utils/useMobileLayout.ts                viewport width + preference -> which she
 utils/spaceSelection.ts                 whether a tile is being placed
 utils/cardSelection.ts                  a card picked on one tab, for an input on another
 utils/boardSelection.ts                 the same, for a milestone, an award or a colony tile
+utils/mobileFocus.ts                    whether the panel shows one thing, and whether rows route
 utils/mobileNavigation.ts               a tab the game asks the shell to open
 styles/mobile_shell.less                everything the shell paints
 ```
@@ -222,12 +224,39 @@ something has been picked there the entry opens instead of pointing away, holdin
 that choice and its payment; without that, the two tabs would point at each other
 forever.
 
-**Where the choice is finished** is the player's, through `play_from`. The
-default, `tabs`, raises the menu entry over the tab they tapped on, so they never
-leave the hand or the board they were reading; `actions` takes them to the Act
-tab, where the rest of the menu is in reach beside it. Either way the entry that
-opens is the one their tap named, and putting the panel back down abandons the
-pick.
+**Where the choice is finished** is the player's, through `play_from`.
+
+`tabs`, the default, holds the thing itself up over a faded board — the card at
+the size it was read at, or the milestone or award with its description — and
+puts a panel under it that is only the price and the button. It is as tall as
+that needs and no taller. They have already said what they are doing, so neither
+the rest of the menu nor a second copy of the card is offered around it. Tapping
+the faded board, or the panel's head, abandons the pick.
+
+A colony is the exception: it is chosen inside the trade itself, alongside the
+fee, so there is nothing to hold up and the panel keeps the whole screen.
+
+**The payment widget is left as the desktop draws it**, and is the same on both
+tabs — it is the same money either way. The one thing the shell states is its
+size: the widget sizes each running subtotal explicitly at 20px and lets the
+total they add up to inherit, which on a desktop is 23px and inside the shell
+was 14px. That made the number deciding whether the button can be pressed the
+smallest thing on the row.
+
+**The payment widget is the same either way.** It is drawn for a desktop column,
+where its two sides — what you spend, and what it is worth in M€ — are obviously
+one table; at phone width the values drifted away from the rows they belonged
+to, so the shell rules them off into a column. It also sizes each running
+subtotal explicitly at 20px and lets the total they add up to inherit, which on
+a desktop is 23px and inside the shell was 14px: the number that decides whether
+the button can be pressed, drawn as the least of its own parts. The shell states
+that size rather than inheriting it.
+
+`actions` takes them to the Act tab instead — and then nothing in the menu may
+send them anywhere. Every entry unfolds in place, cards and all, the way the
+desktop menu does, because a setting that says "do it all from Act" cannot hand
+back a row that is a link to another tab. That is what `MenuContext.routes`
+switches off.
 
 **More** holds the game log, the settings and the links to another game. They are
 things a player reaches for between decisions rather than during one, so they
@@ -257,6 +286,14 @@ The Cards tab holds a segmented control: **Hand | Played**.
 Cards this turn has a move for are ringed and sort to the front of their group;
 the rest are dimmed in place, because a card you cannot afford this generation is
 still what you plan the next one around.
+
+**Card titles are fitted by measuring them** (`textFit`), and the shell keeps its
+panes mounted but hidden, so a card can be created with no box at all. Nothing
+overflows a box of zero width, so a title fitted then is never shrunk — and the
+size is cached for two days, which spreads one bad measurement across every
+later visit. `fitTextWhenReady` waits for the element to have a box, watching
+with a `ResizeObserver` when it does not, and `fitText` refuses to measure one
+that has none.
 
 A tap opens the card to read it, with **Play card** or **Use action** on the
 opened card, and tapping the card again puts it back down. `card_tap: 'play'`

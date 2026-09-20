@@ -38,6 +38,22 @@
 
 @mobile-tabbar-height: 54px;
 
+/*
+ * The shell's layers.
+ *
+ * A pane is not a stacking context, so everything a card draws inside one competes
+ * directly with these -- and a card's own parts reach 101 (its tags sit at 2, which
+ * is what put them over the focus stage). Starting the shell's layers well above
+ * that keeps the order a matter of these five numbers rather than of what happens to
+ * be on screen.
+ */
+@mobile-layer-scrim: 190;
+@mobile-layer-stage: 200;
+@mobile-layer-sheet: 210;
+@mobile-layer-confirm: 220;
+@mobile-layer-magnify: 230;
+@mobile-layer-dialog: 240;
+
 /* The scalable unit: the 620x600 board artwork, plus room on each side for the
    captions that hang off it. Measured, not guessed — the colony space labels reach
    25px to the left of the artwork, and Ares and Venus markers reach past its right
@@ -84,6 +100,20 @@
   .log-container,
   .player-overview-container {
     max-width: 100%;
+  }
+
+  /*
+   * The payment widget sizes each running subtotal explicitly (20px) but lets the
+   * total they add up to inherit, which on a desktop is 23px. The shell's own base
+   * is 14px, so inside it the total came out smaller than its own parts -- the one
+   * number that decides whether the button can be pressed, drawn as the least of
+   * them. The size is stated here rather than inherited.
+   *
+   * Everything else about the widget is left as the desktop draws it, and it is the
+   * same on both tabs: it is the same money either way.
+   */
+  .payments_table {
+    font-size: 20px;
   }
 }
 
@@ -572,7 +602,7 @@
   right: 8px;
   bottom: 8px;
   // Above the action sheet, as a second line of defence for the confirm button.
-  z-index: 3;
+  z-index: @mobile-layer-confirm;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -618,7 +648,7 @@
 .mobile-shell-active dialog[open] {
   position: fixed;
   inset: auto 8px calc(16px + env(safe-area-inset-bottom));
-  z-index: 70;
+  z-index: @mobile-layer-dialog;
   max-width: none;
   margin: 0;
   border: 1px solid @mobile-line;
@@ -634,14 +664,14 @@
 .mobile-scrim {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: @mobile-layer-scrim;
   background: fade(#000, 55%);
 }
 
 .mobile-sheet {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: @mobile-layer-sheet;
   display: flex;
   flex-direction: column;
   background: @mobile-surface;
@@ -653,6 +683,18 @@
   &[data-drag="1"] {
     transition: none;
   }
+}
+
+/*
+ * The panel when what it is about is held up on the stage above it: as tall as the
+ * price and the button need, on the bottom edge, and no taller.
+ *
+ * Capped at half the stage, which is the room the stage reserves for itself.
+ */
+.mobile-sheet--compact {
+  top: auto;
+  height: auto;
+  max-height: 50%;
 }
 
 /* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
@@ -950,7 +992,7 @@
 .mobile-magnify {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: @mobile-layer-magnify;
   background: fade(#000, 80%);
   display: flex;
   flex-direction: column;
@@ -987,6 +1029,91 @@
    This is the way back to the full list. */
 .mobile-panel-body .wf-chosen-card {
   margin: 4px 0 10px;
+}
+
+/*
+ * One thing, at the size it was read at.
+ *
+ * The player tapped the card open, read it at full size, and said play it -- so
+ * shrinking it back to hand size to ask for the payment makes them read it twice.
+ * Only the card they chose grows; picking a different one brings the list back at
+ * the size they set for it.
+ */
+/*
+ * The panel, once the thing it is about is already on the stage above it: the price
+ * and the button, and nothing that repeats what the player can see.
+ */
+.mobile-action-body--focused {
+  padding: 0;
+
+  // The card is on the stage above, so the panel does not draw it a second time.
+  .payments_cards,
+  .wf-chosen-card {
+    display: none;
+  }
+
+  .payments_cont {
+    margin-bottom: 0;
+  }
+}
+
+.mobile-focus-caption {
+  margin: 0 0 10px;
+  color: @mobile-muted;
+  font-size: 13px;
+}
+
+/*
+ * The thing being acted on, held up over a faded board while the panel below asks
+ * for the price.
+ *
+ * It sits under the panel rather than over it -- the panel is what the player is
+ * about to touch -- and above everything else, which is why the board behind it is
+ * dimmed rather than merely covered.
+ */
+.mobile-focus-stage {
+  position: absolute;
+  inset: 0;
+  z-index: @mobile-layer-stage;
+  display: flex;
+  justify-content: center;
+  padding: 14px 16px 0;
+  background: fade(#000, 78%);
+}
+
+.mobile-focus-holder {
+  // The panel takes the lower half; the component scales to fit, and this is the
+  // backstop for the sizes it cannot reach.
+  max-height: 50%;
+  overflow: hidden;
+  align-self: flex-start;
+
+  // Drawn for a 140px desktop column, and read here at arm's length on a phone.
+  // Given a surface of its own so the scores and the description read as part of the
+  // tile rather than as text loose over the dimmed board.
+  .ma-block {
+    zoom: 1.7;
+    margin: 0;
+    padding: 5px 4px;
+    border-radius: 10px;
+    background: @mobile-surface;
+    cursor: default;
+  }
+
+  // The desktop reserves a fixed five lines for the description so the tiles in a
+  // row stay aligned. There is one tile here, so it takes the room it needs.
+  .ma-block .ma-description {
+    height: auto;
+    padding-top: 4px;
+  }
+}
+
+
+/* The shell has just drawn the milestone or award itself, above. Repeating its name
+   as the one radio button left in the list says nothing the tile did not.
+   Matched through `> div >` to outweigh the rule that makes an option a row. */
+.mobile-action-body--focused .wf-options--narrowed > div > .form-radio {
+  display: none;
 }
 
 //

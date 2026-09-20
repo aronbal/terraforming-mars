@@ -108,12 +108,12 @@ describe('MobileActionMenu', () => {
        so the entry has to open here, or the two tabs point at each other forever. */
     it('opens the card entry here once a card has been picked', () => {
       pickCard(CardName.ANTS);
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), CardName.ANTS);
+      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), {card: CardName.ANTS});
       expect(groups[0].entries[0].elsewhere).is.undefined;
     });
 
     it('still sends the player away for a card the entry does not offer', () => {
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), CardName.BIRDS);
+      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), {card: CardName.BIRDS});
       expect(groups[0].entries[0].elsewhere?.tab).eq('cards');
     });
 
@@ -127,7 +127,7 @@ describe('MobileActionMenu', () => {
 
     it('opens the board entry here once a tile has been tapped', () => {
       const groups = groupActions(
-        menu(milestones('milestone', 'Builder')), undefined, {kind: 'milestone', name: 'Builder'});
+        menu(milestones('milestone', 'Builder')), {board: {kind: 'milestone', name: 'Builder'}});
       expect(groups[0].entries[0].elsewhere).is.undefined;
     });
 
@@ -135,8 +135,17 @@ describe('MobileActionMenu', () => {
        keeps a milestone tap from opening the awards. */
     it('still sends the player away for a tile the entry does not offer', () => {
       const groups = groupActions(
-        menu(milestones('award', 'Landlord')), undefined, {kind: 'milestone', name: 'Landlord'});
+        menu(milestones('award', 'Landlord')), {board: {kind: 'milestone', name: 'Landlord'}});
       expect(groups[0].entries[0].elsewhere?.tab).eq('board');
+    });
+
+    /* On the Act tab the player asked to take the whole turn from there, so nothing
+       in the menu may send them somewhere else to finish it. */
+    it('opens every entry in place when the player is not routed to tabs', () => {
+      const groups = groupActions(
+        menu(projectCard('projectCard', CardName.ANTS), milestones('milestone', 'Builder')),
+        {routes: false});
+      expect(groups.every((group) => group.entries.every((entry) => entry.elsewhere === undefined))).is.true;
     });
 
     it('counts what an entry has to choose between', () => {

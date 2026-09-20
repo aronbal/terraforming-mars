@@ -47,6 +47,13 @@ export const textFitMetrics = new TextFitMetrics();
 // milestone name lives in differently sized boxes and fits at different sizes,
 // so they must not share a cache entry.
 export function fitText(el: HTMLElement, namespace: string): void {
+  // An element with no box has not been laid out -- in the mobile shell, a card in a
+  // pane that is mounted but hidden with `v-show`. Measuring one reads as "fits"
+  // whatever the text says, because nothing can overflow a box of zero width, so
+  // fitting here would cache a size that overflows the moment the pane is shown.
+  if (!hasBox(el)) {
+    return;
+  }
   const start = performance.now();
   const key = `${namespace}:${el.textContent ?? ''}`;
 
@@ -91,7 +98,34 @@ export function fitTextWhenReady(el: HTMLElement | undefined, namespace: string)
     fitText(el, namespace);
     return;
   }
-  document.fonts.ready.then(() => fitText(el, namespace));
+  document.fonts.ready.then(() => fitWhenShown(el, namespace));
+}
+
+// Fits as soon as there is a box to fit into.
+//
+// The mobile shell keeps every pane mounted and hides it with `v-show`, because
+// `SelectSpace` reaches into the board by id and needs it there. So a card can be
+// created with no layout at all and only get one when its tab is first opened, which
+// is too late for the fit its `mounted` hook asked for.
+function fitWhenShown(el: HTMLElement, namespace: string): void {
+  if (hasBox(el)) {
+    fitText(el, namespace);
+    return;
+  }
+  if (typeof ResizeObserver === 'undefined') {
+    return;
+  }
+  const observer = new ResizeObserver(() => {
+    if (hasBox(el)) {
+      observer.disconnect();
+      fitText(el, namespace);
+    }
+  });
+  observer.observe(el);
+}
+
+function hasBox(el: HTMLElement): boolean {
+  return el.clientWidth > 0;
 }
 
 // True when the text spills past its box in either direction. Card titles are a
