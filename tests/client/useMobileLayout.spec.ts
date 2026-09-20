@@ -11,6 +11,7 @@ import {
 
 describe('useMobileLayout', () => {
   let localStorage: FakeLocalStorage;
+  const realViewportWidth = window.innerWidth;
 
   function setViewportWidth(width: number) {
     Object.defineProperty(window, 'innerWidth', {value: width, configurable: true});
@@ -27,6 +28,9 @@ describe('useMobileLayout', () => {
     FakeLocalStorage.deregister(localStorage);
     PreferencesManager.resetForTest();
     resetMobileLayoutForTest();
+    /* The width is on the shared window, and the next spec to start tracking reads
+       it: leaving a phone width here puts every later component in the mobile shell. */
+    setViewportWidth(realViewportWidth);
   });
 
   it('is off until tracking starts', () => {

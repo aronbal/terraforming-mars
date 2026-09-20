@@ -33,22 +33,28 @@
 import {defineComponent} from 'vue';
 
 import AppButton from '@/client/components/common/AppButton.vue';
-import {getCard, getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {CardName} from '@/common/cards/CardName';
-import * as constants from '@/common/constants';
-import {PlayerInputModel, SelectCardModel, SelectInitialCardsModel} from '@/common/models/PlayerInputModel';
+import {SelectInitialCardsModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import SelectCard from '@/client/components/SelectCard.vue';
 import ConfirmDialog from '@/client/components/common/ConfirmDialog.vue';
 import {getPreferences, Preferences, PreferencesManager} from '@/client/utils/PreferencesManager';
-import {Tag} from '@/common/cards/Tag';
 import {SelectInitialCardsResponse} from '@/common/inputs/InputResponse';
-import {CardType} from '@/common/cards/CardType';
 import Colony from '@/client/components/colonies/Colony.vue';
 import {ColonyName} from '@/common/colonies/ColonyName';
 import {ColonyModel, simpleColonyModel} from '@/common/models/ColonyModel';
 import * as titles from '@/common/inputs/SelectInitialCards';
-import {sum} from '@/common/utils/utils';
+import {
+  InitialCardsOffered,
+  InitialCardsSelection,
+  afterPreludes,
+  buildResponse,
+  getOption,
+  hasOption,
+  projectCards,
+  startingMegacredits,
+  validate,
+} from '@/client/components/InitialCards';
 
 
 type DataModel = {
@@ -115,146 +121,20 @@ export default defineComponent({
       throw new Error('should not be called');
     },
     getAfterPreludes() {
-      return sum(this.selectedPreludes.map((prelude) => {
-        const card = getCardOrThrow(prelude);
-        const base = card.startingMegaCredits ?? 0;
-        return base + this.extra(prelude);
-      }));
-    },
-    extra(prelude: CardName): number {
-      const card = getCardOrThrow(prelude);
-      switch (this.selectedCorporations.length === 1 ? this.selectedCorporations[0] : undefined) {
-      // For each step you increase the production of a resource ... you also gain that resource.
-      case CardName.MANUTECH:
-        return card.productionBox?.megacredits ?? 0;
-
-      // When you place a city tile, gain 3 M€.
-      case CardName.THARSIS_REPUBLIC:
-        switch (prelude) {
-        case CardName.SELF_SUFFICIENT_SETTLEMENT:
-        case CardName.EARLY_SETTLEMENT:
-        case CardName.STRATEGIC_BASE_PLANNING:
-          return 3;
-        }
-        return 0;
-
-      // When ANY microbe tag is played ... lose 4 M€ or as much as possible.
-      case CardName.PHARMACY_UNION:
-        const tags = card.tags.filter((tag) => tag === Tag.MICROBE).length;
-        return (-4 * tags);
-
-      // When a microbe tag is played, incl. this, THAT PLAYER gains 2 M€,
-      case CardName.SPLICE:
-        const microbeTags = card.tags.filter((tag) => tag === Tag.MICROBE).length;
-        return (2 * microbeTags);
-
-      // Whenever Venus is terraformed 1 step, you gain 2 M€
-      case CardName.APHRODITE:
-        switch (prelude) {
-        case CardName.VENUS_FIRST:
-          return 4;
-        case CardName.HYDROGEN_BOMBARDMENT:
-          return 2;
-        }
-        return 0;
-
-      // When any player raises any Moon Rate, gain 1M€ per step.
-      case CardName.LUNA_FIRST_INCORPORATED:
-        switch (prelude) {
-        case CardName.FIRST_LUNAR_SETTLEMENT:
-        case CardName.CORE_MINE:
-        case CardName.BASIC_INFRASTRUCTURE:
-          return 1;
-        case CardName.MINING_COMPLEX:
-          return 2;
-        }
-        return 0;
-
-      // When you place an ocean tile, gain 4MC
-      case CardName.POLARIS:
-        switch (prelude) {
-        case CardName.AQUIFER_TURBINES:
-        case CardName.POLAR_INDUSTRIES:
-          return 4;
-        case CardName.GREAT_AQUIFER:
-          return 8;
-        }
-        return 0;
-
-      // Gain 2 MC for each project card in hand.
-      case CardName.HEAD_START:
-        return this.selectedCards.length * 2;
-
-      // Gain 4MC for playing a card with no tags.
-      // Gain 1MC for playing a card with 1 tag.
-      case CardName.SAGITTA_FRONTIER_SERVICES:
-        const count = card.tags.filter((tag) => tag !== Tag.WILD).length;
-        return count === 0 ? 4 : count === 1 ? 1 : 0;
-
-      default:
-        return 0;
-      }
+      return afterPreludes(this.selection);
     },
     getStartingMegacredits() {
-      if (this.selectedCorporations.length !== 1) {
-        return NaN;
-      }
-      const corpName = this.selectedCorporations[0];
-      const corporation = getCardOrThrow(corpName);
-      // The ?? 0 is only because IClientCard applies to _all_ cards.
-
-      let starting = corporation.startingMegaCredits ?? 0;
-      const cardCost = corporation.cardCost === undefined ? constants.CARD_COST : corporation.cardCost;
-      starting -= this.selectedCards.length * cardCost;
-
-      if (corpName === CardName.SAGITTA_FRONTIER_SERVICES) {
-        // Effect for playing itself.
-        starting += 4;
-      }
-
-      return starting;
+      return startingMegacredits(this.selection);
     },
     saveIfConfirmed() {
-      const projectCards = this.selectedCards.filter((name) => getCard(name)?.type !== CardType.PRELUDE);
-      let showAlert = false;
-      if (this.preferences.show_alerts && projectCards.length === 0) {
-        showAlert = true;
-      }
-      if (showAlert) {
+      if (this.preferences.show_alerts && projectCards(this.selection).length === 0) {
         this.typedRefs.confirmation.show();
       } else {
         this.saveData();
       }
     },
     saveData() {
-      const result: SelectInitialCardsResponse = {
-        type: 'initialCards',
-        responses: [],
-      };
-
-      if (this.selectedCorporations.length === 1) {
-        result.responses.push({
-          type: 'card',
-          cards: [this.selectedCorporations[0]],
-        });
-      }
-      if (this.hasPrelude) {
-        result.responses.push({
-          type: 'card',
-          cards: this.selectedPreludes,
-        });
-      }
-      if (this.hasCeo) {
-        result.responses.push({
-          type: 'card',
-          cards: this.selectedCeos,
-        });
-      }
-      result.responses.push({
-        type: 'card',
-        cards: this.selectedCards,
-      });
-      this.onsave(result);
+      this.onsave(buildResponse(this.selection, this.offered));
     },
 
     cardsChanged(cards: Array<CardName>) {
@@ -274,45 +154,10 @@ export default defineComponent({
       this.validate();
     },
 
-    calcuateWarning(): boolean {
-      // Start with warning being empty.
-      this.warning = undefined;
-      if (this.selectedCorporations.length === 0) {
-        this.warning = 'Select a corporation';
-        return false;
-      }
-      if (this.selectedCorporations.length > 1) {
-        this.warning = 'You selected too many corporations';
-        return false;
-      }
-      if (this.hasPrelude) {
-        if (this.selectedPreludes.length < 2) {
-          this.warning = 'Select 2 preludes';
-          return false;
-        }
-        if (this.selectedPreludes.length > 2) {
-          this.warning = 'You selected too many preludes';
-          return false;
-        }
-      }
-      if (this.hasCeo) {
-        if (this.selectedCeos.length < 1) {
-          this.warning = 'Select 1 CEO';
-          return false;
-        }
-        if (this.selectedCeos.length > 1) {
-          this.warning = 'You selected too many CEOs';
-          return false;
-        }
-      }
-      if (this.selectedCards.length === 0) {
-        this.warning = 'You haven\'t selected any project cards';
-        return true;
-      }
-      return true;
-    },
     validate() {
-      this.valid = this.calcuateWarning();
+      const result = validate(this.selection, this.offered);
+      this.valid = result.valid;
+      this.warning = result.warning;
     },
     confirmSelection() {
       this.saveData();
@@ -324,6 +169,17 @@ export default defineComponent({
   computed: {
     typedRefs(): Refs {
       return this.$refs as Refs;
+    },
+    selection(): InitialCardsSelection {
+      return {
+        corporations: this.selectedCorporations,
+        preludes: this.selectedPreludes,
+        ceos: this.selectedCeos,
+        cards: this.selectedCards,
+      };
+    },
+    offered(): InitialCardsOffered {
+      return {prelude: this.hasPrelude, ceo: this.hasCeo};
     },
     playerCanChooseAridor() {
       return this.playerView.dealtCorporationCards.some((card) => card.name === CardName.ARIDOR);
@@ -364,20 +220,4 @@ export default defineComponent({
     this.validate();
   },
 });
-
-function getOption(options: Array<PlayerInputModel>, title: string): SelectCardModel {
-  const option = options.find((option) => option.title === title);
-  if (option === undefined) {
-    throw new Error('invalid input, missing option');
-  }
-  if (option.type !== 'card') {
-    throw new Error('invalid input, Not a SelectCard option');
-  }
-  return option;
-}
-
-function hasOption(options: Array<PlayerInputModel>, title: string): boolean {
-  const option = options.find((option) => option.title === title);
-  return option !== undefined;
-}
 </script>

@@ -543,6 +543,51 @@
   }
 }
 
+// A section's heading is also the control that opens it on a phone. `CreateGameSection`
+// draws the button only there; on a desktop the heading is only a heading.
+.create-game-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.create-game-section-mark {
+  font-family: @menu_font_mono;
+  font-size: 16px;
+  line-height: 1;
+  color: @menu_accent;
+}
+
+// The column used to hold the options itself. They live one level further down now,
+// so the body carries the column layout the option rows are built for.
+.create-game-section-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// A closed section is its heading and nothing else.
+.create-game-page-column--collapsed {
+  padding-bottom: 0;
+
+  h4 {
+    margin-bottom: 0;
+  }
+}
+
 @media only screen and (max-width: 1023px) {
   .topmost-create-game-form {
     min-height: 100dvh;
@@ -582,6 +627,12 @@
 }
 
 @media only screen and (max-width: 767px) {
+  // Stacked, each section is a row until the player opens it, so the space between
+  // them is the rule under the heading rather than a column's worth of padding.
+  .create-game-page-column {
+    padding: 2px 0 10px;
+  }
+
   .create-game {
     padding: 32px 16px 32px;
 

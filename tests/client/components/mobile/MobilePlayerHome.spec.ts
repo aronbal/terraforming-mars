@@ -59,6 +59,18 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.tab).eq('board');
   });
 
+  it('opens on the setup screen, which takes the whole pane', () => {
+    const wrapper = mount({
+      type: 'initialCards',
+      title: 'selectInitialCards',
+      buttonLabel: 'save',
+      options: [],
+    } as unknown as PlayerInputModel);
+
+    expect(wrapper.vm.tab).eq('actions');
+    expect(wrapper.vm.panelMode).eq('tab');
+  });
+
   it('marks the body so the page behind the shell stops scrolling', () => {
     const wrapper = mount();
     expect(document.body.classList.contains('mobile-shell-active')).is.true;

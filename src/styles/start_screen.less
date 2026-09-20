@@ -94,8 +94,11 @@
     text-decoration: none;
   }
 
+  // A touch screen has no hover, so the row's only affordance would never
+  // appear there. `:active` gives the press the same treatment.
   &:hover,
-  &:focus-visible {
+  &:focus-visible,
+  &:active {
     background: linear-gradient(90deg, @menu_accent_soft, transparent 70%);
     padding-left: 26px;
 

@@ -274,10 +274,19 @@ export default defineComponent({
       return pickFocused.value;
     },
     panelMode(): 'tab' | 'sheet' {
-      if (!isActionMenu(this.playerView.waitingFor)) {
+      if (!isActionMenu(this.playerView.waitingFor) && !this.settingUp) {
         return 'sheet';
       }
       return this.overTab ? 'sheet' : 'tab';
+    },
+    /*
+     * The opening hand is not a question asked in the middle of something -- it is the
+     * whole of what the player is doing, and four grids of cards deep. It gets the
+     * screen, the way the turn's own menu does, rather than half of one over a board
+     * that has nothing on it yet.
+     */
+    settingUp(): boolean {
+      return this.playerView.waitingFor?.type === 'initialCards';
     },
     /** The milestones the turn's menu offers, which are the ones worth tapping. */
     claimableMilestones(): ReadonlyArray<string> {
@@ -301,6 +310,9 @@ export default defineComponent({
        lasts exactly as long as the input it was made for. */
     waitingFor() {
       this.forgetPick();
+      if (this.settingUp) {
+        this.tab = 'actions';
+      }
     },
     /* The action menu sends the player to the tab that draws what an entry is about.
        It has no path back up to the shell, so it leaves the request in a store. */
@@ -449,6 +461,10 @@ export default defineComponent({
   },
   mounted() {
     document.body.classList.add('mobile-shell-active');
+    // Nothing else is worth looking at before the opening hand is chosen.
+    if (this.settingUp) {
+      this.tab = 'actions';
+    }
   },
   unmounted() {
     this.forgetPick();

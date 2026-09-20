@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
 import LanguageSwitcher from '@/client/components/LanguageSwitcher.vue';
 import LanguageIcon from '@/client/components/LanguageIcon.vue';
 import PreferencesIcon from '@/client/components/PreferencesIcon.vue';
@@ -59,29 +58,6 @@ type MenuEntry = {
   /** Gets the accent treatment. Reserved for the two ways into a game. */
   primary?: boolean;
 };
-
-const previousViewport = ref('');
-
-// Set the viewport width to width=device-width on the start screen so mobile browsers use their actual CSS viewport width.
-// The current global viewport is width=1260, which prevents the home page from using the device width on phones.
-// This is a temporary solution in order to make this edit scoped to the start screen.
-// TODO: Once responsiveness covers the whole project, this code should be removed and the tag in index.html should be updated directly.
-onMounted(() => {
-  const viewport = document.querySelector('meta[name="viewport"]');
-  if (viewport !== null) {
-    previousViewport.value = viewport.getAttribute('content') ?? '';
-    viewport.setAttribute(
-      'content',
-      'width=device-width, initial-scale=1, viewport-fit=cover',
-    );
-  }
-});
-
-onBeforeUnmount(() => {
-  document
-    .querySelector('meta[name="viewport"]')
-    ?.setAttribute('content', previousViewport.value);
-});
 
 const entries: ReadonlyArray<MenuEntry> = [
   {label: 'New game', href: 'new-game', primary: true},
