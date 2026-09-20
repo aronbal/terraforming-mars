@@ -9,6 +9,7 @@ import {beginSpaceSelection, resetSpaceSelectionForTest} from '@/client/utils/sp
 import {CardName} from '@/common/cards/CardName';
 import {pickedCard, resetPickedCardForTest} from '@/client/utils/cardSelection';
 import {pickedBoardThing, resetBoardPickForTest} from '@/client/utils/boardSelection';
+import {resetPickFocusForTest} from '@/client/utils/mobileFocus';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
 
 describe('MobilePlayerHome', () => {
@@ -39,6 +40,7 @@ describe('MobilePlayerHome', () => {
     resetSpaceSelectionForTest();
     resetPickedCardForTest();
     resetBoardPickForTest();
+    resetPickFocusForTest();
   });
 
   afterEach(() => {
@@ -47,6 +49,7 @@ describe('MobilePlayerHome', () => {
     resetSpaceSelectionForTest();
     resetPickedCardForTest();
     resetBoardPickForTest();
+    resetPickFocusForTest();
     document.body.classList.remove('mobile-shell-active');
   });
 

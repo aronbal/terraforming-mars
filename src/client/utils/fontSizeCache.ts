@@ -8,7 +8,13 @@
 const CACHE_PREFIX = 'fontSize:';
 const CACHE_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 
-type CacheEntry = {size: number, expireMs: number};
+// Bumped when a bug could have written wrong sizes, so the entries a browser is
+// already holding are dropped on the next load rather than waiting out their two
+// days. Version 2 discards sizes measured against a box of zero width, which the
+// mobile shell produced for every card in a pane it had not shown yet.
+const CACHE_VERSION = 2;
+
+type CacheEntry = {size: number, expireMs: number, v?: number};
 
 function localStorageSupported(): boolean {
   return typeof localStorage !== 'undefined';
@@ -34,10 +40,10 @@ if (localStorageSupported()) {
     }
     try {
       const entry: CacheEntry = JSON.parse(raw);
-      if (Number.isFinite(entry.size) && entry.expireMs > now) {
+      if (Number.isFinite(entry.size) && entry.expireMs > now && entry.v === CACHE_VERSION) {
         entries.set(k.substring(CACHE_PREFIX.length), entry.size);
       } else {
-        // Expired or malformed.
+        // Expired, malformed, or written by a version that could have got it wrong.
         localStorage.removeItem(k);
       }
     } catch {
@@ -53,7 +59,7 @@ export function getCachedFontSize(key: string): number | undefined {
 export function setCachedFontSize(key: string, size: number): void {
   entries.set(key, size);
   if (localStorageSupported()) {
-    const entry: CacheEntry = {size, expireMs: Date.now() + CACHE_TTL_MS};
+    const entry: CacheEntry = {size, expireMs: Date.now() + CACHE_TTL_MS, v: CACHE_VERSION};
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(entry));
   }
 }

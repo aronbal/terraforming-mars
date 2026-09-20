@@ -1,7 +1,11 @@
 <template>
 <div class="payments_cont">
   <div v-if="showtitle === true">{{ $t(playerinput.title) }}</div>
-  <label v-for="availableCard in visibleCards" class="payments_cards" :key="availableCard.name">
+  <label
+    v-for="availableCard in visibleCards"
+    class="payments_cards"
+    :class="{'payments_cards--chosen': preselected}"
+    :key="availableCard.name">
     <input v-if="!availableCard.isDisabled" class="hidden" type="radio" v-model="cardName" :value="availableCard.name" >
     <Card class="cardbox" :card="availableCard" />
   </label>

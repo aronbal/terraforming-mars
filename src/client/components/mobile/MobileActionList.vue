@@ -1,5 +1,34 @@
 <template>
   <div class="mobile-actions" data-test="action-list">
+    <!-- The player has already said what they are doing, so this is only the price
+         and the confirmation for it. -->
+    <template v-if="focused !== undefined">
+      <h2 class="mobile-actions-title">{{ $t(focused.input.title) }}</h2>
+      <!-- The tile the player tapped, with what it is worth and what it asks for,
+           so the choice can be read here rather than back on the board. -->
+      <!-- The container classes are what the tile's own styling hangs off; without
+           them it comes out as bare score bars with no medal on it. -->
+      <div v-if="focusedMilestone !== undefined" class="mobile-focus-tile milestones" data-test="focus-tile">
+        <Milestone :milestone="focusedMilestone" :showDescription="true"/>
+      </div>
+      <div v-else-if="focusedAward !== undefined" class="mobile-focus-tile awards" data-test="focus-tile">
+        <Award :award="focusedAward" :showDescription="true"/>
+      </div>
+      <div class="mobile-action-body mobile-action-body--focused" data-test="focused-body">
+        <PlayerInputFactory
+          ref="openInput"
+          :playerView="playerView"
+          :playerinput="focused.input"
+          :onsave="saved(focused.index)"
+          :showsave="showsave && childSaves(focused.input)"
+          :showtitle="false"/>
+        <div v-if="showsave && !childSaves(focused.input)" class="wf-action">
+          <AppButton :title="$t(focused.input.buttonLabel)" type="submit" size="normal" @click="save()"/>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
     <h2 class="mobile-actions-title">{{ $t(playerinput.title) }}</h2>
 
     <div v-for="group in groups" :key="group.title ?? ''" class="mobile-action-group">
@@ -48,6 +77,7 @@
         </template>
       </template>
     </div>
+    </template>
   </div>
 </template>
 
@@ -55,6 +85,10 @@
 import {defineComponent, PropType} from 'vue';
 
 import AppButton from '@/client/components/common/AppButton.vue';
+import Award from '@/client/components/Award.vue';
+import Milestone from '@/client/components/Milestone.vue';
+import {ClaimedMilestoneModel} from '@/common/models/ClaimedMilestoneModel';
+import {FundedAwardModel} from '@/common/models/FundedAwardModel';
 import {ActionGroup, groupActions} from '@/client/components/mobile/MobileActionMenu';
 import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
@@ -64,6 +98,8 @@ import {requestTab} from '@/client/utils/mobileNavigation';
 import {CardName} from '@/common/cards/CardName';
 import {offerFor, pickedCard} from '@/client/utils/cardSelection';
 import {BoardPick, boardOfferFor, pickedBoardThing} from '@/client/utils/boardSelection';
+import {ActionEntry} from '@/client/components/mobile/MobileActionMenu';
+import {pickFocused, tabRouting} from '@/client/utils/mobileFocus';
 
 /*
  * A turn's action menu, as a phone can read it.
@@ -102,6 +138,8 @@ export default defineComponent({
   },
   components: {
     AppButton,
+    Award,
+    Milestone,
   },
   data(): DataModel {
     return {
@@ -116,7 +154,30 @@ export default defineComponent({
       return pickedBoardThing.value;
     },
     groups(): ReadonlyArray<ActionGroup> {
-      return groupActions(this.playerinput, this.pickedCard, this.pickedBoardThing);
+      return groupActions(this.playerinput, {
+        card: this.pickedCard,
+        board: this.pickedBoardThing,
+        routes: tabRouting.value,
+      });
+    },
+    /**
+     * The one entry to show, when the shell raised this over the tab a choice was
+     * made on. Undefined means show the whole menu, which is the Act tab's job.
+     */
+    focused(): ActionEntry | undefined {
+      return pickFocused.value ? this.pickedEntry() : undefined;
+    },
+    focusedMilestone(): ClaimedMilestoneModel | undefined {
+      const pick = this.focused === undefined ? undefined : this.pickedBoardThing;
+      return pick?.kind === 'milestone' ?
+        this.playerView.game.milestones.find((milestone) => milestone.name === pick.name) :
+        undefined;
+    },
+    focusedAward(): FundedAwardModel | undefined {
+      const pick = this.focused === undefined ? undefined : this.pickedBoardThing;
+      return pick?.kind === 'award' ?
+        this.playerView.game.awards.find((award) => award.name === pick.name) :
+        undefined;
     },
   },
   watch: {
@@ -140,11 +201,12 @@ export default defineComponent({
     },
   },
   methods: {
-    openPickedEntry(): void {
+    /** The entry that answers what the player picked, if the menu holds one. */
+    pickedEntry(): ActionEntry | undefined {
       const card = this.pickedCard;
       const board = this.pickedBoardThing;
       if (card === undefined && board === undefined) {
-        return;
+        return undefined;
       }
       for (const group of this.groups) {
         for (const entry of group.entries) {
@@ -154,10 +216,16 @@ export default defineComponent({
           const claims = (card !== undefined && offerFor(entry.input, card) !== undefined) ||
             (board !== undefined && boardOfferFor(entry.input, board));
           if (claims) {
-            this.openIndex = entry.index;
-            return;
+            return entry;
           }
         }
+      }
+      return undefined;
+    },
+    openPickedEntry(): void {
+      const entry = this.pickedEntry();
+      if (entry !== undefined) {
+        this.openIndex = entry.index;
       }
     },
     goto(tab: MobileTab): void {

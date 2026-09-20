@@ -116,6 +116,7 @@ utils/useMobileLayout.ts                viewport width + preference -> which she
 utils/spaceSelection.ts                 whether a tile is being placed
 utils/cardSelection.ts                  a card picked on one tab, for an input on another
 utils/boardSelection.ts                 the same, for a milestone, an award or a colony tile
+utils/mobileFocus.ts                    whether the panel shows one thing, and whether rows route
 utils/mobileNavigation.ts               a tab the game asks the shell to open
 styles/mobile_shell.less                everything the shell paints
 ```
@@ -222,12 +223,19 @@ something has been picked there the entry opens instead of pointing away, holdin
 that choice and its payment; without that, the two tabs would point at each other
 forever.
 
-**Where the choice is finished** is the player's, through `play_from`. The
-default, `tabs`, raises the menu entry over the tab they tapped on, so they never
-leave the hand or the board they were reading; `actions` takes them to the Act
-tab, where the rest of the menu is in reach beside it. Either way the entry that
-opens is the one their tap named, and putting the panel back down abandons the
-pick.
+**Where the choice is finished** is the player's, through `play_from`.
+
+`tabs`, the default, raises the panel over the tab they tapped on and shows that
+one entry alone: the chosen card at the size they read it at with its payment
+under it, or the milestone or award tile with its description and its price. They
+have already said what they are doing, so the rest of the menu is not offered
+around it. Putting the panel back down abandons the pick.
+
+`actions` takes them to the Act tab instead — and then nothing in the menu may
+send them anywhere. Every entry unfolds in place, cards and all, the way the
+desktop menu does, because a setting that says "do it all from Act" cannot hand
+back a row that is a link to another tab. That is what `MenuContext.routes`
+switches off.
 
 **More** holds the game log, the settings and the links to another game. They are
 things a player reaches for between decisions rather than during one, so they
@@ -257,6 +265,14 @@ The Cards tab holds a segmented control: **Hand | Played**.
 Cards this turn has a move for are ringed and sort to the front of their group;
 the rest are dimmed in place, because a card you cannot afford this generation is
 still what you plan the next one around.
+
+**Card titles are fitted by measuring them** (`textFit`), and the shell keeps its
+panes mounted but hidden, so a card can be created with no box at all. Nothing
+overflows a box of zero width, so a title fitted then is never shrunk — and the
+size is cached for two days, which spreads one bad measurement across every
+later visit. `fitTextWhenReady` waits for the element to have a box, watching
+with a `ResizeObserver` when it does not, and `fitText` refuses to measure one
+that has none.
 
 A tap opens the card to read it, with **Play card** or **Use action** on the
 opened card, and tapping the card again puts it back down. `card_tap: 'play'`

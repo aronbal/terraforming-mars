@@ -989,6 +989,51 @@
   margin: 4px 0 10px;
 }
 
+/*
+ * One thing, at the size it was read at.
+ *
+ * The player tapped the card open, read it at full size, and said play it -- so
+ * shrinking it back to hand size to ask for the payment makes them read it twice.
+ * Only the card they chose grows; picking a different one brings the list back at
+ * the size they set for it.
+ */
+.mobile-action-body--focused {
+  padding: 0;
+
+  .payments_cards--chosen .cardbox {
+    zoom: 1;
+  }
+}
+
+/*
+ * The milestone or award the player tapped, drawn at the size they tapped it at,
+ * with the description the board has no room for.
+ */
+.mobile-focus-tile {
+  margin: 4px 0 14px;
+
+  // Drawn for a 140px desktop column, and read here at arm's length on a phone.
+  .ma-block {
+    zoom: 1.7;
+    margin: 0;
+    cursor: default;
+  }
+
+  // The desktop reserves a fixed five lines for the description so the tiles in a
+  // row stay aligned. There is one tile here, so it takes the room it needs.
+  .ma-block .ma-description {
+    height: auto;
+    padding-top: 4px;
+  }
+}
+
+/* The shell has just drawn the milestone or award itself, above. Repeating its name
+   as the one radio button left in the list says nothing the tile did not.
+   Matched through `> div >` to outweigh the rule that makes an option a row. */
+.mobile-action-body--focused .wf-options--narrowed > div > .form-radio {
+  display: none;
+}
+
 //
 // Tab bar
 //
