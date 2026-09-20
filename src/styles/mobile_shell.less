@@ -38,6 +38,22 @@
 
 @mobile-tabbar-height: 54px;
 
+/*
+ * The shell's layers.
+ *
+ * A pane is not a stacking context, so everything a card draws inside one competes
+ * directly with these -- and a card's own parts reach 101 (its tags sit at 2, which
+ * is what put them over the focus stage). Starting the shell's layers well above
+ * that keeps the order a matter of these five numbers rather than of what happens to
+ * be on screen.
+ */
+@mobile-layer-scrim: 190;
+@mobile-layer-stage: 200;
+@mobile-layer-sheet: 210;
+@mobile-layer-confirm: 220;
+@mobile-layer-magnify: 230;
+@mobile-layer-dialog: 240;
+
 /* The scalable unit: the 620x600 board artwork, plus room on each side for the
    captions that hang off it. Measured, not guessed — the colony space labels reach
    25px to the left of the artwork, and Ares and Venus markers reach past its right
@@ -572,7 +588,7 @@
   right: 8px;
   bottom: 8px;
   // Above the action sheet, as a second line of defence for the confirm button.
-  z-index: 3;
+  z-index: @mobile-layer-confirm;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -618,7 +634,7 @@
 .mobile-shell-active dialog[open] {
   position: fixed;
   inset: auto 8px calc(16px + env(safe-area-inset-bottom));
-  z-index: 70;
+  z-index: @mobile-layer-dialog;
   max-width: none;
   margin: 0;
   border: 1px solid @mobile-line;
@@ -634,14 +650,14 @@
 .mobile-scrim {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: @mobile-layer-scrim;
   background: fade(#000, 55%);
 }
 
 .mobile-sheet {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: @mobile-layer-sheet;
   display: flex;
   flex-direction: column;
   background: @mobile-surface;
@@ -962,7 +978,7 @@
 .mobile-magnify {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: @mobile-layer-magnify;
   background: fade(#000, 80%);
   display: flex;
   flex-direction: column;
@@ -1020,6 +1036,37 @@
   .wf-chosen-card {
     display: none;
   }
+
+  .payments_cont {
+    margin-bottom: 0;
+  }
+
+  /*
+   * The payment table is laid out for a desktop column, so on a phone it stopped
+   * 80px short of the edge and left the running total stranded in blank space.
+   *
+   * It is two columns -- what you spend on the left, what it is worth in M€ on the
+   * right -- which the desktop's width makes obvious and a phone's does not. Ruled
+   * and aligned, the numbers on the right read as a column under their own M€ icon
+   * instead of as three loose figures.
+   */
+  .payments_table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  /* The rule goes on the left column, which every row has: a unit paying nothing
+     draws no value cell at all, and a per-cell rule on the right would break there. */
+  .payments_table tr > td:first-child {
+    border-right: 1px solid @mobile-line-soft;
+  }
+
+  .payments_table tr > td + td {
+    width: 62px;
+    padding: 2px 2px 2px 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
 }
 
 .mobile-focus-caption {
@@ -1039,7 +1086,7 @@
 .mobile-focus-stage {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: @mobile-layer-stage;
   display: flex;
   justify-content: center;
   padding: 14px 16px 0;
