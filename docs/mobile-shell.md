@@ -236,6 +236,22 @@ the faded board, or the panel's head, abandons the pick.
 A colony is the exception: it is chosen inside the trade itself, alongside the
 fee, so there is nothing to hold up and the panel keeps the whole screen.
 
+**The payment widget is left as the desktop draws it**, and is the same on both
+tabs — it is the same money either way. The one thing the shell states is its
+size: the widget sizes each running subtotal explicitly at 20px and lets the
+total they add up to inherit, which on a desktop is 23px and inside the shell
+was 14px. That made the number deciding whether the button can be pressed the
+smallest thing on the row.
+
+**The payment widget is the same either way.** It is drawn for a desktop column,
+where its two sides — what you spend, and what it is worth in M€ — are obviously
+one table; at phone width the values drifted away from the rows they belonged
+to, so the shell rules them off into a column. It also sizes each running
+subtotal explicitly at 20px and lets the total they add up to inherit, which on
+a desktop is 23px and inside the shell was 14px: the number that decides whether
+the button can be pressed, drawn as the least of its own parts. The shell states
+that size rather than inheriting it.
+
 `actions` takes them to the Act tab instead — and then nothing in the menu may
 send them anywhere. Every entry unfolds in place, cards and all, the way the
 desktop menu does, because a setting that says "do it all from Act" cannot hand

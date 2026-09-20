@@ -103,11 +103,14 @@
   }
 
   /*
-   * The payment widget sizes its running subtotals explicitly (20px) but lets the
+   * The payment widget sizes each running subtotal explicitly (20px) but lets the
    * total they add up to inherit, which on a desktop is 23px. The shell's own base
-   * is 14px, so the total came out smaller than its own parts -- the one number
-   * that decides whether the button can be pressed, drawn as the least of them.
-   * Stated here so the column is one size wherever it appears in the shell.
+   * is 14px, so inside it the total came out smaller than its own parts -- the one
+   * number that decides whether the button can be pressed, drawn as the least of
+   * them. The size is stated here rather than inherited.
+   *
+   * Everything else about the widget is left as the desktop draws it, and it is the
+   * same on both tabs: it is the same money either way.
    */
   .payments_table {
     font-size: 20px;
@@ -1043,6 +1046,7 @@
 .mobile-action-body--focused {
   padding: 0;
 
+  // The card is on the stage above, so the panel does not draw it a second time.
   .payments_cards,
   .wf-chosen-card {
     display: none;
@@ -1050,50 +1054,6 @@
 
   .payments_cont {
     margin-bottom: 0;
-  }
-
-  /*
-   * The payment ledger: what you spend on the left, what it is worth in M€ on the
-   * right, under the icon that says which of the two the numbers are in.
-   *
-   * It sizes to its contents rather than stretching to the panel. Stretched, the
-   * column of numbers was pinned to the far edge with seventy pixels of nothing
-   * between a row's controls and that row's own subtotal, which read as two things
-   * rather than one.
-   */
-  .payments_table {
-    border-collapse: collapse;
-  }
-
-  /* The rule goes on the left column, which every row has: a unit paying nothing
-     draws no value cell at all, and a per-cell rule on the right would break there. */
-  .payments_table tr > td:first-child {
-    padding-right: 12px;
-    border-right: 1px solid @mobile-line-soft;
-  }
-
-  .payments_table tr > td + td {
-    width: 54px;
-    padding: 2px 0 2px 12px;
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* One size for the whole column, so it reads as a sum: the parts, a rule, the
-     total. Weight and colour carry the difference between them, not size. */
-  .payments_unit_subtotal,
-  .payments_total_value {
-    line-height: 1.2;
-  }
-
-  .payments_unit_subtotal {
-    color: @mobile-muted;
-  }
-
-  .payments_total_value {
-    padding-top: 6px;
-    font-weight: 700;
   }
 }
 
