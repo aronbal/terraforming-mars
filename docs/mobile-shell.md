@@ -108,6 +108,7 @@ mobile/MobileActionList.vue             the turn's menu as grouped rows
 mobile/MobileActionMenu.ts              which entries group where, and which live elsewhere
 mobile/MobileCardsPane.vue              Hand | Played, ready cards first
 mobile/MobileFitBlock.vue               scales a desktop-width block down to the phone
+mobile/MobileFocusStage.vue             the card or tile being acted on, over a faded board
 mobile/MobileMore.vue                   the log, the settings, the way to another game
 mobile/MobileSettings.vue               the preferences that mean something on a phone
 mobile/MobileTabBar.vue                 Board / Cards / Act / Players / More
@@ -225,11 +226,15 @@ forever.
 
 **Where the choice is finished** is the player's, through `play_from`.
 
-`tabs`, the default, raises the panel over the tab they tapped on and shows that
-one entry alone: the chosen card at the size they read it at with its payment
-under it, or the milestone or award tile with its description and its price. They
-have already said what they are doing, so the rest of the menu is not offered
-around it. Putting the panel back down abandons the pick.
+`tabs`, the default, holds the thing itself up over a faded board — the card at
+the size it was read at, or the milestone or award with its description — and
+puts a panel under it that is only the price and the button. It is as tall as
+that needs and no taller. They have already said what they are doing, so neither
+the rest of the menu nor a second copy of the card is offered around it. Tapping
+the faded board, or the panel's head, abandons the pick.
+
+A colony is the exception: it is chosen inside the trade itself, alongside the
+fee, so there is nothing to hold up and the panel keeps the whole screen.
 
 `actions` takes them to the Act tab instead — and then nothing in the menu may
 send them anywhere. Every entry unfolds in place, cards and all, the way the

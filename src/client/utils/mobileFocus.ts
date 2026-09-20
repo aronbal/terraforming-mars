@@ -16,16 +16,28 @@ import {computed, ComputedRef, ref} from 'vue';
  * This is never set when the player asked to finish their actions on the Act tab:
  * there the point is that the rest of the menu is in reach beside the entry.
  */
-const focused = ref(false);
+/**
+ * How the panel is showing a pick.
+ *
+ * `staged` means the thing itself is held up above the panel, so the panel is only
+ * the price and the button and takes no more room than that needs. `panel` means
+ * there is nothing to hold up -- a colony is chosen inside the trade, alongside its
+ * fee -- so the panel keeps the whole screen.
+ */
+export type FocusMode = 'none' | 'staged' | 'panel';
 
-export const pickFocused: ComputedRef<boolean> = computed(() => focused.value);
+const focused = ref<FocusMode>('none');
 
-export function setPickFocus(value: boolean): void {
+export const pickFocus: ComputedRef<FocusMode> = computed(() => focused.value);
+
+export const pickFocused: ComputedRef<boolean> = computed(() => focused.value !== 'none');
+
+export function setPickFocus(value: FocusMode): void {
   focused.value = value;
 }
 
 export function resetPickFocusForTest(): void {
-  focused.value = false;
+  focused.value = 'none';
   routing.value = true;
 }
 

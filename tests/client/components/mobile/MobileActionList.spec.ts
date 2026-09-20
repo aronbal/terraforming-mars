@@ -83,7 +83,7 @@ describe('MobileActionList', () => {
      offering a decision they have already made. */
   it('shows the picked card alone when the panel was raised for it', () => {
     pickCard(CardName.ANTS);
-    setPickFocus(true);
+    setPickFocus('staged');
     const wrapper = mount(menu(option('Pass for this generation', 'pass'), projectCard(CardName.ANTS)));
 
     expect(wrapper.find('[data-test="focused-body"]').exists()).is.true;
@@ -93,7 +93,7 @@ describe('MobileActionList', () => {
 
   it('does the same for a tile tapped under the board', () => {
     pickBoardThing('award', 'Landlord');
-    setPickFocus(true);
+    setPickFocus('staged');
     const wrapper = mount(menu(option('Pass for this generation', 'pass'), awards('Landlord', 'Banker')));
 
     expect(wrapper.vm.focused?.input.title).eq('Fund an award (8 M€)');

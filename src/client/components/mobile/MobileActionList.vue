@@ -3,17 +3,9 @@
     <!-- The player has already said what they are doing, so this is only the price
          and the confirmation for it. -->
     <template v-if="focused !== undefined">
-      <h2 class="mobile-actions-title">{{ $t(focused.input.title) }}</h2>
-      <!-- The tile the player tapped, with what it is worth and what it asks for,
-           so the choice can be read here rather than back on the board. -->
-      <!-- The container classes are what the tile's own styling hangs off; without
-           them it comes out as bare score bars with no medal on it. -->
-      <div v-if="focusedMilestone !== undefined" class="mobile-focus-tile milestones" data-test="focus-tile">
-        <Milestone :milestone="focusedMilestone" :showDescription="true"/>
-      </div>
-      <div v-else-if="focusedAward !== undefined" class="mobile-focus-tile awards" data-test="focus-tile">
-        <Award :award="focusedAward" :showDescription="true"/>
-      </div>
+      <!-- One line, because the thing it names is already on the stage above. It
+           stays for the price, which nothing else in here says. -->
+      <p class="mobile-focus-caption">{{ $t(focused.input.title) }}</p>
       <div class="mobile-action-body mobile-action-body--focused" data-test="focused-body">
         <PlayerInputFactory
           ref="openInput"
@@ -85,10 +77,6 @@
 import {defineComponent, PropType} from 'vue';
 
 import AppButton from '@/client/components/common/AppButton.vue';
-import Award from '@/client/components/Award.vue';
-import Milestone from '@/client/components/Milestone.vue';
-import {ClaimedMilestoneModel} from '@/common/models/ClaimedMilestoneModel';
-import {FundedAwardModel} from '@/common/models/FundedAwardModel';
 import {ActionGroup, groupActions} from '@/client/components/mobile/MobileActionMenu';
 import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
@@ -138,8 +126,6 @@ export default defineComponent({
   },
   components: {
     AppButton,
-    Award,
-    Milestone,
   },
   data(): DataModel {
     return {
@@ -166,18 +152,6 @@ export default defineComponent({
      */
     focused(): ActionEntry | undefined {
       return pickFocused.value ? this.pickedEntry() : undefined;
-    },
-    focusedMilestone(): ClaimedMilestoneModel | undefined {
-      const pick = this.focused === undefined ? undefined : this.pickedBoardThing;
-      return pick?.kind === 'milestone' ?
-        this.playerView.game.milestones.find((milestone) => milestone.name === pick.name) :
-        undefined;
-    },
-    focusedAward(): FundedAwardModel | undefined {
-      const pick = this.focused === undefined ? undefined : this.pickedBoardThing;
-      return pick?.kind === 'award' ?
-        this.playerView.game.awards.find((award) => award.name === pick.name) :
-        undefined;
     },
   },
   watch: {

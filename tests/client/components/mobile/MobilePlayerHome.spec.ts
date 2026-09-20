@@ -95,7 +95,8 @@ describe('MobilePlayerHome', () => {
 
     expect(wrapper.vm.tab).eq('cards');
     expect(wrapper.vm.overTab).is.true;
-    expect(wrapper.vm.snap).eq('full');
+    // Half, so the card itself stays on screen above the price.
+    expect(wrapper.vm.snap).eq('half');
     expect(pickedCard.value).eq(CardName.ANTS);
   });
 

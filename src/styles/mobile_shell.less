@@ -655,6 +655,18 @@
   }
 }
 
+/*
+ * The panel when what it is about is held up on the stage above it: as tall as the
+ * price and the button need, on the bottom edge, and no taller.
+ *
+ * Capped at half the stage, which is the room the stage reserves for itself.
+ */
+.mobile-sheet--compact {
+  top: auto;
+  height: auto;
+  max-height: 50%;
+}
+
 /* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
    what shows: a grab bar over a line that says whose move it is. */
 .mobile-sheet-head {
@@ -997,25 +1009,59 @@
  * Only the card they chose grows; picking a different one brings the list back at
  * the size they set for it.
  */
+/*
+ * The panel, once the thing it is about is already on the stage above it: the price
+ * and the button, and nothing that repeats what the player can see.
+ */
 .mobile-action-body--focused {
   padding: 0;
 
-  .payments_cards--chosen .cardbox {
-    zoom: 1;
+  .payments_cards,
+  .wf-chosen-card {
+    display: none;
   }
 }
 
+.mobile-focus-caption {
+  margin: 0 0 10px;
+  color: @mobile-muted;
+  font-size: 13px;
+}
+
 /*
- * The milestone or award the player tapped, drawn at the size they tapped it at,
- * with the description the board has no room for.
+ * The thing being acted on, held up over a faded board while the panel below asks
+ * for the price.
+ *
+ * It sits under the panel rather than over it -- the panel is what the player is
+ * about to touch -- and above everything else, which is why the board behind it is
+ * dimmed rather than merely covered.
  */
-.mobile-focus-tile {
-  margin: 4px 0 14px;
+.mobile-focus-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding: 14px 16px 0;
+  background: fade(#000, 78%);
+}
+
+.mobile-focus-holder {
+  // The panel takes the lower half; the component scales to fit, and this is the
+  // backstop for the sizes it cannot reach.
+  max-height: 50%;
+  overflow: hidden;
+  align-self: flex-start;
 
   // Drawn for a 140px desktop column, and read here at arm's length on a phone.
+  // Given a surface of its own so the scores and the description read as part of the
+  // tile rather than as text loose over the dimmed board.
   .ma-block {
     zoom: 1.7;
     margin: 0;
+    padding: 5px 4px;
+    border-radius: 10px;
+    background: @mobile-surface;
     cursor: default;
   }
 
@@ -1026,6 +1072,7 @@
     padding-top: 4px;
   }
 }
+
 
 /* The shell has just drawn the milestone or award itself, above. Repeating its name
    as the one radio button left in the list says nothing the tile did not.

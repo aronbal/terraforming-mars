@@ -102,6 +102,10 @@
 
       <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
 
+      <!-- The card or tile being acted on, over a faded board. The panel below it is
+           then only the price and the button. -->
+      <MobileFocusStage :playerView="playerView" @dismiss="setSnap('peek')"/>
+
       <MobileActionPanel
         v-show="panelMode === 'sheet' || tab === 'actions'"
         :playerView="playerView"
@@ -134,6 +138,7 @@ import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue'
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
@@ -184,6 +189,7 @@ export default defineComponent({
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
+    MobileFocusStage,
     MobileHeader,
     MobileMore,
     MobileTabBar,
@@ -360,12 +366,14 @@ export default defineComponent({
     playCard(name: CardName): void {
       clearBoardPick();
       pickCard(name);
-      this.openPick();
+      this.openPick(true);
     },
     claimBoardThing(kind: BoardThing, name: string): void {
       clearPickedCard();
       pickBoardThing(kind, name);
-      this.openPick();
+      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
+         is nothing to hold up over the board and the panel needs the whole screen. */
+      this.openPick(kind !== 'colony');
     },
     /*
      * Where the player finishes what they just started, which is theirs to choose.
@@ -373,17 +381,17 @@ export default defineComponent({
      * Over the tab they are standing on, they never leave the cards or the board they
      * were reading; on the Act tab, the rest of the menu is in reach beside it.
      */
-    openPick(): void {
+    openPick(staged: boolean): void {
       if (this.preferences.play_from === 'actions') {
-        setPickFocus(false);
+        setPickFocus('none');
         this.selectTab('actions');
         return;
       }
-      setPickFocus(true);
-      this.setSnap('full');
+      setPickFocus(staged ? 'staged' : 'panel');
+      this.setSnap(staged ? 'half' : 'full');
     },
     forgetPick(): void {
-      setPickFocus(false);
+      setPickFocus('none');
       clearPickedCard();
       clearBoardPick();
     },
