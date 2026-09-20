@@ -136,7 +136,8 @@ mounted even when another tab is open.
 
 The board stage is transformed inside a clipping viewport, so the layout box
 never matters. Cards use a `--mobile-card-scale` custom property applied with
-`zoom`, which scales the layout box as well as the paint.
+`transform: scale()`, and give back the room a transform saves themselves — see
+**Scaling down is a picture operation** below.
 
 New preference keys in `PreferencesManager.ts`:
 
@@ -301,6 +302,50 @@ a player moves mid-game, and a size fitted to the old width is the wrong size fo
 the new one. The cached size is keyed on the box width it was measured in as well
 as the text, so an answer for one width is never handed to another.
 
+### Scaling down is a picture operation
+
+**Never scale anything in the shell down with `zoom`.** `tests/styles/TextScaling.spec.ts`
+fails if anything does.
+
+`zoom` multiplies the computed font sizes. A card's smallest type is 11px, so at
+the default card scale it asks for a 6.8px font — and iOS will not draw one. It
+substitutes a floor of its own, and only for the glyphs: not for the 12px line
+height, and not for the box around them. Card descriptions and corporation
+lockups then grew past both while the artwork stayed exactly where it belonged.
+Nothing in the page can talk that floor down; `-webkit-text-size-adjust` does not
+reach it. Card *titles* looked fine throughout, but only because `textFit`
+measures them and shrinks them until they fit — the measurement was hiding the
+fault everywhere it was applied.
+
+`transform: scale()` is a picture operation: the block is laid out at its full
+size, with its type at the sizes the stylesheet names, and the finished result is
+scaled. What it does not do is give back the room it saves, which is the one
+thing `zoom` was here for, so each place that uses it reserves the scaled size
+itself:
+
+- **Cards** (`mobile_shell.less`) pull their footprint in with margins computed
+  from `--card-natural-w` / `--card-natural-h`, which `Card.vue` publishes from
+  its own `offsetWidth` / `offsetHeight` — the layout box, which a transform does
+  not touch, so the margins never feed back into the measurement. A card in a
+  pane the shell has mounted but not shown measures zero and publishes nothing,
+  the same rule `fitText` follows. The scale is applied to those properties in
+  CSS, so moving the card-scale preference needs no measuring at all.
+
+  This relies on a card's parent establishing a block formatting context, so the
+  negative bottom margin reduces the parent's height rather than collapsing
+  through it. Both parents the shell uses — the `.cardbox` label and
+  `.mobile-card-button` — are `inline-block`, which does. A plain block parent
+  would not.
+
+- **`MobileFitBlock`** does the same for Turmoil, the colony tiles and the
+  planetary tracks, from its own measurement.
+
+- **`MobileFocusStage`** needs no compensation: the holder is the stage's only
+  child and is clipped to the room above the panel.
+
+Scaling *up* with `zoom` is still fine — it can only take type further from the
+floor — which is why the milestone and award tiles on the focus stage keep it.
+
 ### Why card text stops fitting
 
 A card is a fixed pixel box drawn for one set of font metrics, and its title is
@@ -429,10 +474,10 @@ Each phase should build, lint and pass tests on its own.
 
 Four places where the implementation departs from the plan above, and why.
 
-- **Cards scale with `zoom`, not `transform: scale()` plus `calc()`.** `zoom`
-  scales the layout box as well as the paint, which is the property the plan was
-  reaching for. The `calc()` wrapper exists only to work around `transform` not
-  having it.
+- **Cards scaled with `zoom` at first, and no longer do.** `zoom` scales the
+  layout box as well as the paint, which is the property the plan was reaching
+  for — but it scales the computed font sizes too, and that turned out to be
+  fatal. See below.
 
 - **Tile placement keeps the existing `ConfirmDialog`.** `SelectSpace` already
   confirms a tap, and honours `hide_tile_confirmation`. Rather than build a

@@ -958,15 +958,42 @@
 /*
  * Cards scale as whole units, never re-laid-out internally.
  *
- * `zoom` rather than `transform: scale()` because it scales the layout box too. A
- * transform paints a card smaller while it still reserves its full size, which leaves
- * dead space between cards and breaks scrolling — the mistake the earlier attempts made.
+ * `transform: scale()`, not `zoom`. `zoom` multiplies the computed font sizes, and a
+ * card's smallest type is 11px: at the default scale that asks for a 6.8px font, which
+ * iOS will not draw. It draws its own floor instead -- and only for the glyphs, not for
+ * the 12px line height or the box around them, so a card description grew past both
+ * while the artwork stayed exactly where it belonged. Nothing in the page can talk that
+ * floor down, so the fix is to stop asking for a size below it.
+ *
+ * A transform is a picture operation: the card is laid out at its full size, with its
+ * type at the sizes the stylesheet names, and the finished card is scaled. What a
+ * transform does not do is give back the room it saves, which is the one thing `zoom`
+ * was here for. So the card takes it back itself, with margins that pull its footprint
+ * in to the size it is actually drawn at. `--card-natural-w` and `--card-natural-h` are
+ * the card's own measurements, published by `Card.vue`; the scale is applied to them
+ * here, so moving the card-scale preference needs no measuring at all.
  */
 .mobile-card-scaler {
   --mobile-card-scale: 0.62;
 
-  .cardbox {
-    zoom: var(--mobile-card-scale);
+  .card-container {
+    transform: scale(var(--mobile-card-scale));
+    // The card is drawn into the top-left of the room reserved for it below.
+    transform-origin: top left;
+
+    /*
+     * `(scale - 1)` is negative, so these pull the card's footprint from its full size
+     * in to `scale x` it, in both directions. The card's own layout box is untouched,
+     * which is what keeps the card itself identical to the desktop's.
+     *
+     * The fallbacks are the printed card width and a typical height, used for the one
+     * frame before `Card.vue` has measured. They only affect spacing, never the card.
+     */
+    margin:
+      0
+      calc((var(--mobile-card-scale) - 1) * var(--card-natural-w, 240px))
+      calc((var(--mobile-card-scale) - 1) * var(--card-natural-h, 340px))
+      0;
   }
 }
 

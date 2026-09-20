@@ -46,6 +46,7 @@ import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {Color} from '@/common/Color';
 import {CardRequirementDescriptor} from '@/common/cards/CardRequirementDescriptor';
 import {GameModule} from '@/common/cards/GameModule';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
 
 
 export default defineComponent({
@@ -95,6 +96,7 @@ export default defineComponent({
     return {
       cardInstance: card,
       hovering: false,
+      sizeObserver: undefined as ResizeObserver | undefined,
     };
   },
   computed: {
@@ -206,6 +208,48 @@ export default defineComponent({
     playerCubeClass(): string {
       return `board-cube board-cube--${this.cubeColor}`;
     },
+  },
+  methods: {
+    /*
+     * Publishes the card's own size, so the shell can reserve room for the scaled
+     * card without scaling the card's type down with it. See `mobile_shell.less`.
+     *
+     * `offsetWidth` and `offsetHeight` are the layout box, which a transform does not
+     * touch, so this reads the card's full size however small it is being drawn -- and
+     * the margins computed from it never feed back into the measurement.
+     */
+    publishNaturalSize(): void {
+      const el = this.$el as HTMLElement | undefined;
+      if (el === undefined || el.style === undefined) {
+        return;
+      }
+      /*
+       * A card in a pane the shell has mounted but not shown has no box at all, and
+       * measures zero. Publishing that would ask the shell to reserve no room for it;
+       * leaving the properties unset uses the printed card size until the pane is
+       * opened, which is what the observer below is watching for.
+       */
+      if (el.offsetWidth === 0 || el.offsetHeight === 0) {
+        return;
+      }
+      el.style.setProperty('--card-natural-w', `${el.offsetWidth}px`);
+      el.style.setProperty('--card-natural-h', `${el.offsetHeight}px`);
+    },
+  },
+  mounted() {
+    // Desktop draws cards at their own size, so there is nothing to publish and no
+    // reason to put an observer on every card in a tableau.
+    if (!mobileLayout.value || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.publishNaturalSize();
+    // A card grows when a resource counter or a victory point badge appears on it.
+    this.sizeObserver = new ResizeObserver(() => this.publishNaturalSize());
+    this.sizeObserver.observe(this.$el as HTMLElement);
+  },
+  unmounted() {
+    this.sizeObserver?.disconnect();
+    this.sizeObserver = undefined;
   },
 });
 

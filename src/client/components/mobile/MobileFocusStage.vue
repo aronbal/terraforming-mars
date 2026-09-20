@@ -4,7 +4,12 @@
     class="mobile-focus-stage"
     data-test="focus-stage"
     @click="$emit('dismiss')">
-    <div ref="holder" class="mobile-focus-holder" :style="{zoom: String(scale)}" @click.stop>
+    <!-- `transform`, not `zoom`: see the card scaler in mobile_shell.less. `zoom`
+         shrinks the computed font sizes, and a card's smallest type is already at the
+         floor iOS will draw. The holder is the stage's only child and is clipped to
+         the room above the panel, so the room a transform does not give back costs
+         nothing here. -->
+    <div ref="holder" class="mobile-focus-holder" :style="holderStyle" @click.stop>
       <Card v-if="card !== undefined" class="cardbox" :card="card" :cubeColor="playerView.thisPlayer.color"/>
       <div v-else-if="milestone !== undefined" class="milestones">
         <Milestone :milestone="milestone" :showDescription="true"/>
@@ -115,6 +120,16 @@ export default defineComponent({
     /** What is on the stage, so a change of subject is re-measured. */
     subject(): string | undefined {
       return this.card?.name ?? this.milestone?.name ?? this.award?.name;
+    },
+    holderStyle(): Record<string, string> {
+      if (this.scale >= 1) {
+        return {};
+      }
+      return {
+        transform: `scale(${this.scale})`,
+        // Drawn from the top of the room it has, and centred across it.
+        transformOrigin: 'top center',
+      };
     },
   },
   watch: {

@@ -18,9 +18,14 @@ import {defineComponent} from 'vue';
  * re-flow components the desktop client shares, this shrinks each one as a whole unit
  * — the same treatment the board and the cards already get.
  *
- * `zoom`, not `transform: scale()`: a transform paints the block smaller while it
- * still reserves its full size, which would leave the gap the scaling was meant to
- * close.
+ * `transform: scale()`, not `zoom`: `zoom` shrinks the computed font sizes, and iOS
+ * will not draw a glyph below a floor of its own -- without shrinking the line height
+ * or the box with it, so the text inside a scaled block grew past both. A transform is
+ * a picture operation, so the type keeps the sizes the stylesheet names.
+ *
+ * What a transform does not do is give back the room it saves, which is the one thing
+ * `zoom` was here for. The block takes it back with a negative margin, measured from
+ * its own unscaled size.
  */
 
 /*
@@ -35,6 +40,8 @@ const SCALE_EPSILON = 0.005;
 
 type DataModel = {
   scale: number;
+  /** The block's unscaled height, which the reserved room is computed from. */
+  natural: number;
   resizeObserver: ResizeObserver | undefined;
 };
 
@@ -43,12 +50,22 @@ export default defineComponent({
   data(): DataModel {
     return {
       scale: 1,
+      natural: 0,
       resizeObserver: undefined,
     };
   },
   computed: {
     innerStyle(): Record<string, string> {
-      return {zoom: String(this.scale)};
+      if (this.scale >= 1) {
+        return {};
+      }
+      return {
+        transform: `scale(${this.scale})`,
+        transformOrigin: 'top left',
+        // `(scale - 1)` is negative: this pulls the frame's height in from the block's
+        // full height to the height it is drawn at.
+        marginBottom: `${(this.scale - 1) * this.natural}px`,
+      };
     },
   },
   methods: {
@@ -60,14 +77,15 @@ export default defineComponent({
       }
       const available = frame.clientWidth;
       /*
-       * Bounding rectangles are in visual pixels, so dividing by the scale already in
-       * force gives the block's unscaled width. Reading it that way means never having
-       * to reset the zoom and measure again, which would flash the full-size layout.
+       * `offsetWidth` and `offsetHeight` are the layout box, which a transform does not
+       * touch, so they read the block's full size however small it is being drawn --
+       * and the margin computed from the height never feeds back into the measurement.
        */
-      const natural = inner.getBoundingClientRect().width / this.scale;
+      const natural = inner.offsetWidth;
       if (available <= 0 || natural <= 0) {
         return;
       }
+      this.natural = inner.offsetHeight;
       const scale = Math.min(1, Math.max(MIN_SCALE, available / natural));
       if (Math.abs(scale - this.scale) > SCALE_EPSILON) {
         this.scale = scale;
