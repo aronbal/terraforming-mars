@@ -35,6 +35,7 @@ import SelectResources from '@/client/components/SelectResources.vue';
 import SelectClaimedUndergroundToken from '@/client/components/SelectClaimedUndergroundToken.vue';
 import DeltaProjectInput from '@/client/components/delta/DeltaProjectInput.vue';
 import MobileActionList from '@/client/components/mobile/MobileActionList.vue';
+import MobileInitialCards from '@/client/components/mobile/MobileInitialCards.vue';
 import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
 import {mobileLayout} from '@/client/utils/useMobileLayout';
 
@@ -124,6 +125,14 @@ export default defineComponent({
        */
       if (mobileLayout.value && isActionMenu(input)) {
         return MobileActionList;
+      }
+      /*
+       * The opening hand likewise. Four card grids on one page is the desktop's whole
+       * setup screen; at this width it is five screens of scrolling with the money
+       * they add up to at the bottom of it.
+       */
+      if (mobileLayout.value && input.type === 'initialCards') {
+        return MobileInitialCards;
       }
       return inputComponents[input.type];
     },
