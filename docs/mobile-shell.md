@@ -296,7 +296,32 @@ overflows a box of zero width, so a title fitted then is never shrunk — and th
 size is cached for two days, which spreads one bad measurement across every
 later visit. `fitTextWhenReady` waits for the element to have a box, watching
 with a `ResizeObserver` when it does not, and `fitText` refuses to measure one
-that has none.
+that has none. The observer stays on afterwards: the card scale is a preference
+a player moves mid-game, and a size fitted to the old width is the wrong size for
+the new one. The cached size is keyed on the box width it was measured in as well
+as the text, so an answer for one width is never handed to another.
+
+### Why card text stops fitting
+
+A card is a fixed pixel box drawn for one set of font metrics, and its title is
+fitted by measuring the rendered text. Both assume the font the stylesheet names
+is the font the browser actually uses, and that the browser draws the size the
+stylesheet asks for. Two things broke that, and both are now closed off:
+
+- **Ubuntu was fetched from Google Fonts** by a `<link>` in `index.html`. Any
+  request that was slow, blocked, or simply not there — the game is an installable
+  PWA, so offline is a normal state — redrew every card in the platform's own
+  sans-serif. It is self-hosted now, in both weights, beside the menu fonts.
+- **iOS boosts text it judges too small to read**, and it boosts the glyphs
+  without touching the line height or the box around them. An 11px card
+  description drawn at 62% is exactly what that aims at, so the lines grew past a
+  12px line height and past the card's own edges while the artwork stayed put.
+  `html` now sets `text-size-adjust: none`; the `100%` in the normalize does not
+  turn it off, it only scales an adjustment that is applied anyway.
+
+`tests/styles/Fonts.spec.ts` fails if a face is fetched from another origin, if a
+declared face points at a file that is not there, or if anything asks for a
+`text-size-adjust` other than `none`.
 
 A tap opens the card to read it, with **Play card** or **Use action** on the
 opened card, and tapping the card again puts it back down. `card_tap: 'play'`

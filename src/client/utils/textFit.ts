@@ -39,9 +39,8 @@ class TextFitMetrics {
 export const textFitMetrics = new TextFitMetrics();
 
 // Shrinks `el`'s font until its text no longer overflows its box. Records the
-// time spent so it can be aggregated by the caller. The fitted size is
-// cached (keyed on the rendered text) so subsequent visits apply it without
-// re-measuring.
+// time spent so it can be aggregated by the caller. The fitted size is cached
+// (see `cacheKey`) so subsequent visits apply it without re-measuring.
 //
 // `namespace` keys the cache by context: the same text in a card title and a
 // milestone name lives in differently sized boxes and fits at different sizes,
@@ -55,7 +54,7 @@ export function fitText(el: HTMLElement, namespace: string): void {
     return;
   }
   const start = performance.now();
-  const key = `${namespace}:${el.textContent ?? ''}`;
+  const key = cacheKey(el, namespace);
 
   const cached = getCachedFontSize(key);
   if (cached !== undefined) {
@@ -108,20 +107,45 @@ export function fitTextWhenReady(el: HTMLElement | undefined, namespace: string)
 // created with no layout at all and only get one when its tab is first opened, which
 // is too late for the fit its `mounted` hook asked for.
 function fitWhenShown(el: HTMLElement, namespace: string): void {
+  let fittedWidth = 0;
   if (hasBox(el)) {
+    fittedWidth = el.clientWidth;
     fitText(el, namespace);
-    return;
   }
   if (typeof ResizeObserver === 'undefined') {
     return;
   }
+  /*
+   * The observer stays on rather than stopping at the first fit. A box that has been
+   * fitted once can still change width afterwards -- the card scale is a preference a
+   * player moves mid-game, and the phone turns -- and a size fitted to the old width
+   * is simply the wrong size for the new one, with no second chance to notice.
+   *
+   * Only a change of width can change the answer, and re-fitting does not change the
+   * width, so this settles rather than feeding itself.
+   */
   const observer = new ResizeObserver(() => {
-    if (hasBox(el)) {
-      observer.disconnect();
-      fitText(el, namespace);
+    if (!hasBox(el) || el.clientWidth === fittedWidth) {
+      return;
     }
+    fittedWidth = el.clientWidth;
+    fitText(el, namespace);
   });
   observer.observe(el);
+}
+
+/*
+ * What a cached size is allowed to be reused for.
+ *
+ * The box width is part of it, not only the text and its context. A fitted size is
+ * the answer to "how big can this text be in a box this wide", and the shell draws
+ * the same card at whatever scale the player chose. Keying on the text alone let a
+ * size measured in one box be applied in another, which is a size that overflows
+ * half the time -- and it survived in localStorage for two days, so one bad
+ * measurement kept coming back long after whatever caused it was gone.
+ */
+function cacheKey(el: HTMLElement, namespace: string): string {
+  return `${namespace}:${el.clientWidth}:${el.textContent ?? ''}`;
 }
 
 function hasBox(el: HTMLElement): boolean {
