@@ -11,18 +11,16 @@
 
                 <div class="create-game-options">
                     <div class="create-game-page-container">
-                        <div class="create-game-page-column">
-                            <h4 v-i18n>№ of Players</h4>
+                        <CreateGameSection title="№ of Players" :initially-open="true">
                             <div v-for="pCount in [1,2,3,4,5,6]" :key="pCount">
                               <input type="radio" :value="pCount" name="playersCount" v-model="playersCount" :id="pCount+'-radio'">
                               <label :for="pCount+'-radio'">
                                   {{ getPlayersCountText(pCount) }}
                               </label>
                             </div>
-                        </div>
+                        </CreateGameSection>
 
-                        <div class="create-game-page-column">
-                            <h4 v-i18n>Expansions</h4>
+                        <CreateGameSection title="Expansions">
 
                             <input type="checkbox" name="allOfficialExpansions" id="allOfficialExpansions-checkbox" v-model="allOfficialExpansions">
                             <label for="allOfficialExpansions-checkbox">
@@ -176,10 +174,9 @@
                                 <div class="create-game-expansion-icon expansion-icon-deltaProject"></div>
                                 <span v-i18n>Delta Project</span>&nbsp;<span title="Alpha — work in progress">(&#945;)</span><span></span>&nbsp;<a :href="wikiUrls.deltaProject" class="tooltip" v-i18n data-tooltip="Link opens in a new tab/window" target="_blank">&#9432;</a>
                             </label>
-                        </div>
+                        </CreateGameSection>
 
-                        <div class="create-game-page-column">
-                            <h4 v-i18n>Board</h4>
+                        <CreateGameSection title="Board">
 
                             <div v-for="boardName in boards" :key="boardName">
                               <div v-if="boardName==='utopia planitia'" class="create-game-subsection-label" v-i18n>Fan-made</div>
@@ -192,10 +189,9 @@
                                   </template>
                               </label>
                             </div>
-                        </div>
+                        </CreateGameSection>
 
-                        <div class="create-game-page-column">
-                            <h4 v-i18n>Options</h4>
+                        <CreateGameSection title="Options">
 
                             <label for="startingCorpNum-checkbox">
                             <input type="number" class="create-game-corporations-count" value="2" min="1" :max="6" v-model="startingCorporations" id="startingCorpNum-checkbox">
@@ -347,10 +343,9 @@
                                 </label>
                             </template>
 
-                        </div>
+                        </CreateGameSection>
 
-                        <div class="create-game-page-column" v-if="playersCount > 1">
-                            <h4 v-i18n>Multiplayer Options</h4>
+                        <CreateGameSection title="Multiplayer Options" v-if="playersCount > 1">
 
                             <div class="create-game-page-column-row">
                                 <div>
@@ -443,7 +438,7 @@
                             <label for="fastMode-checkbox">
                                 <span v-i18n>Fast mode</span>&nbsp;<a :href="wikiUrls.fastMode" class="tooltip" v-i18n data-tooltip="Link opens in a new tab/window" target="_blank">&#9432;</a>
                             </label>
-                        </div>
+                        </CreateGameSection>
 
                         <div class="create-game-players-cont">
                             <div class="container">
@@ -596,6 +591,7 @@ import {RandomBoardOption} from '@/common/boards/RandomBoardOption';
 import {CardName} from '@/common/cards/CardName';
 import CeosFilter from '@/client/components/create/CeosFilter.vue';
 import CorporationsFilter from '@/client/components/create/CorporationsFilter.vue';
+import CreateGameSection from '@/client/components/create/CreateGameSection.vue';
 import PreludesFilter from '@/client/components/create/PreludesFilter.vue';
 import {translateText, translateTextWithParams} from '@/client/directives/i18n';
 import ColoniesFilter from '@/client/components/create/ColoniesFilter.vue';
@@ -648,6 +644,7 @@ export default defineComponent({
   components: {
     AppButton,
     CardsFilter,
+    CreateGameSection,
     CeosFilter,
     ColoniesFilter,
     CorporationsFilter,
