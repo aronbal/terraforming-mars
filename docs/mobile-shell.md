@@ -3,8 +3,8 @@
 A plan for making the game playable on a phone without changing the board, the
 cards, or the desktop client.
 
-Status: **phases 1-6, 8 and 9 are implemented.** Phase 7, the entry and startup
-screens, is still open; so is the spectator view.
+Status: **phases 1-9 are implemented.** The card browser at `/cards` and the
+spectator view are still open.
 
 A working reference for the target design lives at
 [`prototypes/mobile-shell-prototype.html`](prototypes/mobile-shell-prototype.html).
@@ -101,6 +101,7 @@ Global parameter limits and bonus thresholds, from `src/common/constants.ts`:
 PlayerHome.vue                          unchanged, desktop
 mobile/MobilePlayerHome.vue             composes the SAME children into tabs and sheets
 mobile/MobileHeader.vue                 generation, TR, globals, resources, tag row
+mobile/MobileInitialCards.vue           the opening hand, one selection at a time
 mobile/MobileTagRow.vue                 tag counts, from the model's own totals
 mobile/MobileBoardPane.vue              the 620x600 stage, pinch, pan, zoom HUD
 mobile/MobileActionPanel.vue            WaitingFor: a tab for the menu, a sheet for a question
@@ -113,6 +114,8 @@ mobile/MobileMore.vue                   the log, the settings, the way to anothe
 mobile/MobileSettings.vue               the preferences that mean something on a phone
 mobile/MobileTabBar.vue                 Board / Cards / Act / Players / More
 mobile/MobileTab.ts                     the tab and snap names, and the peek height
+components/InitialCards.ts              the opening hand's arithmetic, shared with the desktop
+create/CreateGameSection.vue            a headed section of the create-game form
 utils/useMobileLayout.ts                viewport width + preference -> which shell
 utils/spaceSelection.ts                 whether a tile is being placed
 utils/cardSelection.ts                  a card picked on one tab, for an input on another
@@ -309,21 +312,39 @@ the existing `PlayerTags` logic — do not recompute them independently.
 
 ## Entry and startup screens
 
-`App.vue` routes by a `screen` string. Each one needs a mobile pass. Some already
-have partial responsive rules — check before writing new ones.
+`App.vue` routes by a `screen` string. Each one needed a pass of its own.
 
-| Screen | Component | Existing mobile CSS | Work |
-| --- | --- | --- | --- |
-| `start-screen` | `StartScreen.vue` | `start_screen.less` has 1023 / 767 blocks | Verify against `width=device-width`; the existing rules were written for the 1260px viewport |
-| `create-game-form` | `CreateGameForm` | `create_game_form.less` has 1023 / 767 blocks | Longest form in the app. Needs step-by-step or accordion treatment on a phone |
-| `load` / `continue-game` | `LoadGameForm`, `ContinueGame` | `continue_game.less` has a 767 block | Light touch |
-| `games-overview` | `GamesOverview` | `games-overview.less`, none | Table → cards |
-| `game-home` | `GameHome.vue` | `game_home.less` has 1023 / 767 blocks | Waiting room; mostly fine |
-| **initial card selection** | `SelectInitialCards.vue` | none | **The hardest one.** Corporation + prelude + CEO + 10 project cards, all as `SelectCard` grids, on one screen. Needs the same segmented/stepped treatment as the Cards tab |
-| `player-home` | `PlayerHome.vue` | none | The shell above |
-| `spectator-home` | `SpectatorHome.vue` | none | Same shell, read-only |
-| `the-end` | `GameEnd.vue` | `game_end.less`, none | Score table → stacked cards |
-| `cards` | `CardList` | `card_list.less`, none | Card browser; scale with `--tm-card-scale` |
+| Screen | Component | What it got |
+| --- | --- | --- |
+| `start-screen` | `StartScreen.vue` | Done. Its own `width=device-width` override is gone, now that `index.html` declares it for every screen, and the menu rows answer a tap as well as a hover |
+| `create-game-form` | `CreateGameForm` | Done. Each heading is the control that opens its own section, through `CreateGameSection.vue`; the player count opens on arrival |
+| `load` / `continue-game` | `LoadGameForm`, `ContinueGame` | Done. `continue_game.less` came with the menu restyle; the load form's fields now take the width they have |
+| `games-overview` | `GamesOverview` | Done. Each game is a card at phone width — the id and its status on the first line, the players wrapping under them |
+| `game-home` | `GameHome.vue` | Came with the menu restyle; the notice no longer floats over the page |
+| **initial card selection** | `SelectInitialCards.vue` | Done, as `MobileInitialCards.vue`. See below |
+| `player-home` | `PlayerHome.vue` | The shell above |
+| `spectator-home` | `SpectatorHome.vue` | **Still open.** Same shell, read-only |
+| `the-end` | `GameEnd.vue` | Done. The breakdown scrolls sideways in a box of its own with the player column held at the left; the chart's 950px floor is lifted |
+| `cards` | `CardList` | **Still open.** Card browser; scale with `--tm-card-scale` |
+
+### The opening hand
+
+The hardest of them, and the only one that needed a component rather than rules.
+The desktop screen is four `SelectCard` grids on one page — a corporation, two
+preludes, a CEO and ten project cards — with the money they add up to printed
+under the last of them, which at phone width is five screens of scrolling.
+
+`MobileInitialCards.vue` makes each selection a step. The step bar says what each
+one has against what it wants (`Preludes 1/2`), and a bar at the foot holds the
+starting megacredits, the total after preludes, and whatever is still missing.
+Every step stays mounted, because a `SelectCard` holds the player's picks itself.
+
+The selections are the same `SelectCard` the desktop renders, and the arithmetic —
+the corporation-specific prelude bonuses, the card cost, the counts that decide
+whether the button may be pressed — is `components/InitialCards.ts`, which both
+components call. `PlayerInputFactory` swaps the component in the way it already
+does for the action menu, and `MobilePlayerHome` gives setup the whole pane and
+opens on it: the opening hand is not a question asked in the middle of something.
 
 The viewport meta is the switch that makes all of these matter at once:
 `assets/index.html` currently declares `width=1260, user-scalable=1`. Flipping it
@@ -360,9 +381,8 @@ Each phase should build, lint and pass tests on its own.
 5. ~~**Cards.**~~ Hand/Played segment, tap-to-magnify, card scale, tag row.
 6. ~~**Board extras.**~~ Milestones, awards, then colonies, turmoil, moon,
    pathfinders.
-7. **Entry screens**, in the table's order of difficulty. **Still open.** The
-   viewport meta is flipped, so these now render at phone width against rules
-   written for 1260px. Pinch-zoom is deliberately left enabled as the interim
+7. ~~**Entry screens**, in the table's order of difficulty.~~ All but the card
+   browser and the spectator view. Pinch-zoom is deliberately left enabled as the
    escape hatch.
 8. ~~**PWA**: manifest, icons, meta, optional caching.~~
 9. ~~**Preferences**: the new keys.~~ They live in a mobile settings sheet that
@@ -409,6 +429,12 @@ Four places where the implementation departs from the plan above, and why.
 - **Double-tap zoom is suppressed while a space is being chosen**, so it cannot
   fight tap-to-place. A drag's trailing click is swallowed for the same reason.
 
+- **The end-game breakdown stays a table.** The plan said cards; the table is up
+  to seventeen numeric columns, and one card per player would put each number
+  beside its own label but no longer beside the same number for anyone else,
+  which is what a score table is read for. It scrolls sideways in a box of its
+  own instead, with the player column held at the left.
+
 ## Open questions
 
 - Does the 52px scroll handle below the board feel right, or does the board read
@@ -419,3 +445,6 @@ Four places where the implementation departs from the plan above, and why.
 - Turmoil and Colonies sit under the board with milestones and awards. In a full
   Turmoil-plus-Colonies game that column is long; it may want its own tab.
 - The spectator view still gets the desktop layout at phone width.
+- The create-game sections are closed on arrival except the player count. A
+  returning player who always turns the same four expansions on may want the
+  sections they last opened remembered instead.

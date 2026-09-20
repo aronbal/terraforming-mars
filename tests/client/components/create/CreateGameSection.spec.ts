@@ -13,6 +13,7 @@ import {
 
 describe('CreateGameSection', () => {
   let localStorage: FakeLocalStorage;
+  const realViewportWidth = window.innerWidth;
 
   function useMobileLayout() {
     Object.defineProperty(window, 'innerWidth', {value: 390, configurable: true});
@@ -42,6 +43,9 @@ describe('CreateGameSection', () => {
     FakeLocalStorage.deregister(localStorage);
     PreferencesManager.resetForTest();
     resetMobileLayoutForTest();
+    // The width is on the shared window; leaving a phone width here would put every
+    // later spec that starts tracking into the mobile shell.
+    Object.defineProperty(window, 'innerWidth', {value: realViewportWidth, configurable: true});
   });
 
   it('mounts without errors, showing what it was given', () => {

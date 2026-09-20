@@ -18,3 +18,59 @@
     background-color: gray;
   }
 }
+
+@media only screen and (max-width: 767px) {
+  .topmost-games-overview .notice {
+    position: static;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .games-overview-container {
+    padding: 0 16px max(24px, env(safe-area-inset-bottom));
+
+    h1 {
+      font-size: 24px;
+    }
+
+    /*
+     * One column per player does not fit, and a table that scrolls sideways puts the
+     * players out of sight behind the game id. Each game becomes a card instead: the
+     * id and its status on the first line, the players wrapping under them.
+     */
+    table,
+    tbody {
+      display: block;
+      width: 100%;
+    }
+
+    tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid @menu_line;
+      border-radius: 10px;
+      background: @menu_surface;
+    }
+
+    td {
+      display: block;
+      padding: 0;
+      border: none;
+    }
+
+    // The game id takes the rest of its line, so the players start on the next one.
+    td:nth-child(2) {
+      flex: 1 0 calc(100% - 32px);
+    }
+
+    .player-name {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+  }
+}

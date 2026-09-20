@@ -53,6 +53,9 @@
           </div>
           <div class="game_end_victory_points">
               <h2><span v-i18n>Victory point breakdown after</span> {{game.generation}} <span v-i18n>generations</span></h2>
+              <!-- The breakdown is too wide for a phone, so it scrolls inside this box
+                   rather than making the whole page scroll sideways. -->
+              <div class="game-end-table-scroll">
               <table class="table game_end_table">
                   <thead>
                       <tr v-i18n>
@@ -102,6 +105,7 @@
                       </tr>
                   </tbody>
               </table>
+              </div>
               <br>
               <h2 v-i18n>Victory points details</h2>
               <VictoryPointChart

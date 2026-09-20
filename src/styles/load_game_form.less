@@ -13,3 +13,35 @@
   color: @text_dark;
   max-width: 230px
 }
+
+@media only screen and (max-width: 767px) {
+  .topmost-load .notice {
+    position: static;
+    padding: 16px;
+    text-align: center;
+  }
+
+  #load-game {
+    padding: 0 16px max(24px, env(safe-area-inset-bottom));
+
+    h1 {
+      font-size: 24px;
+    }
+  }
+
+  .load-game--block {
+    padding: 16px;
+  }
+
+  .load-game-form .container {
+    padding: 0;
+  }
+
+  // The fields were sized for a wide form; on a phone they take the width they have.
+  .load-game-id {
+    box-sizing: border-box;
+    max-width: none;
+    width: 100%;
+    min-height: 44px;
+  }
+}
