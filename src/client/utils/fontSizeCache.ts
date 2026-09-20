@@ -10,9 +10,12 @@ const CACHE_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 
 // Bumped when a bug could have written wrong sizes, so the entries a browser is
 // already holding are dropped on the next load rather than waiting out their two
-// days. Version 2 discards sizes measured against a box of zero width, which the
-// mobile shell produced for every card in a pane it had not shown yet.
-const CACHE_VERSION = 2;
+// days. Version 2 discarded sizes measured against a box of zero width, which the
+// mobile shell produced for every card in a pane it had not shown yet. Version 3
+// discards every size measured before the keys carried the box width, and before
+// Ubuntu was self-hosted -- until then a phone that had not been served the font
+// fitted its titles to the platform's fallback and kept the answer.
+const CACHE_VERSION = 3;
 
 type CacheEntry = {size: number, expireMs: number, v?: number};
 
