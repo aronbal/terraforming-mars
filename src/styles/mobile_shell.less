@@ -101,6 +101,17 @@
   .player-overview-container {
     max-width: 100%;
   }
+
+  /*
+   * The payment widget sizes its running subtotals explicitly (20px) but lets the
+   * total they add up to inherit, which on a desktop is 23px. The shell's own base
+   * is 14px, so the total came out smaller than its own parts -- the one number
+   * that decides whether the button can be pressed, drawn as the least of them.
+   * Stated here so the column is one size wherever it appears in the shell.
+   */
+  .payments_table {
+    font-size: 20px;
+  }
 }
 
 // Zero specificity, so every button class below still wins.
@@ -1069,21 +1080,20 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /*
-   * The desktop draws each running subtotal larger than the total they add up to.
-   * On a phone that is the wrong way round: the total is the one number that says
-   * whether the button can be pressed, and a subtotal is the arithmetic behind it.
-   */
+  /* One size for the whole column, so it reads as a sum: the parts, a rule, the
+     total. Weight and colour carry the difference between them, not size. */
+  .payments_unit_subtotal,
+  .payments_total_value {
+    line-height: 1.2;
+  }
+
   .payments_unit_subtotal {
-    font-size: 13px;
     color: @mobile-muted;
   }
 
   .payments_total_value {
     padding-top: 6px;
-    font-size: 22px;
     font-weight: 700;
-    line-height: 1.1;
   }
 }
 
