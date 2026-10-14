@@ -136,6 +136,7 @@ export function fakePublicPlayerModel(overrides?: RecursivePartial<PublicPlayerM
     noTagsCount: 0,
     plants: 0,
     plantProduction: 0,
+    plantsNeededForGreenery: 8,
     protectedResources: emptyProtection(),
     protectedProduction: emptyProtection(),
     tableau: [],

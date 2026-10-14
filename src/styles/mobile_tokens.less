@@ -1,0 +1,72 @@
+/*
+ * The mobile shell's design tokens: the Aronbal Apps design system, dark theme.
+ *
+ * Every colour, radius and type size the shell's chrome paints with is named here
+ * once, so the header, the turn page, the bars and the sheets cannot drift apart.
+ * The board and the cards keep their own artwork and are never painted with these.
+ */
+
+// Surfaces.
+@m-bg: #000;
+@m-card: #1c1c1e;
+@m-raised: #2c2c2e;
+@m-fill: rgba(120, 120, 128, 0.24);
+@m-fill-strong: rgba(120, 120, 128, 0.36);
+@m-glass: rgba(28, 28, 30, 0.82);
+@m-scrim: rgba(0, 0, 0, 0.28);
+@m-sep: rgba(84, 84, 88, 0.55);
+
+// Text.
+@m-label: #f5f5f7;
+@m-label-2: #98989f;
+@m-label-3: #5a5a5f;
+
+// Meaning.
+@m-accent: #0a84ff;
+@m-ok: #30d158;
+@m-warn: #ff9f0a;
+@m-bad: #ff453a;
+@m-pr: #bf5af2;
+
+// Type. The system font, the way the design system draws it.
+@m-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+@m-title-size: 20px;
+@m-bar-title-size: 17px;
+@m-row-title-size: 14.5px;
+@m-value-size: 13px;
+@m-secondary-size: 12px;
+@m-small-size: 11px;
+@m-label-size: 10px;
+
+// Radii.
+@m-radius-button-sm: 8px;
+@m-radius-button: 9px;
+@m-radius-button-lg: 12px;
+@m-radius-glyph: 8px;
+@m-radius-card: 14px;
+@m-radius-sheet: 16px;
+@m-radius-pill: 999px;
+
+// Motion.
+@m-ease: cubic-bezier(0.4, 0, 0.2, 1);
+@m-duration: 200ms;
+
+// Apple's minimum recommended touch target.
+@m-tap: 44px;
+
+// The side gutter every pane and bar lines up on.
+@m-gutter: 16px;
+
+// The eyebrow above a section: small, bold, spaced capitals at 55%.
+.m-eyebrow() {
+  font-size: @m-label-size;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: fade(@m-label, 55%);
+}
+
+// Numbers that sit in columns or change in place.
+.m-tabular() {
+  font-variant-numeric: tabular-nums;
+}

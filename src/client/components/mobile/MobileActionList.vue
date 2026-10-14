@@ -3,10 +3,13 @@
     <!-- The player has already said what they are doing, so this is only the price
          and the confirmation for it. -->
     <template v-if="focused !== undefined">
-      <!-- One line, because the thing it names is already on the stage above. It
-           stays for the price, which nothing else in here says. -->
+      <!-- One line, because the thing it names is already on the stage above or on
+           the tile that opened it. It stays for the price, which nothing else says. -->
       <p class="mobile-focus-caption">{{ $t(focused.input.title) }}</p>
-      <div class="mobile-action-body mobile-action-body--focused" data-test="focused-body">
+      <div
+        class="mobile-action-body mobile-action-body--focused"
+        :class="{'mobile-action-body--staged': staged}"
+        data-test="focused-body">
         <PlayerInputFactory
           ref="openInput"
           :playerView="playerView"
@@ -27,46 +30,30 @@
       <h3 v-if="group.title !== undefined" class="mobile-action-group-title">{{ $t(group.title) }}</h3>
 
       <template v-for="entry in group.entries" :key="entry.index">
-        <!-- Handled on the tab where the thing itself is drawn. -->
         <button
-          v-if="entry.elsewhere !== undefined"
-          class="mobile-action mobile-action--elsewhere"
-          data-test="action-elsewhere"
-          @click="goto(entry.elsewhere.tab)">
+          class="mobile-action"
+          data-test="action-row"
+          :aria-expanded="openIndex === entry.index"
+          @click="toggle(entry.index)">
           <span class="mobile-action-main">
             <span class="mobile-action-name">{{ $t(entry.input.title) }}</span>
-            <span class="mobile-action-note">{{ $t(entry.elsewhere.hint) }}</span>
           </span>
           <span v-if="entry.count !== undefined" class="mobile-action-count mobile-num">{{ entry.count }}</span>
-          <span class="mobile-action-chevron">&rsaquo;</span>
+          <span class="mobile-action-chevron">{{ openIndex === entry.index ? '&minus;' : '+' }}</span>
         </button>
 
-        <template v-else>
-          <button
-            class="mobile-action"
-            data-test="action-row"
-            :aria-expanded="openIndex === entry.index"
-            @click="toggle(entry.index)">
-            <span class="mobile-action-main">
-              <span class="mobile-action-name">{{ $t(entry.input.title) }}</span>
-            </span>
-            <span v-if="entry.count !== undefined" class="mobile-action-count mobile-num">{{ entry.count }}</span>
-            <span class="mobile-action-chevron">{{ openIndex === entry.index ? '&minus;' : '+' }}</span>
-          </button>
-
-          <div v-if="openIndex === entry.index" class="mobile-action-body" data-test="action-body">
-            <PlayerInputFactory
-              ref="openInput"
-              :playerView="playerView"
-              :playerinput="entry.input"
-              :onsave="saved(entry.index)"
-              :showsave="showsave && childSaves(entry.input)"
-              :showtitle="false"/>
-            <div v-if="showsave && !childSaves(entry.input)" class="wf-action">
-              <AppButton :title="$t(entry.input.buttonLabel)" type="submit" size="normal" @click="save()"/>
-            </div>
+        <div v-if="openIndex === entry.index" class="mobile-action-body" data-test="action-body">
+          <PlayerInputFactory
+            ref="openInput"
+            :playerView="playerView"
+            :playerinput="entry.input"
+            :onsave="saved(entry.index)"
+            :showsave="showsave && childSaves(entry.input)"
+            :showtitle="false"/>
+          <div v-if="showsave && !childSaves(entry.input)" class="wf-action">
+            <AppButton :title="$t(entry.input.buttonLabel)" type="submit" size="normal" @click="save()"/>
           </div>
-        </template>
+        </div>
       </template>
     </div>
     </template>
@@ -77,26 +64,22 @@
 import {defineComponent, PropType} from 'vue';
 
 import AppButton from '@/client/components/common/AppButton.vue';
-import {ActionGroup, groupActions} from '@/client/components/mobile/MobileActionMenu';
+import {ActionEntry, ActionGroup, MenuContext, groupActions, pickedEntryIn} from '@/client/components/mobile/MobileActionMenu';
 import {InputResponse, OrOptionsResponse} from '@/common/inputs/InputResponse';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
-import {MobileTab} from '@/client/components/mobile/MobileTab';
-import {requestTab} from '@/client/utils/mobileNavigation';
-import {CardName} from '@/common/cards/CardName';
-import {offerFor, pickedCard} from '@/client/utils/cardSelection';
-import {BoardPick, boardOfferFor, pickedBoardThing} from '@/client/utils/boardSelection';
-import {ActionEntry} from '@/client/components/mobile/MobileActionMenu';
-import {pickFocused, tabRouting} from '@/client/utils/mobileFocus';
+import {pickedCard} from '@/client/utils/cardSelection';
+import {pickedBoardThing} from '@/client/utils/boardSelection';
+import {pickFocus, pickFocused, pickedEntry} from '@/client/utils/mobileFocus';
 
 /*
- * A turn's action menu, as a phone can read it.
+ * A turn's action menu, inside the shell's sheet.
  *
- * The desktop shows every entry as a radio button with the chosen one's whole input
- * unfolded beneath it, which on a phone is a screen of scrolling before the player
- * can see what the second entry even was. Here each entry is a row; one opens at a
- * time; and the entries whose subject lives on another tab are links to that tab
- * rather than a second copy of it.
+ * The turn page is where a player chooses what to do, so the sheet nearly always
+ * shows one entry: the one the card, the tile or the button they tapped belongs to,
+ * with its price and its confirmation. The grouped list is the fallback for a sheet
+ * raised over the menu without a pick, where each entry is a row and one opens at a
+ * time.
  */
 
 type DataModel = {
@@ -133,25 +116,23 @@ export default defineComponent({
     };
   },
   computed: {
-    pickedCard(): CardName | undefined {
-      return pickedCard.value;
+    context(): MenuContext {
+      return {card: pickedCard.value, board: pickedBoardThing.value, entry: pickedEntry.value};
     },
-    pickedBoardThing(): BoardPick | undefined {
-      return pickedBoardThing.value;
+    /* The thing itself is held up above the panel, so the panel leaves out what would
+       repeat it. A tile on the turn page holds nothing up: its list is the choice. */
+    staged(): boolean {
+      return pickFocus.value === 'staged';
     },
     groups(): ReadonlyArray<ActionGroup> {
-      return groupActions(this.playerinput, {
-        card: this.pickedCard,
-        board: this.pickedBoardThing,
-        routes: tabRouting.value,
-      });
+      return groupActions(this.playerinput);
     },
     /**
-     * The one entry to show, when the shell raised this over the tab a choice was
-     * made on. Undefined means show the whole menu, which is the Act tab's job.
+     * The one entry to show, when the shell raised this for something the player
+     * picked. Undefined means show the whole menu.
      */
     focused(): ActionEntry | undefined {
-      return pickFocused.value ? this.pickedEntry() : undefined;
+      return pickFocused.value ? pickedEntryIn(this.playerinput, this.context) : undefined;
     },
   },
   watch: {
@@ -159,52 +140,19 @@ export default defineComponent({
     playerinput() {
       this.openIndex = undefined;
     },
-    /* A card picked on the Cards tab, or a tile picked under the board, is a choice
-       already made, so the entry it belongs to is unfolded and waiting. */
-    pickedCard: {
+    /* A card, a tile under the board or a tile on the turn page is a choice already
+       made, so the entry it belongs to is unfolded and waiting. */
+    context: {
       handler() {
-        this.openPickedEntry();
-      },
-      immediate: true,
-    },
-    pickedBoardThing: {
-      handler() {
-        this.openPickedEntry();
+        const entry = pickedEntryIn(this.playerinput, this.context);
+        if (entry !== undefined) {
+          this.openIndex = entry.index;
+        }
       },
       immediate: true,
     },
   },
   methods: {
-    /** The entry that answers what the player picked, if the menu holds one. */
-    pickedEntry(): ActionEntry | undefined {
-      const card = this.pickedCard;
-      const board = this.pickedBoardThing;
-      if (card === undefined && board === undefined) {
-        return undefined;
-      }
-      for (const group of this.groups) {
-        for (const entry of group.entries) {
-          if (entry.elsewhere !== undefined) {
-            continue;
-          }
-          const claims = (card !== undefined && offerFor(entry.input, card) !== undefined) ||
-            (board !== undefined && boardOfferFor(entry.input, board));
-          if (claims) {
-            return entry;
-          }
-        }
-      }
-      return undefined;
-    },
-    openPickedEntry(): void {
-      const entry = this.pickedEntry();
-      if (entry !== undefined) {
-        this.openIndex = entry.index;
-      }
-    },
-    goto(tab: MobileTab): void {
-      requestTab(tab);
-    },
     toggle(index: number): void {
       this.openIndex = this.openIndex === index ? undefined : index;
     },

@@ -1,57 +1,17 @@
 import {expect} from 'chai';
 import {CardName} from '@/common/cards/CardName';
-import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
-import {groupActions, isActionMenu} from '@/client/components/mobile/MobileActionMenu';
-import {clearPickedCard, pickCard, resetPickedCardForTest} from '@/client/utils/cardSelection';
-import {clearBoardPick, resetBoardPickForTest} from '@/client/utils/boardSelection';
-
-function option(title: string, annotation?: string): PlayerInputModel {
-  return {type: 'option', title, buttonLabel: 'Confirm', annotation};
-}
-
-function projectCard(annotation: string, ...names: Array<CardName>): PlayerInputModel {
-  return {
-    type: 'projectCard',
-    title: 'Play project card',
-    buttonLabel: 'Play',
-    annotation,
-    cards: names.map((name) => ({name, calculatedCost: 1})),
-    paymentOptions: {},
-    microbes: 0,
-    floaters: 0,
-    lunaArchivesScience: 0,
-    seeds: 0,
-    graphene: 0,
-    kuiperAsteroids: 0,
-    auroraiData: 0,
-    spireScience: 0,
-  };
-}
-
-function milestones(annotation: string, ...names: Array<string>): PlayerInputModel {
-  return {
-    type: 'or',
-    title: 'Claim a milestone',
-    buttonLabel: 'Claim',
-    annotation,
-    options: names.map((name) => option(name)),
-  };
-}
-
-function menu(...options: Array<PlayerInputModel>): OrOptionsModel {
-  return {type: 'or', title: 'Take your first action', buttonLabel: 'Take action', options};
-}
+import {
+  actionTextOf,
+  entryFor,
+  groupActions,
+  isActionMenu,
+  otherEntries,
+  pickedEntryIn,
+  readyCards,
+} from '@/client/components/mobile/MobileActionMenu';
+import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures';
 
 describe('MobileActionMenu', () => {
-  beforeEach(() => {
-    resetPickedCardForTest();
-    resetBoardPickForTest();
-  });
-  afterEach(() => {
-    clearPickedCard();
-    clearBoardPick();
-  });
-
   describe('isActionMenu', () => {
     it('recognises the turn menu by its entries carrying annotations', () => {
       expect(isActionMenu(menu(option('Pass for this generation', 'pass')))).is.true;
@@ -96,61 +56,83 @@ describe('MobileActionMenu', () => {
       expect(groups[0].entries[0].index).eq(0);
     });
 
-    it('sends the card entries to the Cards tab instead of opening them', () => {
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)));
-      expect(groups[0].entries[0].elsewhere).deep.eq({
-        tab: 'cards',
-        hint: 'Tap a card in your hand to play it',
-      });
+    it('counts what an entry has to choose between', () => {
+      const groups = groupActions(menu(projectCard(CardName.ANTS, CardName.BIRDS)));
+      expect(groups[0].entries[0].count).eq(2);
+    });
+  });
+
+  describe('readyCards', () => {
+    it('lists the playable hand cards, then the actions, then the CEO', () => {
+      const ready = readyCards(menu(
+        cardList('ceoAction', [CardName.KAREN], {action: true}),
+        cardList('actionCard', [CardName.SPACE_ELEVATOR], {action: true}),
+        projectCard(CardName.ANTS, CardName.BIRDS)));
+
+      expect(ready.map((item) => [item.card.name, item.offer])).deep.eq([
+        [CardName.ANTS, 'play'],
+        [CardName.BIRDS, 'play'],
+        [CardName.SPACE_ELEVATOR, 'action'],
+        [CardName.KAREN, 'action'],
+      ]);
     });
 
-    /* Once a card has been picked over there, this is where the choice is finished --
-       so the entry has to open here, or the two tabs point at each other forever. */
-    it('opens the card entry here once a card has been picked', () => {
-      pickCard(CardName.ANTS);
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), {card: CardName.ANTS});
-      expect(groups[0].entries[0].elsewhere).is.undefined;
+    // Pharmacy Union and the like send cards the player may not choose.
+    it('leaves out a card the server sent disabled', () => {
+      const ready = readyCards(menu(
+        cardList('actionCard', [CardName.SPACE_ELEVATOR, CardName.AI_CENTRAL], {action: true, disabled: [CardName.AI_CENTRAL]})));
+      expect(ready.map((item) => item.card.name)).deep.eq([CardName.SPACE_ELEVATOR]);
     });
 
-    it('still sends the player away for a card the entry does not offer', () => {
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS)), {card: CardName.BIRDS});
-      expect(groups[0].entries[0].elsewhere?.tab).eq('cards');
+    it('is empty when nothing is offered', () => {
+      expect(readyCards(menu(option('Pass for this generation', 'pass')))).is.empty;
+      expect(readyCards(undefined)).is.empty;
+    });
+  });
+
+  describe('entries', () => {
+    it('finds an entry by what it is', () => {
+      const turn = menu(option('Pass for this generation', 'pass'), option('Convert heat', 'convertHeat'));
+      expect(entryFor(turn, 'convertHeat')?.index).eq(1);
+      expect(entryFor(turn, 'convertPlants')).is.undefined;
+      expect(entryFor(undefined, 'pass')).is.undefined;
     });
 
-    it('sends the board entries to the Board tab, where the tiles are drawn', () => {
-      const groups = groupActions(menu(milestones('milestone', 'Builder')));
-      expect(groups[0].entries[0].elsewhere).deep.eq({
-        tab: 'board',
-        hint: 'Tap a milestone under the board to claim it',
-      });
+    it('lists only the entries the turn page draws nothing for', () => {
+      const turn = menu(
+        option('Pass for this generation', 'pass'),
+        option('Summon the worm', 'rideTheSandworm'),
+        option('Unannotated'));
+      expect(otherEntries(turn).map((entry) => entry.index)).deep.eq([1, 2]);
     });
 
-    it('opens the board entry here once a tile has been tapped', () => {
-      const groups = groupActions(
-        menu(milestones('milestone', 'Builder')), {board: {kind: 'milestone', name: 'Builder'}});
-      expect(groups[0].entries[0].elsewhere).is.undefined;
+    it('answers a pick by card, by board tile, or by position', () => {
+      const turn = menu(
+        option('Pass for this generation', 'pass'),
+        projectCard(CardName.ANTS),
+        namedChoices('award', 'Fund an award (8 M€)', 'Landlord'));
+
+      expect(pickedEntryIn(turn, {card: CardName.ANTS})?.index).eq(1);
+      expect(pickedEntryIn(turn, {board: {kind: 'award', name: 'Landlord'}})?.index).eq(2);
+      expect(pickedEntryIn(turn, {entry: 0})?.index).eq(0);
+      expect(pickedEntryIn(turn, {card: CardName.BIRDS})).is.undefined;
     });
 
     /* Milestone and award entries are both a list of names, so only the annotation
        keeps a milestone tap from opening the awards. */
-    it('still sends the player away for a tile the entry does not offer', () => {
-      const groups = groupActions(
-        menu(milestones('award', 'Landlord')), {board: {kind: 'milestone', name: 'Landlord'}});
-      expect(groups[0].entries[0].elsewhere?.tab).eq('board');
+    it('does not answer a milestone pick with the awards', () => {
+      const turn = menu(namedChoices('award', 'Fund an award (8 M€)', 'Landlord'));
+      expect(pickedEntryIn(turn, {board: {kind: 'milestone', name: 'Landlord'}})).is.undefined;
+    });
+  });
+
+  describe('actionTextOf', () => {
+    it('reads a card action as the card prints it', () => {
+      expect(actionTextOf(CardName.SPACE_ELEVATOR)).eq('Spend 1 steel to gain 5 M€.');
     });
 
-    /* On the Act tab the player asked to take the whole turn from there, so nothing
-       in the menu may send them somewhere else to finish it. */
-    it('opens every entry in place when the player is not routed to tabs', () => {
-      const groups = groupActions(
-        menu(projectCard('projectCard', CardName.ANTS), milestones('milestone', 'Builder')),
-        {routes: false});
-      expect(groups.every((group) => group.entries.every((entry) => entry.elsewhere === undefined))).is.true;
-    });
-
-    it('counts what an entry has to choose between', () => {
-      const groups = groupActions(menu(projectCard('projectCard', CardName.ANTS, CardName.BIRDS)));
-      expect(groups[0].entries[0].count).eq(2);
+    it('is undefined for a card without an action', () => {
+      expect(actionTextOf(CardName.COMET)).is.undefined;
     });
   });
 });

@@ -5,19 +5,20 @@ import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import {fakePlayerViewModel} from '../testHelpers';
 import {FakeLocalStorage} from '../FakeLocalStorage';
 import {CardName} from '@/common/cards/CardName';
+import {menu, projectCard} from './menuFixtures';
 
 describe('MobileCardsPane', () => {
   let localStorage: FakeLocalStorage;
 
-  function mount(cardScale = 0.62) {
+  function mount(selected?: CardName) {
     return shallowMount(MobileCardsPane, {
       ...globalConfig,
       props: {
         playerView: fakePlayerViewModel({
-          cardsInHand: [{name: CardName.ANTS, calculatedCost: 9}],
-        }),
-        cardScale,
-        tapMode: 'magnify',
+          cardsInHand: [{name: CardName.BIRDS, calculatedCost: 10}, {name: CardName.ANTS, calculatedCost: 9}],
+          waitingFor: menu(projectCard(CardName.ANTS)),
+        } as never),
+        selected,
       },
     });
   }
@@ -35,18 +36,27 @@ describe('MobileCardsPane', () => {
     const wrapper = mount();
     expect(wrapper.exists()).is.true;
     expect(wrapper.vm.view).eq('hand');
-    expect(wrapper.vm.hand).has.length(1);
   });
 
-  it('hands the card scale to the stylesheet', () => {
-    expect(mount(0.8).vm.scaleStyle).deep.eq({'--mobile-card-scale': '0.8'});
+  it('puts the cards the turn can play first', () => {
+    expect(mount().vm.hand.map((card) => card.name)).deep.eq([CardName.ANTS, CardName.BIRDS]);
   });
 
-  it('a tap magnifies the card', async () => {
+  it('a tap on a playable card selects it', async () => {
     const wrapper = mount();
-    expect(wrapper.find('[data-test="magnified-card"]').exists()).is.false;
-    await wrapper.find('[data-test="hand-card"]').trigger('click');
-    expect(wrapper.find('[data-test="magnified-card"]').exists()).is.true;
+    await wrapper.findAll('[data-test="hand-card"]')[0].trigger('click');
+    expect(wrapper.emitted('select')).deep.eq([[CardName.ANTS]]);
+  });
+
+  it('dims a card that cannot be played, and does not let it be tapped', () => {
+    const birds = mount().findAll('[data-test="hand-card"]')[1];
+    expect(birds.classes()).contains('mobile-card-button--idle');
+    expect(birds.attributes('disabled')).is.not.undefined;
+  });
+
+  it('rings the selected card', () => {
+    const ants = mount(CardName.ANTS).findAll('[data-test="hand-card"]')[0];
+    expect(ants.classes()).contains('mobile-card-button--selected');
   });
 
   it('groups the tableau, dropping the groups that are empty', () => {

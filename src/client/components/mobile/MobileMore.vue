@@ -1,48 +1,37 @@
 <template>
   <div class="mobile-more" data-test="mobile-more">
     <template v-if="view === 'menu'">
-      <h2 class="mobile-more-title" v-i18n>More</h2>
-
-      <div class="mobile-more-group">
-        <button class="mobile-more-row" data-test="more-log" @click="view = 'log'">
-          <span class="mobile-more-name" v-i18n>Game log</span>
-          <span class="mobile-more-chevron">&rsaquo;</span>
-        </button>
-        <button class="mobile-more-row" data-test="more-settings" @click="view = 'settings'">
-          <span class="mobile-more-name" v-i18n>Settings</span>
-          <span class="mobile-more-chevron">&rsaquo;</span>
+      <div class="mobile-list">
+        <button class="mobile-row mobile-row--button" data-test="more-settings" @click="view = 'settings'">
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title" v-i18n>Settings</span>
+            </span>
+            <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+          </span>
         </button>
       </div>
 
-      <h3 class="mobile-more-group-title" v-i18n>Games</h3>
-      <div class="mobile-more-group">
-        <a v-for="link in gameLinks" :key="link.path" class="mobile-more-row" :href="link.path" :data-test="link.test">
-          <span class="mobile-more-name">{{ $t(link.label) }}</span>
-          <span class="mobile-more-chevron">&rsaquo;</span>
+      <h3 class="mobile-eyebrow" v-i18n>Games</h3>
+      <div class="mobile-list">
+        <a v-for="link in gameLinks" :key="link.path" class="mobile-row mobile-row--button" :href="link.path" :data-test="link.test">
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title">{{ $t(link.label) }}</span>
+            </span>
+            <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+          </span>
         </a>
       </div>
-      <p class="mobile-more-note" v-i18n>
+      <p class="mobile-section-note" v-i18n>
         This game keeps running while you are away, and Continue a game lists the ones you
         have open on this device. These screens are still drawn for a desktop.
       </p>
     </template>
 
-    <template v-else-if="view === 'log'">
-      <div class="mobile-more-head">
-        <button class="mobile-button" data-test="more-back" @click="view = 'menu'" v-i18n>Back</button>
-        <span class="mobile-more-head-title" v-i18n>Game log</span>
-      </div>
-      <LogPanel
-        :viewModel="playerView"
-        :color="playerView.thisPlayer.color"
-        :step="playerView.game.step"
-        @spaceClicked="$emit('spaceClicked', $event)"/>
-    </template>
-
     <template v-else>
       <div class="mobile-more-head">
-        <button class="mobile-button" data-test="more-back" @click="view = 'menu'" v-i18n>Back</button>
-        <span class="mobile-more-head-title" v-i18n>Settings</span>
+        <button class="mobile-plain-button" data-test="more-back" @click="view = 'menu'" v-i18n>Back</button>
       </div>
       <MobileSettings @changed="$emit('settingsChanged')"/>
     </template>
@@ -50,20 +39,14 @@
 </template>
 
 <script lang="ts">
-import {defineComponent, PropType} from 'vue';
+import {defineComponent} from 'vue';
 
-import LogPanel from '@/client/components/logpanel/LogPanel.vue';
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
-import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {paths} from '@/common/app/paths';
 
 /*
- * Everything that is not the game in front of you.
- *
- * The log, the settings and the way to another game are all things a player reaches
- * for between decisions rather than during one, so they share the last tab instead of
- * each taking one of the five. Each opens as its own screen, with the way back where
- * a phone expects it.
+ * Everything that is not the game in front of you: the settings and the way to
+ * another game. The log is a view of its own, beside the turn.
  */
 
 type GameLink = {
@@ -73,20 +56,13 @@ type GameLink = {
 };
 
 type DataModel = {
-  view: 'menu' | 'log' | 'settings';
+  view: 'menu' | 'settings';
 };
 
 export default defineComponent({
   name: 'MobileMore',
-  props: {
-    playerView: {
-      type: Object as PropType<PlayerViewModel>,
-      required: true,
-    },
-  },
-  emits: ['settingsChanged', 'spaceClicked'],
+  emits: ['settingsChanged'],
   components: {
-    LogPanel,
     MobileSettings,
   },
   data(): DataModel {

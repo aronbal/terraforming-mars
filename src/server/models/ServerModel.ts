@@ -241,6 +241,7 @@ export class Server {
       noTagsCount: player.tags.numberOfCardsWithNoTags(),
       plants: player.plants,
       plantProduction: player.production.plants,
+      plantsNeededForGreenery: player.plantsNeededForGreenery,
       protectedResources: Server.getResourceProtections(player),
       protectedProduction: Server.getProductionProtections(player),
       tableau: cardsToModel(player, player.tableau.asArray(), {showResources: true}),

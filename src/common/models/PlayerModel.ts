@@ -64,6 +64,8 @@ export type PublicPlayerModel = {
   noTagsCount: number;
   plants: number;
   plantProduction: number;
+  /** How many plants this player converts into a greenery: 8, or fewer with Ecoline and the like. */
+  plantsNeededForGreenery: number;
   protectedResources: Record<Resource, Protection>;
   protectedProduction: Record<Resource, Protection>;
   tableau: ReadonlyArray<CardModel>;
