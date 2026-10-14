@@ -61,7 +61,9 @@ import {ColonyDeserializer} from './colonies/ColonyDeserializer';
 import {GameLoader} from './database/GameLoader';
 import {DEFAULT_GAME_OPTIONS, GameOptions} from './game/GameOptions';
 import {CorporationDeck, PreludeDeck, ProjectDeck, CeoDeck} from './cards/Deck';
-import {Logger} from './logs/Logger';
+import {Logger, LogOptions} from './logs/Logger';
+import {LogEffect, LogEffectGlobalParameter} from '../common/logs/LogEffect';
+import {addLogEffect, toLogTileKind} from '../common/logs/logEffects';
 import {addDays, stringToNumber} from './database/utils';
 import {Tag} from '../common/cards/Tag';
 import {IGame, Score} from './IGame';
@@ -110,6 +112,13 @@ export class Game implements IGame, Logger {
   public createdTime: Date = new Date(0);
   public gameAge: number = 0; // Each log event increases it
   public gameLog: Array<LogMessage> = createGameLog();
+  /**
+   * The log message reporting the player action in progress, and the player taking it.
+   *
+   * Effects of that action are attached to that message, see `logEffect`. Not serialized: games are
+   * only saved between actions.
+   */
+  public loggedAction: {index: number, actor: PlayerId} | undefined = undefined;
   public undoCount: number = 0; // Each undo increases it
   public inputsThisRound = 0;
   public resettable: boolean = false;
@@ -638,7 +647,7 @@ export class Game implements IGame, Logger {
       throw new Error('All awards already funded');
     }
     this.log('${0} funded ${1} award',
-      (b) => b.player(player).award(award));
+      (b) => b.player(player).award(award), {actor: player});
 
     if (this.hasBeenFunded(award)) {
       throw new Error(award.name + ' cannot is already funded.');
@@ -773,6 +782,7 @@ export class Game implements IGame, Logger {
   }
 
   private gotoProductionPhase(): void {
+    this.endLoggedAction();
     this.phase = Phase.PRODUCTION;
     this.passedPlayers.clear();
     this.someoneHasRemovedOtherPlayersPlants = false;
@@ -1192,7 +1202,9 @@ export class Game implements IGame, Logger {
 
     // PoliticalAgendas Reds P3 && Magnetic Field Stimulation Delays hook
     if (increments < 0) {
+      const before = this.oxygenLevel;
       this.oxygenLevel = Math.max(constants.MIN_OXYGEN_LEVEL, this.oxygenLevel + increments);
+      this.logGlobalParameterEffect(GlobalParameter.OXYGEN, this.oxygenLevel - before);
       return undefined;
     }
 
@@ -1210,6 +1222,7 @@ export class Game implements IGame, Logger {
     }
 
     this.oxygenLevel += steps;
+    this.logGlobalParameterEffect(GlobalParameter.OXYGEN, steps);
 
     AresHandler.ifAres(this, (aresData) => {
       AresHandler.onOxygenChange(this, aresData);
@@ -1227,7 +1240,9 @@ export class Game implements IGame, Logger {
 
     // PoliticalAgendas Reds P3 hook
     if (increments === -1) {
+      const before = this.venusScaleLevel;
       this.venusScaleLevel = Math.max(constants.MIN_VENUS_SCALE, this.venusScaleLevel + increments * 2);
+      this.logGlobalParameterEffect(GlobalParameter.VENUS, (this.venusScaleLevel - before) / 2);
       return -1;
     }
 
@@ -1273,6 +1288,7 @@ export class Game implements IGame, Logger {
     }
 
     this.venusScaleLevel += steps * 2;
+    this.logGlobalParameterEffect(GlobalParameter.VENUS, steps);
 
     return steps;
   }
@@ -1287,7 +1303,9 @@ export class Game implements IGame, Logger {
     }
 
     if (increments === -2 || increments === -1) {
+      const before = this.temperature;
       this.temperature = Math.max(constants.MIN_TEMPERATURE, this.temperature + increments * 2);
+      this.logGlobalParameterEffect(GlobalParameter.TEMPERATURE, (this.temperature - before) / 2);
       return undefined;
     }
 
@@ -1319,6 +1337,7 @@ export class Game implements IGame, Logger {
     }
 
     this.temperature += steps * 2;
+    this.logGlobalParameterEffect(GlobalParameter.TEMPERATURE, steps);
 
     AresHandler.ifAres(this, (aresData) => {
       AresHandler.onTemperatureChange(this, aresData);
@@ -1458,6 +1477,10 @@ export class Game implements IGame, Logger {
       space.player = player;
     }
     LogHelper.logTilePlacement(player, space, tile.tileType);
+    const kind = toLogTileKind(tile.tileType);
+    if (kind !== undefined) {
+      this.logEffect({type: 'tile', tile: kind, count: 1});
+    }
   }
 
   public grantSpaceBonuses(player: IPlayer, space: Space) {
@@ -1664,13 +1687,43 @@ export class Game implements IGame, Logger {
       .toSorted(byKey('cost'));
   }
 
-  public log(message: string, f?: (builder: LogMessageBuilder) => void, options?: {reservedFor?: IPlayer}) {
+  public log(message: string, f?: (builder: LogMessageBuilder) => void, options?: LogOptions) {
     const builder = new LogMessageBuilder(message);
     f?.(builder);
     const logMessage = builder.build();
     logMessage.playerId = options?.reservedFor?.id;
     this.gameLog.push(logMessage);
     this.gameAge++;
+    if (options?.actor !== undefined) {
+      this.loggedAction = {index: this.gameLog.length - 1, actor: options.actor.id};
+    }
+  }
+
+  public logEffect(effect: LogEffect, actor?: IPlayer): void {
+    const loggedAction = this.loggedAction;
+    if (loggedAction === undefined || (actor !== undefined && actor.id !== loggedAction.actor)) {
+      return;
+    }
+    // The log may have been trimmed or reloaded since the action started.
+    const logMessage = this.gameLog[loggedAction.index];
+    if (logMessage === undefined) {
+      return;
+    }
+    const effects = logMessage.effects ?? [];
+    addLogEffect(effects, effect);
+    if (effects.length > 0) {
+      logMessage.effects = effects;
+    } else {
+      delete logMessage.effects;
+    }
+  }
+
+  public endLoggedAction(): void {
+    this.loggedAction = undefined;
+  }
+
+  private logGlobalParameterEffect(parameter: LogEffectGlobalParameter, steps: number): void {
+    this.logEffect({type: 'global', parameter, steps});
   }
 
   public discardForCost(cardCount: 1 | 2, toPlace: TileType) {

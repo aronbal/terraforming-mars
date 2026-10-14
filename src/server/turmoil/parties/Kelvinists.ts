@@ -60,7 +60,7 @@ class KelvinistsPolicy01 implements IPolicy {
 
   action(player: IPlayer) {
     const game = player.game;
-    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.KELVINISTS));
+    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.KELVINISTS), {actor: player});
     game.defer(new SelectPaymentDeferred(player, this.cost(player), {title: TITLES.payForPartyAction(PartyName.KELVINISTS)}))
       .andThen(() => {
         player.production.add(Resource.ENERGY, 1);
@@ -96,7 +96,7 @@ class KelvinistsPolicy03 implements IPolicy {
     const option = new SelectOption('Convert 6 heat into temperature (Turmoil Kelvinists)', 'Convert heat').andThen(() => {
       return player.spendHeat(6, () => {
         const game = player.game;
-        game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.KELVINISTS));
+        game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.KELVINISTS), {actor: player});
         game.log('${0} spent 6 heat to raise temperature 1 step', (b) => b.player(player));
         game.increaseTemperature(player, 1);
         return undefined;

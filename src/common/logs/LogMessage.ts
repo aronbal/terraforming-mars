@@ -2,11 +2,18 @@ import {LogMessageType} from './LogMessageType';
 import {LogMessageData} from './LogMessageData';
 import {Message} from './Message';
 import {PlayerId} from '../Types';
+import {LogEffect} from './LogEffect';
 
 export class LogMessage implements Message {
   public playerId?: PlayerId;
   public timestamp = Date.now();
   public type?: LogMessageType;
+  /**
+   * Structured effects of the player action this message reports.
+   *
+   * Only set when there is at least one effect, and absent from messages saved before it existed.
+   */
+  public effects?: Array<LogEffect>;
   constructor(
     type: LogMessageType,
     public message: string,

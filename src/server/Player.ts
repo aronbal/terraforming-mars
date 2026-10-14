@@ -351,6 +351,7 @@ export class Player implements IPlayer {
     const raiseRating = () => {
       this.terraformRating += steps;
       this.hasIncreasedTerraformRatingThisGeneration = true;
+      this.game.logEffect({type: 'tr', steps}, this);
 
       if (opts.log === true) {
         if (opts.from !== undefined) {
@@ -383,6 +384,7 @@ export class Player implements IPlayer {
 
   public decreaseTerraformRating(steps: number = 1, opts: {log?: boolean} = {}) {
     this.terraformRating -= steps;
+    this.game.logEffect({type: 'tr', steps: -steps}, this);
     if (opts.log === true) {
       this.game.log('${0} lost ${1} TR', (b) => b.player(this).number(steps));
     }
@@ -866,7 +868,7 @@ export class Player implements IPlayer {
 
     if (selectedCard.type !== CardType.PROXY) {
       this.lastCardPlayed = selectedCard.name;
-      this.game.log('${0} played ${1}', (b) => b.player(this).card(selectedCard));
+      this.game.log('${0} played ${1}', (b) => b.player(this).card(selectedCard), {actor: this});
     }
 
     // Play the card
@@ -962,7 +964,7 @@ export class Player implements IPlayer {
       this.getPlayableActionCards(),
       {selectBlueCardAction: true})
       .andThen(([card]) => {
-        this.game.log('${0} used ${1} action', (b) => b.player(this).card(card));
+        this.game.log('${0} used ${1} action', (b) => b.player(this).card(card), {actor: this});
         const action = card.action(this);
         this.defer(action);
         this.actionsThisGeneration.add(card.name);
@@ -981,7 +983,7 @@ export class Player implements IPlayer {
       cards,
       {selectBlueCardAction: true})
       .andThen(([card]) => {
-        this.game.log('${0} used ${1} action', (b) => b.player(this).card(card));
+        this.game.log('${0} used ${1} action', (b) => b.player(this).card(card), {actor: this});
         const action = card.action(this);
         this.defer(action);
         this.actionsThisGeneration.add(card.name);
@@ -1008,7 +1010,7 @@ export class Player implements IPlayer {
         PathfindersExpansion.addToSolBank(this);
       }
     }
-    this.game.log('${0} played ${1}', (b) => b.player(this).card(corporationCard));
+    this.game.log('${0} played ${1}', (b) => b.player(this).card(corporationCard), {actor: this});
     // Calculating this before playing the corporation card, which might change the player's hand size.
     const numberOfCardInHand = this.cardsInHand.length;
     ColoniesHandler.maybeActivateColonies(this.game, corporationCard);
@@ -1091,7 +1093,7 @@ export class Player implements IPlayer {
     }
 
     const recordClaim = () => {
-      this.game.log('${0} claimed ${1} milestone', (b) => b.player(this).milestone(milestone));
+      this.game.log('${0} claimed ${1} milestone', (b) => b.player(this).milestone(milestone), {actor: this});
       this.game.claimedMilestones.push({
         player: this,
         milestone: milestone,
@@ -1460,6 +1462,7 @@ export class Player implements IPlayer {
       game.deferredActions.runAll(() => this.takeAction());
       return;
     }
+    game.endLoggedAction();
 
     if (this.actionsTakenThisRound === 0 || game.gameOptions.undoOption) {
       game.save();
@@ -1538,7 +1541,7 @@ export class Player implements IPlayer {
           message('Take first action of ${0} corporation', (b) => b.card(corp)),
           corp.initialActionText)
           .andThen(() => {
-            game.log('${0} took the first action of ${1} corporation', (b) => b.player(this).card(corp)),
+            game.log('${0} took the first action of ${1} corporation', (b) => b.player(this).card(corp), {actor: this}),
             this.defer(corp.initialAction?.(this));
             inplaceRemove(this.pendingInitialActions, corp);
             return undefined;

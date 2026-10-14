@@ -28,7 +28,8 @@ import {GameOptions} from './game/GameOptions';
 import {CorporationDeck, PreludeDeck, ProjectDeck, CeoDeck} from './cards/Deck';
 import {Tag} from '../common/cards/Tag';
 import {Tile} from './Tile';
-import {Logger} from './logs/Logger';
+import {Logger, LogOptions} from './logs/Logger';
+import {LogEffect} from '../common/logs/LogEffect';
 import {GlobalParameter} from '../common/GlobalParameter';
 import {UnderworldData} from './underworld/UnderworldData';
 import {OrOptions} from './inputs/OrOptions';
@@ -244,7 +245,17 @@ export interface IGame extends Logger {
    */
   getStandardProjects(): Array<IStandardProjectCard>;
 
-  log(message: string, f?: (builder: LogMessageBuilder) => void, options?: {reservedFor?: IPlayer}): void;
+  log(message: string, f?: (builder: LogMessageBuilder) => void, options?: LogOptions): void;
+  /**
+   * Attaches `effect` to the log message of the player action in progress.
+   *
+   * That message is the latest one logged with the `actor` option during the current action. When there
+   * is none, the effect is dropped. When `actor` is set here, the effect is only attached if that player
+   * is the one taking the action.
+   */
+  logEffect(effect: LogEffect, actor?: IPlayer): void;
+  /** Ends the current action, so later effects are not attached to its log message. */
+  endLoggedAction(): void;
   discardForCost(cardCount: 1 | 2, toPlace: TileType): number;
   expectedPurgeTimeMs(): number;
   logIllegalState(description: string, metadata: {}): void;

@@ -7,6 +7,9 @@ import {RouteTestScaffolding} from './RouteTestScaffolding';
 import {use} from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import {testGame} from '@tests/TestGame';
+import {CardName} from '@/common/cards/CardName';
+import {LogMessage} from '@/common/logs/LogMessage';
+import {summarizeLogEffects} from '@/common/logs/logEffects';
 use(chaiAsPromised);
 
 describe('ApiGameLogs', () => {
@@ -97,6 +100,23 @@ describe('ApiGameLogs', () => {
     await scaffolding.get(ApiGameLogs.INSTANCE, res);
     const messages = JSON.parse(res.content);
     expect(messages).is.empty;
+  });
+
+  it('includes action effects, and still omits private logs', async () => {
+    const [game, player, player2] = testGame(2);
+    await scaffolding.ctx.gameLoader.add(game);
+
+    game.gameLog.length = 0;
+    game.log('${0} used ${1} standard action', (b) => b.player(player).cardName(CardName.CONVERT_HEAT), {actor: player});
+    game.log('Only player2 sees this.', (_b) => {}, {reservedFor: player2});
+    game.increaseTemperature(player, 1);
+
+    scaffolding.url = '/api/game/logs?id=' + player.id;
+    await scaffolding.get(ApiGameLogs.INSTANCE, res);
+    const messages: Array<LogMessage> = JSON.parse(res.content);
+
+    expect(messages).has.length(1);
+    expect(summarizeLogEffects(messages[0].effects)).eq('+1 temp');
   });
 
   [{idx: 0, color: 'Yellow'}, {idx: 1, color: 'Orange'}, {idx: 2, color: 'Blue'}].forEach((entry) => {

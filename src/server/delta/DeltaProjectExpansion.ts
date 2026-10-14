@@ -202,7 +202,7 @@ export class DeltaProjectExpansion {
           'Take action',
           actionCards,
         ).andThen(([card]) => {
-          player.game.log('${0} reused ${1} action via ${2}', (b) => b.player(player).card(card).cardName(CardName.DELTA_PROJECT));
+          player.game.log('${0} reused ${1} action via ${2}', (b) => b.player(player).card(card).cardName(CardName.DELTA_PROJECT), {actor: player});
           return card.action(player);
         }));
       }
