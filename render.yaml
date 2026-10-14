@@ -6,8 +6,12 @@
 services:
   - type: web
     name: terraforming-mars
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    # Render's own Node runtime rather than the Dockerfile: no image layers to build,
+    # and better-sqlite3 installs a prebuilt binary instead of compiling on Alpine,
+    # which kept the free builder busy for far too long.
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     plan: free
     region: frankfurt
     branch: main
