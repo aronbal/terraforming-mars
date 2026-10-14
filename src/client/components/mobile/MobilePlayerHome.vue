@@ -3,13 +3,37 @@
     <MobileHeader
       :game="game"
       :player="thisPlayer"
+      :view="view"
+      :yourTurn="actionWaiting"
+      :turnLabel="turnLabel"
       :showTagRow="tagRowVisible"
       :tagRowOpen="tagRowOpen"
+      @update:view="selectView($event)"
+      @openPlayers="overlay = 'players'"
+      @openMenu="overlay = 'menu'"
       @toggleTagRow="toggleTagRow()"/>
 
     <main class="mobile-stage">
       <section
-        v-show="tab === 'board'"
+        v-show="view === 'turn' && !settingUp"
+        class="mobile-pane mobile-pane--turn"
+        role="tabpanel"
+        :aria-label="$t('Turn')">
+        <MobileTurnPage
+          :playerView="playerView"
+          :selected="selected"
+          :recent="recentEvents"
+          :players="logPlayers"
+          :now="now"
+          @select="select($event)"
+          @openEntry="openEntry($event)"
+          @openSheet="setSnap('half')"
+          @openMilestones="openMilestones()"
+          @showView="selectView($event)"/>
+      </section>
+
+      <section
+        v-show="view === 'board'"
         ref="boardPane"
         class="mobile-pane mobile-pane--board"
         role="tabpanel"
@@ -66,64 +90,71 @@
       </section>
 
       <section
-        v-show="tab === 'cards'"
+        v-show="view === 'cards'"
         class="mobile-pane mobile-pane--cards"
         role="tabpanel"
         :aria-label="$t('Cards')"
         id="shortkey-hand">
         <MobileCardsPane
           :playerView="playerView"
-          :cardScale="cardScale"
-          :tapMode="preferences.card_tap"
-          @play="playCard($event)"/>
+          :selected="selected"
+          @select="select($event)"/>
       </section>
 
       <section
-        v-show="tab === 'players'"
-        class="mobile-pane mobile-pane--players"
+        v-show="view === 'log'"
+        class="mobile-pane mobile-pane--log"
         role="tabpanel"
-        :aria-label="$t('Players')"
-        id="shortkey-playersoverview">
-        <MobileFitBlock>
-          <PlayersOverview :playerView="playerView" v-trim-whitespace/>
-        </MobileFitBlock>
-      </section>
-
-      <section
-        v-show="tab === 'more'"
-        class="mobile-pane mobile-pane--more"
-        role="tabpanel"
-        :aria-label="$t('More')">
-        <MobileMore
-          :playerView="playerView"
-          @settingsChanged="refreshPreferences()"
-          @spaceClicked="onSpaceClicked"/>
+        :aria-label="$t('Log')">
+        <MobileLogPane
+          :generations="logGenerations"
+          :players="logPlayers"
+          :now="now"
+          :loading="logLoading"
+          @loadEarlier="loadEarlierLog()"/>
       </section>
 
       <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
 
       <!-- The card or tile being acted on, over a faded board. The panel below it is
            then only the price and the button. -->
-      <MobileFocusStage :playerView="playerView" @dismiss="setSnap('peek')"/>
+      <MobileFocusStage :playerView="playerView" @dismiss="setSnap('closed')"/>
 
       <MobileActionPanel
-        v-show="panelMode === 'sheet' || tab === 'actions'"
+        v-show="panelMode === 'sheet' || view === 'turn'"
         :playerView="playerView"
         :mode="panelMode"
         :snap="snap"
-        :peekEnabled="peekEnabled"
         :cardScale="cardScale"
         :actionWaiting="actionWaiting"
         @update:snap="setSnap($event)"/>
     </main>
 
-    <MobileTabBar
-      :tab="tab"
-      :sheetOpen="panelMode === 'sheet' && (snap === 'half' || snap === 'full')"
-      :cardsInHandCount="cardsInHandCount"
-      :actionWaiting="actionWaiting"
-      @select="selectTab($event)"/>
+    <MobileSelectionBar
+      v-if="selection !== undefined"
+      :card="selection.card"
+      :offer="selection.offer"
+      :megacredits="thisPlayer.megacredits"
+      @cancel="selected = undefined"
+      @confirm="confirmSelection()"
+      @inspect="magnified = selection.card"/>
+    <div v-else class="mobile-bottom-spacer"></div>
 
+    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
+      <!-- Tapping anywhere puts it back down: the way out is wherever you look. -->
+      <div class="mobile-magnify-holder">
+        <Card class="cardbox" :card="magnified" :cubeColor="thisPlayer.color"/>
+      </div>
+    </div>
+
+    <MobileOverlay v-if="overlay === 'players'" :title="$t('Players')" @close="overlay = undefined">
+      <MobileFitBlock id="shortkey-playersoverview">
+        <PlayersOverview :playerView="playerView" v-trim-whitespace/>
+      </MobileFitBlock>
+    </MobileOverlay>
+    <MobileOverlay v-if="overlay === 'menu'" :title="$t('Menu')" @close="overlay = undefined">
+      <MobileMore @settingsChanged="refreshPreferences()"/>
+    </MobileOverlay>
   </div>
 </template>
 
@@ -131,6 +162,7 @@
 import {defineComponent, PropType} from 'vue';
 
 import Awards from '@/client/components/Awards.vue';
+import Card from '@/client/components/card/Card.vue';
 import Colony from '@/client/components/colonies/Colony.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
 import Milestones from '@/client/components/Milestones.vue';
@@ -140,36 +172,58 @@ import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
+import MobileLogPane, {LogGeneration} from '@/client/components/mobile/MobileLogPane.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
-import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
+import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
+import MobileSelectionBar from '@/client/components/mobile/MobileSelectionBar.vue';
+import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
 import PlayersOverview from '@/client/components/overview/PlayersOverview.vue';
 import Turmoil from '@/client/components/turmoil/Turmoil.vue';
 
+import {CardModel} from '@/common/models/CardModel';
+import {CardName} from '@/common/cards/CardName';
 import {GameModel} from '@/common/models/GameModel';
 import {HomeMixin} from '@/client/mixins/HomeMixin';
-import {MobileTab, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/MobileTab';
+import {LogEvent, LogPlayer, fetchGenerationLog, isEventLine, sinceLastTurn, toEvent} from '@/client/components/mobile/MobileLog';
+import {LogMessage} from '@/common/logs/LogMessage';
+import {MobileView, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/MobileView';
+import {Phase} from '@/common/Phase';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
-import {SpaceId} from '@/common/Types';
-import {CardName} from '@/common/cards/CardName';
+import {ReadyCard, isActionMenu, readyCards} from '@/client/components/mobile/MobileActionMenu';
 import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
-import {pickFocused, setPickFocus, setTabRouting} from '@/client/utils/mobileFocus';
-import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
-import {requestedTab} from '@/client/utils/mobileNavigation';
+import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
+type Overlay = 'players' | 'menu';
+
 type DataModel = {
-  tab: MobileTab;
+  view: MobileView;
   snap: SheetSnap;
   belowOpen: boolean;
-  /** Set when the player opens or closes the tag row by hand, until the next tab change. */
+  /** Set when the player opens or closes the tag row by hand, until the next view change. */
   tagRowOverride: boolean | undefined;
   preferences: Preferences;
+  /** The card tapped on the turn page or in the Cards view, which the bottom bar is about. */
+  selected: CardName | undefined;
+  /** The card opened large from the bottom bar. */
+  magnified: CardModel | undefined;
+  overlay: Overlay | undefined;
+  /** The log lines fetched so far, by generation, oldest line first. */
+  logs: Record<number, ReadonlyArray<LogMessage>>;
+  logLoading: boolean;
+  /** The clock the log's "2 min" is measured against, ticked so it does not go stale. */
+  now: number;
 };
+
+// How often the log's relative times are brought up to date.
+const CLOCK_TICK_MS = 30_000;
+
+let clock: ReturnType<typeof setInterval> | undefined;
 
 export default defineComponent({
   name: 'MobilePlayerHome',
@@ -182,6 +236,7 @@ export default defineComponent({
   },
   components: {
     Awards,
+    Card,
     Colony,
     DynamicTitle,
     Milestones,
@@ -191,8 +246,11 @@ export default defineComponent({
     MobileFitBlock,
     MobileFocusStage,
     MobileHeader,
+    MobileLogPane,
     MobileMore,
-    MobileTabBar,
+    MobileOverlay,
+    MobileSelectionBar,
+    MobileTurnPage,
     MoonBoard,
     PlanetaryTracks,
     PlayersOverview,
@@ -200,11 +258,17 @@ export default defineComponent({
   },
   data(): DataModel {
     return {
-      tab: 'board',
-      snap: getPreferences().action_sheet_peek ? 'peek' : 'closed',
+      view: 'turn',
+      snap: 'closed',
       belowOpen: false,
       tagRowOverride: undefined,
       preferences: {...getPreferences()},
+      selected: undefined,
+      magnified: undefined,
+      overlay: undefined,
+      logs: {},
+      logLoading: false,
+      now: Date.now(),
     };
   },
   computed: {
@@ -219,38 +283,40 @@ export default defineComponent({
     },
     /*
      * The sheet's peek handle floats over the bottom of whichever pane is open, so
-     * every pane leaves that much room free. Without it the last row of a pane — the
-     * final colony tile, the newest log entry — sits under the handle, out of reach.
+     * while it shows every pane leaves that much room free. Without it the last row
+     * of a pane sits under the handle, out of reach.
      */
     shellStyle(): Record<string, string> {
-      return {'--mobile-pane-gap': (this.peekEnabled ? SHEET_PEEK_PX : 0) + 'px'};
-    },
-    peekEnabled(): boolean {
-      return this.preferences.action_sheet_peek;
+      return {'--mobile-pane-gap': (this.sheetInUse ? SHEET_PEEK_PX : 0) + 'px'};
     },
     tapTargets(): boolean {
       return this.preferences.mobile_tap_targets;
     },
+    /* The tags are what card requirements are judged against, so by default they
+       show where the hand is: on the Cards view. */
     tagRowVisible(): boolean {
-      return this.preferences.tag_row !== 'never';
+      const mode = this.preferences.tag_row;
+      return mode === 'always' || (mode === 'auto' && this.view === 'cards');
     },
-    /** Open on the Cards tab, where card requirements are judged, unless overridden. */
+    /** Open on the Cards view, where card requirements are judged, unless overridden. */
     tagRowOpen(): boolean {
       if (this.tagRowOverride !== undefined) {
         return this.tagRowOverride;
       }
-      return this.preferences.tag_row === 'always' || this.tab === 'cards';
-    },
-    cardsInHandCount(): number {
-      const playerView = this.playerView;
-      return playerView.cardsInHand.length +
-        playerView.preludeCardsInHand.length +
-        playerView.ceoCardsInHand.length +
-        playerView.draftedCards.length;
+      return this.preferences.tag_row === 'always' || this.view === 'cards';
     },
     actionWaiting(): boolean {
       const waitingFor = this.playerView.waitingFor;
       return waitingFor !== undefined && !waitingFor.optional;
+    },
+    turnLabel(): string {
+      if (this.game.phase === Phase.END) {
+        return 'Game over';
+      }
+      if (this.actionWaiting) {
+        return 'Your turn';
+      }
+      return this.game.passedPlayers.includes(this.thisPlayer.color) ? 'Passed' : 'Waiting';
     },
     selectingSpace(): boolean {
       return selectingSpace.value;
@@ -259,34 +325,40 @@ export default defineComponent({
       return this.playerView.waitingFor;
     },
     /*
-     * The menu of what the player may do is somewhere they go, so it is a tab. Every
-     * other thing the server asks -- pick a target, pick a resource -- interrupts
-     * whatever they were doing, so it arrives as a sheet over it.
-     */
-    /**
-     * Whether the menu is raised over the tab the player picked something on, rather
-     * than sitting on the Act tab where it otherwise lives.
-     *
-     * The action list reads the same flag to show that one entry alone, so it is kept
-     * where both can see it rather than in this component's own data.
-     */
-    overTab(): boolean {
-      return pickFocused.value;
-    },
-    panelMode(): 'tab' | 'sheet' {
-      if (!isActionMenu(this.playerView.waitingFor) && !this.settingUp) {
-        return 'sheet';
-      }
-      return this.overTab ? 'sheet' : 'tab';
-    },
-    /*
      * The opening hand is not a question asked in the middle of something -- it is the
      * whole of what the player is doing, and four grids of cards deep. It gets the
-     * screen, the way the turn's own menu does, rather than half of one over a board
-     * that has nothing on it yet.
+     * turn view, rather than half of one over a board that has nothing on it yet.
      */
     settingUp(): boolean {
       return this.playerView.waitingFor?.type === 'initialCards';
+    },
+    panelMode(): 'tab' | 'sheet' {
+      return this.settingUp ? 'tab' : 'sheet';
+    },
+    /**
+     * Whether the sheet has anything to say.
+     *
+     * The turn page is the menu, so the sheet carries only what was opened from it --
+     * a card's price, a tile's entry -- and the questions the server asks between
+     * moves. Over a bare menu it stays out of the way entirely.
+     */
+    sheetInUse(): boolean {
+      if (this.settingUp || this.playerView.waitingFor === undefined) {
+        return false;
+      }
+      return pickFocused.value || !isActionMenu(this.playerView.waitingFor);
+    },
+    ready(): ReadonlyArray<ReadyCard> {
+      const waitingFor = this.playerView.waitingFor;
+      return readyCards(isActionMenu(waitingFor) ? waitingFor : undefined);
+    },
+    /** The selected card and what can be done with it, while the turn still offers it. */
+    selection(): ReadyCard | undefined {
+      const selected = this.selected;
+      if (selected === undefined || pickFocused.value) {
+        return undefined;
+      }
+      return this.ready.find((item) => item.card.name === selected);
     },
     /** The milestones the turn's menu offers, which are the ones worth tapping. */
     claimableMilestones(): ReadonlyArray<string> {
@@ -301,111 +373,138 @@ export default defineComponent({
     scrimVisible(): boolean {
       return this.panelMode === 'sheet' && this.snap === 'full';
     },
-    requestedTab(): unknown {
-      return requestedTab.value;
+    logPlayers(): ReadonlyArray<LogPlayer> {
+      return this.playerView.players.map((player) => ({color: player.color, name: player.name}));
+    },
+    /** Every generation fetched so far, newest first, each newest line first. */
+    logGenerations(): ReadonlyArray<LogGeneration> {
+      return Object.keys(this.logs)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .map((generation) => ({generation, events: [...this.eventsOf(generation)].reverse()}));
+    },
+    /*
+     * What the others did since this player last acted. Read across the current
+     * generation and the one before, because the last thing a player did is often the
+     * pass that ended the previous generation.
+     */
+    recentEvents(): ReadonlyArray<LogEvent> {
+      const generation = this.game.generation;
+      const events = [...this.eventsOf(generation - 1), ...this.eventsOf(generation)];
+      return sinceLastTurn(events, this.thisPlayer.color);
+    },
+    step(): number {
+      return this.game.step;
     },
   },
   watch: {
-    /* A thing picked for one input must never be applied to the next one, so a pick
-       lasts exactly as long as the input it was made for. */
+    /*
+     * A thing picked for one input must never be applied to the next one, so a pick
+     * lasts exactly as long as the input it was made for. A question that is not the
+     * menu interrupts whatever the player was doing, so it comes up to meet them.
+     */
     waitingFor() {
       this.forgetPick();
       if (this.settingUp) {
-        this.tab = 'actions';
+        this.view = 'turn';
       }
-    },
-    /* The action menu sends the player to the tab that draws what an entry is about.
-       It has no path back up to the shell, so it leaves the request in a store. */
-    requestedTab(request: {tab: MobileTab} | undefined) {
-      if (request !== undefined) {
-        this.selectTab(request.tab);
-      }
-    },
-    /*
-     * The panel is a tab or a sheet depending on what the server is asking, and it
-     * cannot be both. Becoming a sheet while the player is standing on the Actions
-     * tab would leave them on an empty one, so send them back to the board -- which
-     * is where a follow-up question usually wants them anyway.
-     */
-    panelMode(mode: 'tab' | 'sheet') {
-      if (mode !== 'sheet' || this.overTab) {
-        return;
-      }
-      if (this.tab === 'actions') {
-        this.tab = 'board';
-      }
-      this.setSnap(this.peekEnabled ? 'peek' : 'closed');
+      this.setSnap(this.sheetInUse ? 'half' : 'closed');
     },
     selectingSpace(selecting: boolean) {
       if (selecting) {
         // Get the sheet off the map, and the map in front of the player.
-        this.tab = 'board';
+        this.view = 'board';
         this.scrollBoardPaneTo(0);
         this.setSnap('closed');
       } else {
-        this.setSnap(this.peekEnabled ? 'peek' : 'closed');
+        this.setSnap(this.sheetInUse ? 'peek' : 'closed');
       }
+    },
+    // Something happened in the game, so the log has something new to say.
+    step() {
+      this.refreshLog();
     },
   },
   methods: {
-    selectTab(tab: MobileTab): void {
-      /* While the server is asking a follow-up question the panel is a sheet, and a
-         sheet is not somewhere to navigate to -- Act raises it over whichever pane
-         is open, the way it always did. */
-      if (tab === 'actions' && this.panelMode === 'sheet') {
-        this.setSnap(this.snap === 'half' || this.snap === 'full' ? 'peek' : 'half');
-        return;
-      }
+    selectView(view: MobileView): void {
       if (this.snap === 'full') {
         this.setSnap('peek');
       }
-      this.tab = tab;
+      this.view = view;
       this.tagRowOverride = undefined;
     },
     setSnap(snap: SheetSnap): void {
-      this.snap = snap;
-      /* Putting the panel down abandons what it was raised for: the menu goes back to
-         being a tab, and nothing on the board or in the hand is still shown as chosen. */
-      if (this.overTab && snap !== 'half' && snap !== 'full') {
+      this.snap = this.sheetInUse || snap === 'closed' ? snap : 'closed';
+      /* Putting the panel down abandons what it was raised for: nothing on the turn
+         page, on the board or in the hand is still shown as chosen. */
+      if (pickFocused.value && snap !== 'half' && snap !== 'full') {
         this.forgetPick();
+        this.snap = this.sheetInUse ? 'peek' : 'closed';
       }
     },
+    /** A tap on a ready card selects it; a second tap on the same card lets go. */
+    select(name: CardName): void {
+      this.selected = this.selected === name ? undefined : name;
+    },
     /*
-     * A card in hand and a milestone under the board are the same move: the tab is
-     * where the thing is chosen, and the menu entry is where the choice is paid for
-     * and confirmed.
+     * The bottom bar's button: the card goes to the sheet with its price, held up
+     * over a faded board, the way a card tapped anywhere else always has.
      */
-    playCard(name: CardName): void {
+    confirmSelection(): void {
+      const name = this.selected;
+      if (name === undefined) {
+        return;
+      }
+      this.selected = undefined;
       clearBoardPick();
+      clearPickedEntry();
       pickCard(name);
-      this.openPick(true);
+      this.openPick('staged', 'half');
+    },
+    /** A tile or a button on the turn page: the entry it stands for, opened in the sheet. */
+    openEntry(index: number): void {
+      this.selected = undefined;
+      clearPickedCard();
+      clearBoardPick();
+      pickEntry(index);
+      /* A list to choose from -- the standard projects, the hand to sell -- needs the
+         room. A confirmation does not. */
+      const input = isActionMenu(this.playerView.waitingFor) ? this.playerView.waitingFor.options[index] : undefined;
+      const tall = input !== undefined && (input.type === 'card' || input.type === 'projectCard' || input.type === 'or');
+      this.openPick('panel', tall ? 'full' : 'half');
+    },
+    /* Milestones and awards are printed on the board, so that is where they are claimed. */
+    openMilestones(): void {
+      this.selectView('board');
+      this.$nextTick(() => {
+        const below = this.$refs.below as HTMLElement | undefined;
+        this.scrollBoardPaneTo(below?.offsetTop ?? 0);
+      });
     },
     claimBoardThing(kind: BoardThing, name: string): void {
       clearPickedCard();
+      clearPickedEntry();
       pickBoardThing(kind, name);
       /* A colony tile is chosen inside the trade itself, alongside the fee, so there
          is nothing to hold up over the board and the panel needs the whole screen. */
-      this.openPick(kind !== 'colony');
-    },
-    /*
-     * Where the player finishes what they just started, which is theirs to choose.
-     *
-     * Over the tab they are standing on, they never leave the cards or the board they
-     * were reading; on the Act tab, the rest of the menu is in reach beside it.
-     */
-    openPick(staged: boolean): void {
-      if (this.preferences.play_from === 'actions') {
-        setPickFocus('none');
-        this.selectTab('actions');
-        return;
+      if (kind === 'colony') {
+        this.openPick('panel', 'full');
+      } else {
+        this.openPick('staged', 'half');
       }
-      setPickFocus(staged ? 'staged' : 'panel');
-      this.setSnap(staged ? 'half' : 'full');
+    },
+    openPick(mode: 'staged' | 'panel', snap: SheetSnap): void {
+      setPickFocus(mode);
+      this.setSnap(snap);
     },
     forgetPick(): void {
       setPickFocus('none');
       clearPickedCard();
       clearBoardPick();
+      clearPickedEntry();
+      if (this.selection === undefined) {
+        this.selected = undefined;
+      }
     },
     toggleTagRow(): void {
       this.tagRowOverride = !this.tagRowOpen;
@@ -433,41 +532,57 @@ export default defineComponent({
     },
     refreshPreferences(): void {
       this.preferences = {...getPreferences()};
-      /* The menu is drawn several components deep and cannot be told through props,
-         so where the player wants to act is left where it can read it. */
-      setTabRouting(this.preferences.play_from === 'tabs');
       refreshMobileLayoutPreference();
     },
-    /* Brings the space a log entry names into view, the way the desktop log does. */
-    onSpaceClicked(spaceId: SpaceId): void {
-      this.tab = 'board';
-      this.scrollBoardPaneTo(0);
-      const board = document.getElementById('main_board');
-      const highlights = board?.getElementsByClassName('board-log-highlight');
-      if (highlights === undefined) {
+    eventsOf(generation: number): ReadonlyArray<LogEvent> {
+      const messages = this.logs[generation] ?? [];
+      const translate = (text: string) => this.$t(text);
+      return messages
+        .filter(isEventLine)
+        .map((message, index) => toEvent(message, generation, index, this.logPlayers, translate));
+    },
+    async loadLog(generation: number): Promise<void> {
+      if (generation < 1) {
         return;
       }
-      for (const element of highlights) {
-        if (element.getAttribute('data_log_highlight_id') === spaceId) {
-          element.classList.add('highlight');
-          setTimeout(() => element.classList.remove('highlight'), 3000);
-          return;
-        }
+      const messages = await fetchGenerationLog(this.playerView.id, generation);
+      if (messages !== undefined) {
+        this.logs = {...this.logs, [generation]: messages};
       }
     },
-  },
-  created() {
-    setTabRouting(this.preferences.play_from === 'tabs');
+    /** The current generation, and the one before it until it has been read once. */
+    async refreshLog(): Promise<void> {
+      const generation = this.game.generation;
+      this.now = Date.now();
+      const loads = [this.loadLog(generation)];
+      if (this.logs[generation - 1] === undefined) {
+        loads.push(this.loadLog(generation - 1));
+      }
+      this.logLoading = true;
+      await Promise.all(loads);
+      this.logLoading = false;
+    },
+    async loadEarlierLog(): Promise<void> {
+      const loaded = Object.keys(this.logs).map(Number);
+      const earliest = loaded.length === 0 ? this.game.generation : Math.min(...loaded);
+      this.logLoading = true;
+      await this.loadLog(earliest - 1);
+      this.logLoading = false;
+    },
   },
   mounted() {
     document.body.classList.add('mobile-shell-active');
-    // Nothing else is worth looking at before the opening hand is chosen.
-    if (this.settingUp) {
-      this.tab = 'actions';
-    }
+    this.refreshLog();
+    clock = setInterval(() => {
+      this.now = Date.now();
+    }, CLOCK_TICK_MS);
   },
   unmounted() {
     this.forgetPick();
+    if (clock !== undefined) {
+      clearInterval(clock);
+      clock = undefined;
+    }
     document.body.classList.remove('mobile-shell-active');
   },
 });

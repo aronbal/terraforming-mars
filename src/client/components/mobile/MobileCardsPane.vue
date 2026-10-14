@@ -1,37 +1,35 @@
 <template>
-  <div>
-    <div class="mobile-segment" role="tablist">
+  <div class="mobile-cards mobile-gutter">
+    <div class="mobile-segmented mobile-segmented--inline" role="tablist">
       <button
-        class="mobile-segment-button"
+        class="mobile-segmented-option"
+        :class="{'mobile-segmented-option--on': view === 'hand'}"
         role="tab"
         :aria-selected="view === 'hand'"
         data-test="segment-hand"
-        @click="view = 'hand'">
-        <span v-i18n>Hand</span>
-        <span class="mobile-segment-count mobile-num">{{ hand.length }}</span>
-      </button>
+        @click="view = 'hand'">{{ $t('Hand') }} · {{ hand.length }}</button>
       <button
-        class="mobile-segment-button"
+        class="mobile-segmented-option"
+        :class="{'mobile-segmented-option--on': view === 'played'}"
         role="tab"
         :aria-selected="view === 'played'"
         data-test="segment-played"
-        @click="view = 'played'">
-        <span v-i18n>Played</span>
-        <span class="mobile-segment-count mobile-num">{{ player.tableau.length }}</span>
-      </button>
+        @click="view = 'played'">{{ $t('Played') }} · {{ player.tableau.length }}</button>
     </div>
 
-    <div class="mobile-cards-body mobile-card-scaler" :style="scaleStyle">
+    <div class="mobile-card-scaler mobile-cards-body">
       <template v-if="view === 'hand'">
-        <div v-if="hand.length === 0" class="mobile-cards-empty" v-i18n>No cards in hand</div>
+        <div v-if="hand.length === 0" class="mobile-section-note" v-i18n>No cards in hand</div>
         <div v-else class="mobile-card-grid">
           <button
             v-for="card in hand"
             :key="card.name"
             class="mobile-card-button"
             :class="cardClass(card)"
+            :disabled="offerFor(card) === undefined"
+            :aria-pressed="selected === card.name"
             data-test="hand-card"
-            @click="tap(card)">
+            @click="$emit('select', card.name)">
             <Card class="cardbox" :card="card"/>
           </button>
         </div>
@@ -39,15 +37,17 @@
 
       <template v-else>
         <div v-for="group in playedGroups" :key="group.title">
-          <h3 class="mobile-cards-group-title">{{ $t(group.title) }} · {{ group.cards.length }}</h3>
+          <h3 class="mobile-eyebrow">{{ $t(group.title) }} · {{ group.cards.length }}</h3>
           <div class="mobile-card-grid">
             <button
               v-for="card in group.cards"
               :key="card.name"
               class="mobile-card-button"
               :class="cardClass(card)"
+              :disabled="offerFor(card) === undefined"
+              :aria-pressed="selected === card.name"
               data-test="played-card"
-              @click="tap(card)">
+              @click="$emit('select', card.name)">
               <Card
                 class="cardbox"
                 :card="card"
@@ -56,26 +56,8 @@
             </button>
           </div>
         </div>
-        <div v-if="player.tableau.length === 0" class="mobile-cards-empty" v-i18n>No cards played yet</div>
+        <div v-if="player.tableau.length === 0" class="mobile-section-note" v-i18n>No cards played yet</div>
       </template>
-    </div>
-
-    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="close()">
-      <!-- Tapping the card puts it back down: the way out is wherever you look. -->
-      <div class="mobile-magnify-holder" data-test="magnified-holder" @click="close()">
-        <Card class="cardbox" :card="magnified" :cubeColor="player.color"/>
-      </div>
-      <div class="mobile-magnify-actions" @click.stop>
-        <button
-          v-if="offer !== undefined"
-          class="mobile-button mobile-button--go"
-          data-test="magnified-play"
-          @click="use()">
-          <span v-if="offer === 'play'" v-i18n>Play card</span>
-          <span v-else v-i18n>Use action</span>
-        </button>
-        <button class="mobile-button" data-test="magnified-close" @click="close()" v-i18n>Close</button>
-      </div>
     </div>
   </div>
 </template>
@@ -85,6 +67,7 @@ import {defineComponent, PropType} from 'vue';
 
 import Card from '@/client/components/card/Card.vue';
 import {CardModel} from '@/common/models/CardModel';
+import {CardName} from '@/common/cards/CardName';
 import {CardType} from '@/common/cards/CardType';
 import {CardOrderStorage} from '@/client/utils/CardOrderStorage';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
@@ -92,7 +75,15 @@ import {getCardsByType, isCardActivated} from '@/client/utils/CardUtils';
 import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
 import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
 import {CardOffer, offerIn} from '@/client/utils/cardSelection';
-import {CardTapMode} from '@/client/utils/PreferencesManager';
+
+/*
+ * The whole hand, and the tableau beside it, two cards to a row.
+ *
+ * The cards the turn has a move for come first and are the only ones that take a
+ * tap; the rest are dimmed in place, because a card you cannot afford this generation
+ * is still what you plan the next one around. A tap selects, exactly as on the turn
+ * page, and the bottom bar takes it from there.
+ */
 
 type CardGroup = {
   title: string;
@@ -101,24 +92,20 @@ type CardGroup = {
 
 type DataModel = {
   view: 'hand' | 'played';
-  magnified: CardModel | undefined;
 };
 
 export default defineComponent({
   name: 'MobileCardsPane',
-  emits: ['play'],
+  emits: ['select'],
   props: {
     playerView: {
       type: Object as PropType<PlayerViewModel>,
       required: true,
     },
-    cardScale: {
-      type: Number,
-      required: true,
-    },
-    tapMode: {
-      type: String as PropType<CardTapMode>,
-      required: true,
+    selected: {
+      type: String as PropType<CardName | undefined>,
+      required: false,
+      default: undefined,
     },
   },
   components: {
@@ -127,15 +114,11 @@ export default defineComponent({
   data(): DataModel {
     return {
       view: 'hand',
-      magnified: undefined,
     };
   },
   computed: {
     player(): PublicPlayerModel {
       return this.playerView.thisPlayer;
-    },
-    scaleStyle(): Record<string, string> {
-      return {'--mobile-card-scale': String(this.cardScale)};
     },
     /** Whether the server is waiting on this player, which is when readiness matters. */
     actionWaiting(): boolean {
@@ -182,10 +165,6 @@ export default defineComponent({
     isCardActivated(): typeof isCardActivated {
       return isCardActivated;
     },
-    /** What the player's current input would do with the magnified card, if anything. */
-    offer(): CardOffer | undefined {
-      return this.magnified === undefined ? undefined : this.offerFor(this.magnified);
-    },
   },
   methods: {
     offerFor(card: CardModel): CardOffer | undefined {
@@ -194,37 +173,9 @@ export default defineComponent({
     cardClass(card: CardModel): Record<string, boolean> {
       const ready = this.offerFor(card) !== undefined;
       return {
-        'mobile-card-button--ready': ready,
-        // Dimmed rather than hidden: a card you cannot play this turn is still worth
-        // reading, and planning around.
+        'mobile-card-button--selected': this.selected === card.name,
         'mobile-card-button--idle': this.actionWaiting && !ready,
       };
-    },
-    /*
-     * A tap reads the card, or plays it, depending on what the player asked for in
-     * settings. Reading first is the default: a mis-tap that plays a card costs a
-     * turn, and a card you have not read is not a choice you have made.
-     */
-    tap(card: CardModel): void {
-      if (this.tapMode === 'play' && this.offerFor(card) !== undefined) {
-        this.$emit('play', card.name);
-        return;
-      }
-      this.magnified = card;
-    },
-    close(): void {
-      this.magnified = undefined;
-    },
-    /*
-     * Hands the card to the action sheet rather than answering the input here: what
-     * comes next is a payment, a placement or a target, and those are the sheet's job.
-     */
-    use(): void {
-      const card = this.magnified;
-      this.magnified = undefined;
-      if (card !== undefined) {
-        this.$emit('play', card.name);
-      }
     },
   },
 });

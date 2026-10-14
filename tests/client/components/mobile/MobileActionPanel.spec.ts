@@ -12,7 +12,6 @@ describe('MobileActionPanel', () => {
         playerView: fakePlayerViewModel(),
         mode: 'sheet',
         snap: 'peek',
-        peekEnabled: true,
         cardScale: 0.62,
         actionWaiting: false,
         ...props,
@@ -34,12 +33,6 @@ describe('MobileActionPanel', () => {
     expect(wrapper.vm.offsetFor('full')).eq(24);
   });
 
-  it('peek is the closed stop when the player turned peek off', () => {
-    const wrapper = mount({peekEnabled: false});
-    wrapper.vm.height = 600;
-    expect(wrapper.vm.offsetFor('peek')).eq(600);
-  });
-
   it('a drag settles on the nearest stop', () => {
     const wrapper = mount();
     wrapper.vm.height = 600;
@@ -54,11 +47,11 @@ describe('MobileActionPanel', () => {
     expect(wrapper.emitted('update:snap')?.[0]).deep.eq(['half']);
   });
 
-  it('is a sheet, with a head to drag, only while the server is asking something', () => {
+  it('is a sheet, with a head to drag, for an opened entry or a question', () => {
     expect(mount({mode: 'sheet'}).find('[data-test="sheet-head"]').exists()).is.true;
   });
 
-  it('is a plain pane while it holds the turn\'s own menu', () => {
+  it('is a plain pane while it holds the opening hand', () => {
     const wrapper = mount({mode: 'tab'});
     expect(wrapper.find('[data-test="sheet-head"]').exists()).is.false;
     expect(wrapper.find('[data-test="action-panel"]').classes()).includes('mobile-pane');

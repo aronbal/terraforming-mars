@@ -8,22 +8,24 @@
  */
 
 //
-// Tokens. The desktop client runs on a dark starfield, so the shell paints every
-// surface explicitly rather than borrowing whatever is behind it.
+// Tokens. The shell's chrome is drawn in the Aronbal Apps design system's dark theme,
+// whose values live in `mobile_tokens.less`. These names predate it and are kept as
+// aliases, so the sheet, the board pane and the settings follow the same palette.
 //
-@mobile-ground: #15100e;
-@mobile-surface: #211a17;
-@mobile-raised: #2d2320;
-@mobile-sunk: #100c0b;
-@mobile-line: #453833;
-@mobile-line-soft: #362b27;
-@mobile-text: #f2e9e2;
-@mobile-muted: #a39089;
-@mobile-dim: #7a6a64;
+@mobile-ground: @m-bg;
+@mobile-surface: @m-card;
+@mobile-raised: @m-raised;
+@mobile-sunk: #0e0e10;
+@mobile-line: @m-sep;
+@mobile-line-soft: fade(@m-sep, 30%);
+@mobile-text: @m-label;
+@mobile-muted: @m-label-2;
+@mobile-dim: @m-label-3;
 
-@mobile-rust: #cb5b2e;
-@mobile-ochre: #e5a93a;
-@mobile-ice: #4fb3c4;
+// The primary action, and the accents the board's own readouts use.
+@mobile-rust: @m-accent;
+@mobile-ochre: @m-warn;
+@mobile-ice: @m-accent;
 
 // The tan ring the desktop client draws around the active global parameter value.
 @mobile-marker-ring: #bb8760;
@@ -36,7 +38,6 @@
 // enough to cover the tile-placement confirmation.
 @mobile-sheet-peek: 46px;
 
-@mobile-tabbar-height: 54px;
 
 /*
  * The shell's layers.
@@ -129,152 +130,6 @@
 .mobile-num {
   font-family: Prototype, sans-serif;
   font-variant-numeric: tabular-nums;
-}
-
-//
-// Header
-//
-
-.mobile-header {
-  background: @mobile-surface;
-  border-bottom: 1px solid @mobile-line;
-  padding: calc(6px + env(safe-area-inset-top)) 8px 7px;
-  display: grid;
-  gap: 6px;
-}
-
-.mobile-header-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  // Flex items refuse to shrink past their content unless told to.
-  min-width: 0;
-}
-
-.mobile-stat {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  padding-right: 7px;
-  border-right: 1px solid @mobile-line-soft;
-  flex: none;
-}
-
-.mobile-stat-label {
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-}
-
-.mobile-stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.mobile-stat--tr .mobile-stat-value {
-  color: @mobile-rust;
-}
-
-.mobile-globals {
-  display: flex;
-  gap: 7px;
-  margin-left: auto;
-  align-items: center;
-  // Venus makes a fourth reading, which is one more than a narrow phone has room for.
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.mobile-global {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-  min-width: 48px;
-}
-
-// Current over maximum, so how close a parameter is to maxing out is always on screen.
-.mobile-global-value {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.mobile-global-max {
-  font-size: 12px;
-  font-weight: 500;
-  color: @mobile-dim;
-}
-
-.mobile-global-key {
-  font-family: Prototype, sans-serif;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  margin-top: 3px;
-}
-
-.mobile-global--ocean .mobile-global-value {
-  color: @mobile-ocean-blue;
-}
-
-.mobile-global--oxygen .mobile-global-value {
-  color: @mobile-ice;
-}
-
-.mobile-global--temperature .mobile-global-value {
-  color: @mobile-rust;
-}
-
-.mobile-global--venus .mobile-global-value {
-  color: @mobile-ochre;
-}
-
-.mobile-resources {
-  display: flex;
-  gap: 4px;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.mobile-resource {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  background: @mobile-sunk;
-  border: 1px solid @mobile-line-soft;
-  flex: none;
-
-  .resource_icon {
-    width: 16px;
-    height: 16px;
-    flex: none;
-  }
-}
-
-.mobile-resource-count {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.mobile-resource-production {
-  font-size: 11px;
-  color: @mobile-marker-ring;
 }
 
 //
@@ -730,7 +585,7 @@
 }
 
 .mobile-sheet-title--waiting {
-  color: @mobile-ochre;
+  color: @m-label;
 }
 
 .mobile-sheet-hint {
@@ -862,15 +717,6 @@
   font-weight: 600;
   line-height: 1.2;
 }
-
-// Says which tab owns the entry, for the rows that are a way there rather than a menu.
-.mobile-action-note {
-  display: block;
-  font-size: 11px;
-  color: @mobile-muted;
-  margin-top: 2px;
-}
-
 // How many cards, projects or parties the entry has to choose between.
 .mobile-action-count {
   flex: none;
@@ -882,11 +728,6 @@
   flex: none;
   color: @mobile-dim;
   font-size: 18px;
-}
-
-.mobile-action--elsewhere {
-  background: none;
-  border-style: dashed;
 }
 
 .mobile-action-body {
@@ -925,12 +766,6 @@
     color: @mobile-text;
     border-color: @mobile-marker-ring;
   }
-}
-
-.mobile-segment-count {
-  font-family: Prototype, sans-serif;
-  font-size: 12px;
-  color: @mobile-dim;
 }
 
 .mobile-cards-body {
@@ -1034,16 +869,11 @@
   overflow: auto;
 }
 
-.mobile-magnify-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-// A card this turn has a move for: ringed, and sorted to the front of its group.
-.mobile-card-button--ready .cardbox {
-  box-shadow: 0 0 0 2px @mobile-ochre, 0 0 10px fade(@mobile-ochre, 45%);
+// The card the bottom bar is about: a 3px accent ring, as on the turn page.
+.mobile-card-button--selected .cardbox {
+  box-shadow: 0 0 0 3px @m-accent;
   border-radius: 10px;
+  transition: box-shadow @m-duration @m-ease;
 }
 
 /* One you cannot act on right now. Dimmed rather than hidden, because a card you
@@ -1072,7 +902,9 @@
  */
 .mobile-action-body--focused {
   padding: 0;
+}
 
+.mobile-action-body--staged {
   // The card is on the stage above, so the panel does not draw it a second time.
   .payments_cards,
   .wf-chosen-card {
@@ -1139,164 +971,23 @@
 /* The shell has just drawn the milestone or award itself, above. Repeating its name
    as the one radio button left in the list says nothing the tile did not.
    Matched through `> div >` to outweigh the rule that makes an option a row. */
-.mobile-action-body--focused .wf-options--narrowed > div > .form-radio {
+.mobile-action-body--staged .wf-options--narrowed > div > .form-radio {
   display: none;
 }
 
 //
-// Tab bar
-//
-
-.mobile-tabs {
-  display: flex;
-  background: @mobile-surface;
-  border-top: 1px solid @mobile-line;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.mobile-tab {
-  flex: 1;
-  min-height: @mobile-tabbar-height;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: @mobile-dim;
-  position: relative;
-
-  &[aria-selected="true"] {
-    color: @mobile-text;
-
-    .mobile-tab-icon {
-      stroke: @mobile-rust;
-    }
-  }
-}
-
-.mobile-tab-icon {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-}
-
-.mobile-tab-label {
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.mobile-tab-badge {
-  position: absolute;
-  top: 6px;
-  right: 50%;
-  margin-right: -20px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: @mobile-rust;
-  color: #fff;
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  line-height: 16px;
-  text-align: center;
-}
-
-//
-// More: the log, the settings, and the way to another game
+// Menu: the settings and the way to another game
 //
 
 .mobile-more {
-  padding: 10px 12px 20px;
+  display: grid;
+  gap: 12px;
 }
 
-.mobile-more-title {
-  font-size: 17px;
-  font-weight: 600;
-  margin: 2px 0 12px;
-}
-
-.mobile-more-group {
-  margin-bottom: 16px;
-  border: 1px solid @mobile-line-soft;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.mobile-more-group-title {
-  font-family: Prototype, sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  margin: 0 0 7px;
-}
-
-.mobile-more-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  min-height: 52px;
-  padding: 8px 12px;
-  background: @mobile-sunk;
-  color: @mobile-text;
-  // A button centres its text and an anchor does not; these rows are the same row.
-  text-align: left;
-  text-decoration: none;
-
-  & + & {
-    border-top: 1px solid @mobile-line-soft;
-  }
-}
-
-.mobile-more-name {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.mobile-more-chevron {
-  flex: none;
-  color: @mobile-dim;
-  font-size: 18px;
-}
-
-.mobile-more-note {
-  font-size: 11px;
-  line-height: 1.45;
-  color: @mobile-dim;
-  margin: 0 2px;
-}
-
-// The way back from a screen More opened, where a phone expects it.
+// The way back from the settings, where a phone expects it.
 .mobile-more-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-/* The log draws its own heading and generation picker, which is one heading too many
-   under the one More already put there, and its panel is sized for a desktop column. */
-.mobile-more .log-container > :first-child h2 {
-  display: none;
-}
-
-.mobile-more .log-panel .panel-body {
-  max-height: 70dvh;
-}
-
-.mobile-more-head-title {
-  font-family: Prototype, sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-muted;
 }
 
 //
@@ -1494,4 +1185,729 @@
   height: 24px;
   margin: 0;
   accent-color: @mobile-rust;
+}
+
+//
+// Chrome: the header, the turn page, the log, the bars and the overlays, drawn in the
+// design system's dark theme. The board and the cards inside them keep their own
+// artwork and their own type, so the system font is set on these containers only.
+//
+
+.mobile-header,
+.mobile-turn,
+.mobile-cards > .mobile-segmented,
+.mobile-cards .mobile-eyebrow,
+.mobile-log,
+.mobile-selection-bar,
+.mobile-overlay-sheet,
+.mobile-sheet-head {
+  font-family: @m-font;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mobile-gutter {
+  padding-left: calc(@m-gutter + env(safe-area-inset-left));
+  padding-right: calc(@m-gutter + env(safe-area-inset-right));
+}
+
+.mobile-icon {
+  display: block;
+  flex: none;
+}
+
+//
+// Header
+//
+
+.mobile-header {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
+  background: @m-glass;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid @m-sep;
+  color: @m-label;
+}
+
+.mobile-header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mobile-header-title {
+  font-size: @m-title-size;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.mobile-header-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+// A 32px icon with a 44px target around it.
+.mobile-icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: @m-radius-button-sm;
+  color: @m-label-2;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+
+  &:active {
+    background: @m-fill;
+    color: @m-label;
+  }
+}
+
+.mobile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  flex: none;
+  border-radius: @m-radius-pill;
+  font-size: @m-secondary-size;
+  font-weight: 600;
+  white-space: nowrap;
+  background: @m-fill;
+  color: @m-label-2;
+}
+
+.mobile-pill--accent {
+  color: @m-accent;
+  background: fade(@m-accent, 13%);
+}
+
+.mobile-pill--pr {
+  color: @m-pr;
+  background: fade(@m-pr, 13%);
+}
+
+.mobile-header-globals {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mobile-global {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.mobile-ring {
+  flex: none;
+}
+
+.mobile-ring-track {
+  fill: none;
+  stroke: @m-sep;
+  stroke-width: 4;
+}
+
+.mobile-ring-arc {
+  fill: none;
+  stroke: @m-accent;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset @m-duration @m-ease;
+}
+
+.mobile-ring-text {
+  font-family: @m-font;
+  font-size: 10px;
+  font-weight: 700;
+  fill: @m-label;
+}
+
+.mobile-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-stat-value {
+  .m-tabular();
+  font-size: @m-value-size;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.mobile-stat-label {
+  font-size: @m-label-size;
+  color: @m-label-2;
+}
+
+.mobile-stat--tr {
+  margin-left: auto;
+  align-items: flex-end;
+}
+
+.mobile-resources {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.mobile-resource {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 0;
+  border-radius: 10px;
+  background: @m-fill;
+  min-width: 0;
+}
+
+.mobile-resource-amount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// The desktop's own resource art, at the size the design gives an icon.
+.mobile-resource-icon.resource_icon {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  background-size: contain;
+  flex: none;
+}
+
+.mobile-resource-count {
+  .m-tabular();
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mobile-resource-production {
+  .m-tabular();
+  font-size: @m-small-size;
+  color: @m-label-2;
+}
+
+.mobile-segmented {
+  display: flex;
+  padding: 2px;
+  border-radius: @m-radius-pill;
+  background: @m-fill;
+}
+
+.mobile-segmented-option {
+  flex: 1;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: @m-radius-pill;
+  font-size: @m-value-size;
+  font-weight: 600;
+  color: @m-label-2;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.mobile-segmented-option--on {
+  background: @m-raised;
+  color: @m-label;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+// The header's segmented control is 32px tall; the gap around it makes up the 44px.
+:where(#mobile-shell) .mobile-segmented-option {
+  background-clip: padding-box;
+}
+
+//
+// Sections, lists and rows
+//
+
+.mobile-pane--turn,
+.mobile-pane--log {
+  overflow-x: hidden;
+}
+
+.mobile-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 0 24px;
+  color: @m-label;
+}
+
+.mobile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.mobile-eyebrow {
+  .m-eyebrow();
+  line-height: 1.2;
+  margin: 0;
+}
+
+.mobile-eyebrow--accent {
+  color: @m-accent;
+}
+
+.mobile-section-note {
+  margin: 0;
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+}
+
+.mobile-plain-button {
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: @m-radius-button-sm;
+  font-size: @m-value-size;
+  font-weight: 500;
+  color: @m-accent;
+
+  &:active {
+    background: @m-fill;
+  }
+}
+
+.mobile-list {
+  overflow: hidden;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+.mobile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 14px;
+  padding-right: 8px;
+  min-height: 56px;
+  text-align: left;
+  color: @m-label;
+  text-decoration: none;
+
+  &:last-child .mobile-row-body {
+    border-bottom: 0;
+  }
+}
+
+.mobile-row--button:active {
+  background: @m-fill;
+}
+
+.mobile-row--empty {
+  padding: 0 14px;
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+}
+
+.mobile-row-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 10px 4px 10px 0;
+  border-bottom: 1px solid @m-sep;
+}
+
+.mobile-row-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-row-title {
+  font-size: @m-row-title-size;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-row-subtitle {
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-row-trailing {
+  .m-tabular();
+  flex: none;
+  font-size: @m-value-size;
+  color: @m-label-2;
+  white-space: nowrap;
+}
+
+.mobile-row-chevron {
+  flex: none;
+  font-size: 22px;
+  line-height: 1;
+  color: @m-label-3;
+}
+
+.mobile-glyph {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: @m-radius-glyph;
+  color: #fff;
+}
+
+.mobile-glyph--neutral {
+  background: @m-fill-strong;
+}
+
+.mobile-glyph--warn {
+  background: @m-warn;
+}
+
+.mobile-glyph--ok {
+  background: @m-ok;
+}
+
+.mobile-glyph--accent {
+  background: @m-accent;
+}
+
+.mobile-glyph--pr {
+  background: @m-pr;
+}
+
+//
+// The turn page
+//
+
+// Cards at half size, sideways, with the pill that says what a tap does.
+.mobile-ready-row {
+  --mobile-card-scale: 0.5;
+
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px calc(@m-gutter + env(safe-area-inset-right)) 4px calc(@m-gutter + env(safe-area-inset-left));
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mobile-ready-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.mobile-ready-frame {
+  display: block;
+  border-radius: @m-radius-button;
+  transition: box-shadow @m-duration @m-ease;
+}
+
+.mobile-ready-card--selected .mobile-ready-frame {
+  box-shadow: 0 0 0 3px @m-accent;
+}
+
+.mobile-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mobile-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: @m-radius-card;
+  background: @m-card;
+  color: @m-label;
+  text-align: left;
+  transition: opacity @m-duration @m-ease;
+
+  &:active:not(:disabled) {
+    background: mix(@m-card, #787880, 76%);
+  }
+
+  // A tile that cannot be used says why, at 45%, and takes no tap.
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.mobile-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mobile-tile-title {
+  font-size: @m-row-title-size;
+  font-weight: 500;
+}
+
+.mobile-tile-subtitle {
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+}
+
+.mobile-turn-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mobile-block-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: @m-radius-button-lg;
+  background: @m-fill;
+  color: @m-label;
+  font-family: @m-font;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  &:active:not(:disabled) {
+    background: @m-fill-strong;
+  }
+
+  &:disabled {
+    color: @m-label-3;
+    cursor: default;
+  }
+}
+
+//
+// The log view
+//
+
+.mobile-log {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 16px;
+  padding-bottom: 24px;
+  color: @m-label;
+}
+
+//
+// The bottom bar a selected card raises, and the room the shell keeps when there is none
+//
+
+.mobile-selection-bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
+  background: @m-raised;
+  color: @m-label;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 -12px 40px rgba(0, 0, 0, 0.35);
+  animation: mobile-bar-in @m-duration @m-ease both;
+}
+
+@keyframes mobile-bar-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.mobile-selection-text {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  text-align: left;
+}
+
+.mobile-selection-name {
+  font-size: @m-bar-title-size;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-selection-sub {
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-bar-button {
+  flex: none;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: @m-radius-button-lg;
+  background: @m-fill;
+  font-size: 16px;
+  font-weight: 500;
+
+  &:active {
+    background: @m-fill-strong;
+  }
+}
+
+:where(#mobile-shell) .mobile-bar-button--primary {
+  background: @m-accent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.mobile-bottom-spacer {
+  height: env(safe-area-inset-bottom);
+}
+
+//
+// Overlays: the players, and the menu
+//
+
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: @mobile-layer-dialog - 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.mobile-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  background: @m-scrim;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.mobile-overlay-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 92%;
+  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
+  background: @m-raised;
+  color: @m-label;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  animation: mobile-bar-in @m-duration @m-ease both;
+}
+
+.mobile-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px @m-gutter 8px;
+}
+
+.mobile-overlay-title {
+  margin: 0;
+  font-size: @m-bar-title-size;
+  font-weight: 600;
+}
+
+.mobile-overlay-body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px calc(@m-gutter + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+}
+
+//
+// The Cards view: the whole hand two to a row
+//
+
+.mobile-cards {
+  padding-top: 12px;
+  padding-bottom: 16px;
+
+  > .mobile-segmented {
+    margin-bottom: 12px;
+  }
+
+  .mobile-eyebrow {
+    margin: 12px 0 8px;
+  }
+}
+
+.mobile-cards .mobile-card-scaler {
+  --mobile-card-scale: 0.68;
+}
+
+.mobile-cards .mobile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  place-items: start center;
+}
+
+.mobile-card-button:disabled {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-ring-arc,
+  .mobile-ready-frame,
+  .mobile-tile,
+  .mobile-card-button--selected .cardbox {
+    transition: none;
+  }
+
+  .mobile-selection-bar,
+  .mobile-overlay-sheet {
+    animation: none;
+  }
+
+  .mobile-sheet {
+    transition: none;
+  }
 }

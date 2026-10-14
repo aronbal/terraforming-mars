@@ -2,28 +2,15 @@ import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
-import {fakePlayerViewModel} from '../testHelpers';
 
 describe('MobileMore', () => {
   function mount() {
-    return shallowMount(MobileMore, {
-      ...globalConfig,
-      props: {playerView: fakePlayerViewModel()},
-    });
+    return shallowMount(MobileMore, globalConfig);
   }
 
   it('mounts without errors, on its menu', () => {
     const wrapper = mount();
     expect(wrapper.exists()).is.true;
-    expect(wrapper.vm.view).eq('menu');
-  });
-
-  it('opens the log, and comes back', async () => {
-    const wrapper = mount();
-    await wrapper.find('[data-test="more-log"]').trigger('click');
-    expect(wrapper.vm.view).eq('log');
-
-    await wrapper.find('[data-test="more-back"]').trigger('click');
     expect(wrapper.vm.view).eq('menu');
   });
 

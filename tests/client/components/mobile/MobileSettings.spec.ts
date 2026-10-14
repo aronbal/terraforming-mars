@@ -33,10 +33,10 @@ describe('MobileSettings', () => {
     expect(localStorage.getItem('mobile_layout')).eq('off');
   });
 
-  it('stores where the player wants to finish an action', () => {
-    mount().vm.setMode('play_from', 'actions');
-    expect(getPreferences().play_from).eq('actions');
-    expect(localStorage.getItem('play_from')).eq('actions');
+  it('stores when the tag row is shown', () => {
+    mount().vm.setMode('tag_row', 'never');
+    expect(getPreferences().tag_row).eq('never');
+    expect(localStorage.getItem('tag_row')).eq('never');
   });
 
   it('stores the card scale as a fraction', () => {

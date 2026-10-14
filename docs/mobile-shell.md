@@ -99,29 +99,35 @@ Global parameter limits and bonus thresholds, from `src/common/constants.ts`:
 
 ```
 PlayerHome.vue                          unchanged, desktop
-mobile/MobilePlayerHome.vue             composes the SAME children into tabs and sheets
-mobile/MobileHeader.vue                 generation, TR, globals, resources, tag row
+mobile/MobilePlayerHome.vue             composes the SAME children into views and sheets
+mobile/MobileHeader.vue                 generation, rings, resources, tag row, the view control
+mobile/MobileTurnPage.vue               what the player can do now, read off the turn's menu
+mobile/MobileSelectionBar.vue           the bar a selected card raises: name, price, Play or Use
+mobile/MobileLog.ts                     log lines as rows, and what happened since your last turn
+mobile/MobileLogRow.vue                 one log line: player glyph, what, who and when
+mobile/MobileLogPane.vue                the whole log, a group per generation
+mobile/MobileOverlay.vue                the sheet the players and the menu open in
+mobile/MobileIcon.vue, MobileIcons.ts   the Lucide icons the chrome draws, inlined
 mobile/MobileInitialCards.vue           the opening hand, one selection at a time
 mobile/MobileTagRow.vue                 tag counts, from the model's own totals
 mobile/MobileBoardPane.vue              the 620x600 stage, pinch, pan, zoom HUD
-mobile/MobileActionPanel.vue            WaitingFor: a tab for the menu, a sheet for a question
-mobile/MobileActionList.vue             the turn's menu as grouped rows
-mobile/MobileActionMenu.ts              which entries group where, and which live elsewhere
-mobile/MobileCardsPane.vue              Hand | Played, ready cards first
+mobile/MobileActionPanel.vue            WaitingFor: a sheet for an opened entry or a question
+mobile/MobileActionList.vue             the entry that was opened, or the menu as grouped rows
+mobile/MobileActionMenu.ts              ready cards, tiles' entries, and the entries left over
+mobile/MobileCardsPane.vue              Hand | Played, two to a row, ready cards first
 mobile/MobileFitBlock.vue               scales a desktop-width block down to the phone
 mobile/MobileFocusStage.vue             the card or tile being acted on, over a faded board
-mobile/MobileMore.vue                   the log, the settings, the way to another game
+mobile/MobileMore.vue                   the settings and the way to another game
 mobile/MobileSettings.vue               the preferences that mean something on a phone
-mobile/MobileTabBar.vue                 Board / Cards / Act / Players / More
-mobile/MobileTab.ts                     the tab and snap names, and the peek height
+mobile/MobileView.ts                    the view and snap names, and the peek height
 components/InitialCards.ts              the opening hand's arithmetic, shared with the desktop
 create/CreateGameSection.vue            a headed section of the create-game form
 utils/useMobileLayout.ts                viewport width + preference -> which shell
 utils/spaceSelection.ts                 whether a tile is being placed
 utils/cardSelection.ts                  a card picked on one tab, for an input on another
 utils/boardSelection.ts                 the same, for a milestone, an award or a colony tile
-utils/mobileFocus.ts                    whether the panel shows one thing, and whether rows route
-utils/mobileNavigation.ts               a tab the game asks the shell to open
+utils/mobileFocus.ts                    whether the panel shows one thing, and which entry
+styles/mobile_tokens.less               the design system's dark theme, as Less variables
 styles/mobile_shell.less                everything the shell paints
 ```
 
@@ -132,7 +138,7 @@ is. `Milestone` and `Award` gained one optional prop each (`claimable`,
 `fundable`) and an event, so the shell can make a tile the button that claims it;
 with nothing passed they behave exactly as the desktop always had them. The panes are held in the DOM with `v-show` rather than `v-if`,
 because `SelectSpace` reaches into the board by `getElementById` and needs it
-mounted even when another tab is open.
+mounted even when another view is open.
 
 The board stage is transformed inside a clipping viewport, so the layout box
 never matters. Cards use a `--mobile-card-scale` custom property applied with
@@ -144,10 +150,10 @@ New preference keys in `PreferencesManager.ts`:
 - `mobile_layout: 'auto' | 'on' | 'off'`
 - `card_scale: number` (0.40–1.00)
 - `tag_row: 'auto' | 'always' | 'never'`
-- `card_tap: 'magnify' | 'play'` (what tapping a card on the Cards tab does)
-- `play_from: 'tabs' | 'actions'` (where an action started by a tap is finished)
-- `action_sheet_peek: boolean`
 - `mobile_tap_targets: boolean` (the 44px overlay)
+
+`card_tap`, `play_from` and `action_sheet_peek` belonged to the Act tab and went
+with it in the turn-page redesign. A value still in a player's storage is ignored.
 
 `hide_tile_confirmation` already covers confirming a placement, so no
 `confirm_tile_placement` key was added. The manager now stores strings and
@@ -189,19 +195,74 @@ dedicated scroll affordance.
 
 ## Navigation
 
-A five-item bottom tab bar: **Board · Cards · Act · Players · More**.
+The design is proposal **3a** from the Claude Design handoff ("Mobile turn page"),
+drawn in the Aronbal Apps design system's dark theme. Its tokens are in
+`mobile_tokens.less`; the chrome uses them and the system font, and the board and
+the cards keep their own artwork and type.
 
-`Act` is where the turn's own menu lives, and it is a destination like any other
-tab. The same panel becomes a sheet over whichever pane is open when the server
-asks a follow-up question instead — a question interrupts what you were doing, a
-menu does not. It is one element either way, so the single `WaitingFor` inside it
-survives the change; only its class and geometry differ. As a sheet it has four
-stops:
+There is no tab bar. The header ends in a segmented control, **Turn · Board ·
+Cards · Log**, and the turn opens on **Turn**: one page with everything the player
+can do right now. Players complained of too many tabs to jump between, of an Act
+sheet half full of rows that only said "tap something elsewhere", and of how hard
+it was to find and play a card. The turn page answers "what can I do now?"
+without switching anywhere.
+
+**The header.** `Generation 5`, a `Your turn` pill (or `Waiting`, `Passed`,
+`Game over`), and two icon buttons: **Players**, which opens the players overview
+in a sheet, and **⋯**, which opens the settings and the links to another game.
+Under them the global parameters are progress rings of the steps each has taken
+(temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
+15 when it is on), each with its value and label, and TR on the right. Then the
+six resources as amount over production, then the segmented control.
+
+**The turn page** reads the turn's menu rather than listing it. This is possible
+because `OrOptions.toModel` carries each option's `ActionAnnotation` out to the
+client: the ids existed for the computer opponent, but every `toModel` dropped
+them, leaving the client nothing to match on but translated titles.
+
+1. **Since your last turn** — the three newest log lines another player wrote
+   after this player's own last line, as rows: a glyph in the player's colour,
+   what they did (`Played Comet`), and who and when (`Mette · 2 min`). `Log`
+   opens the whole log. The current generation and the one before are read, since
+   the last thing a player did is often the pass that ended the previous one.
+2. **Ready now · N** — the hand cards the `projectCard` entry offers, then the
+   played cards the `actionCard` entry offers, then a CEO's once-per-game action,
+   at half size in one sideways row. A pill under each says what a tap leads to:
+   blue `Play · 14 M€` or purple `Use`. Unplayable cards are not shown here; the
+   Cards view has them, dimmed.
+3. **Tiles** — Heat to temp, Greenery, Standard projects, Milestones & awards,
+   plus Trade when colonies are in the game and Delegate (and Party action, when
+   the menu offers it) with Turmoil. A tile the menu does not offer is dimmed to
+   45% and says why (`Needs 8 · 5 plants`, `Temperature is maxed`). Greenery reads
+   `plantsNeededForGreenery`, which the player model now carries, so Ecoline's 7
+   is right. Milestones & awards opens the Board view at the tiles under the map,
+   where they are claimed.
+4. **More actions** — any entry nothing above draws, by its title, so an action
+   added to the game later is never unreachable.
+5. **Sell patents** and **Pass** as two gray buttons, and **End turn** and
+   **Undo** under them when the menu offers them.
+
+When it is not the player's turn the page says whose it is and keeps the rest
+readable but inert. When the server asks something other than the menu — a draft,
+a follow-up — the page offers a row back to the sheet that holds the question.
+
+**Selecting a card.** A tap on a ready card rings it (3px accent) and raises a
+bottom bar: the name, the price against what the player has (`14 M€ · 34
+available`) or the action's own text without `Action:`, and **Cancel** and
+**Play**/**Use**. Tapping the card again, or Cancel, lets go. Tapping the name
+opens the card large enough to read. The Cards view selects the same way.
+
+**The sheet** is no longer a destination. It carries only what was opened from the
+turn page — a card with its price, a tile's entry — and the questions the server
+asks between moves, which come up to `half` by themselves. Over a bare menu it is
+closed entirely. When opened from a tile it shows that entry alone, chosen by its
+position in the menu (`pickEntry`); a list to choose from (the standard projects,
+the hand to sell) opens at `full`, a confirmation at `half`. It has four stops:
 
 | Stop | Position |
 | --- | --- |
 | closed | fully off screen |
-| peek | a fixed **46px** handle above the tab bar |
+| peek | a fixed **46px** handle at the bottom |
 | half | 50% of the sheet height |
 | full | 96% |
 
@@ -214,60 +275,25 @@ sheet as a second line of defence.
 Only the `full` stop dims the board. At `half` the map stays fully readable,
 which is the entire point of the sheet.
 
-**The menu itself** is a list of rows, grouped by what the entry is for. This is
-possible because `OrOptions.toModel` now carries each option's `ActionAnnotation`
-out to the client: the ids existed for the computer opponent, but every `toModel`
-dropped them, leaving the client nothing to match on but translated titles.
+**Play and Use** hand the card to the flow that was already there: the card is
+held up over a faded board — at the size it was read at — and the panel under it
+is only the price and the button. The same happens for a milestone or award
+tapped under the board. Tapping the faded board, or the panel's head, abandons
+the pick. A colony is chosen inside the trade itself, alongside the fee, so there
+is nothing to hold up and the panel keeps the whole screen.
 
-The entries whose subject is drawn somewhere else are not offered in the menu at
-all. The card entries — play a project card, use a played card's action, a CEO's
-action, sell patents — are rows that take the player to the Cards tab; the
-milestone, award and colony entries take them to the Board tab, where those tiles
-already sit under the map. Either way the thing itself is what they tap. Once
-something has been picked there the entry opens instead of pointing away, holding
-that choice and its payment; without that, the two tabs would point at each other
-forever.
+**The payment widget is left as the desktop draws it.** It is drawn for a desktop
+column, where its two sides — what you spend, and what it is worth in M€ — are
+obviously one table; at phone width the values drifted away from the rows they
+belonged to, so the shell rules them off into a column. It also sizes each
+running subtotal explicitly at 20px and lets the total they add up to inherit,
+which on a desktop is 23px and inside the shell was 14px: the number that decides
+whether the button can be pressed, drawn as the least of its own parts. The shell
+states that size rather than inheriting it.
 
-**Where the choice is finished** is the player's, through `play_from`.
-
-`tabs`, the default, holds the thing itself up over a faded board — the card at
-the size it was read at, or the milestone or award with its description — and
-puts a panel under it that is only the price and the button. It is as tall as
-that needs and no taller. They have already said what they are doing, so neither
-the rest of the menu nor a second copy of the card is offered around it. Tapping
-the faded board, or the panel's head, abandons the pick.
-
-A colony is the exception: it is chosen inside the trade itself, alongside the
-fee, so there is nothing to hold up and the panel keeps the whole screen.
-
-**The payment widget is left as the desktop draws it**, and is the same on both
-tabs — it is the same money either way. The one thing the shell states is its
-size: the widget sizes each running subtotal explicitly at 20px and lets the
-total they add up to inherit, which on a desktop is 23px and inside the shell
-was 14px. That made the number deciding whether the button can be pressed the
-smallest thing on the row.
-
-**The payment widget is the same either way.** It is drawn for a desktop column,
-where its two sides — what you spend, and what it is worth in M€ — are obviously
-one table; at phone width the values drifted away from the rows they belonged
-to, so the shell rules them off into a column. It also sizes each running
-subtotal explicitly at 20px and lets the total they add up to inherit, which on
-a desktop is 23px and inside the shell was 14px: the number that decides whether
-the button can be pressed, drawn as the least of its own parts. The shell states
-that size rather than inheriting it.
-
-`actions` takes them to the Act tab instead — and then nothing in the menu may
-send them anywhere. Every entry unfolds in place, cards and all, the way the
-desktop menu does, because a setting that says "do it all from Act" cannot hand
-back a row that is a link to another tab. That is what `MenuContext.routes`
-switches off.
-
-**More** holds the game log, the settings and the links to another game. They are
-things a player reaches for between decisions rather than during one, so they
-share the last tab instead of each taking one of the five. The settings are the
-mobile keys plus the preferences that mean something on a phone, grouped; the
-desktop `PreferencesDialog` is not embedded, because a third of its switches are
-about parts of the desktop layout the shell never draws.
+**The Log view** is the whole log, a group per generation, newest first, in the
+same rows as the short list. Earlier generations are fetched one at a time when
+asked for. The log is refetched whenever the game's `step` moves.
 
 **The board's own tiles** take the tap directly. A milestone the turn's menu
 offers is ringed and claims itself; so does an award, and so does a colony tile
@@ -275,21 +301,24 @@ the player can trade with. What is offered is read off the menu rather than
 recomputed — the server has already worked out what this player can afford and
 reach, and a second opinion here could only ever be wrong.
 
-A persistent header carries generation, TR, the three global parameters as
-current/max (`-16°/+8°`, `9%/14%`, `5/9`), and the six resources with their
-production.
+**The menu (⋯)** holds the settings and the links to another game. The settings
+are the mobile keys plus the preferences that mean something on a phone, grouped;
+the desktop `PreferencesDialog` is not embedded, because a third of its switches
+are about parts of the desktop layout the shell never draws.
 
 ## Cards
 
-The Cards tab holds a segmented control: **Hand | Played**.
+The Cards view holds a segmented control: **Hand | Played**, two cards to a row
+at 68%.
 
-- **Hand** — the hand in the player's own order, scaled by `--mobile-card-scale`.
+- **Hand** — the hand in the player's own order.
 - **Played** — the tableau grouped as the desktop groups it: Corporation, Active,
   Automated, Events.
 
-Cards this turn has a move for are ringed and sort to the front of their group;
-the rest are dimmed in place, because a card you cannot afford this generation is
-still what you plan the next one around.
+Cards this turn has a move for sort to the front of their group and select on a
+tap, as on the turn page; the rest are dimmed in place and take no tap, because a
+card you cannot afford this generation is still what you plan the next one
+around.
 
 **Card titles are fitted by measuring them** (`textFit`), and the shell keeps its
 panes mounted but hidden, so a card can be created with no box at all. Nothing
@@ -368,16 +397,16 @@ stylesheet asks for. Two things broke that, and both are now closed off:
 declared face points at a file that is not there, or if anything asks for a
 `text-size-adjust` other than `none`.
 
-A tap opens the card to read it, with **Play card** or **Use action** on the
-opened card, and tapping the card again puts it back down. `card_tap: 'play'`
-makes a tap play the card outright; opening it first is the default, because a
-mis-tap that plays a card costs a turn. The existing `magnify_cards` preference is
+A tap selects a card the turn can use; the bottom bar's name opens it large
+enough to read. Nothing is played without the bar's button, because a mis-tap
+that plays a card costs a turn. The existing `magnify_cards` preference is
 hover-based and therefore dead on touch.
 
-**Tag row.** A thin strip in the header showing tag counts. It opens itself on
-the Cards tab, where you judge card requirements, and folds away on other tabs.
-Tapping it overrides that until the next tab change. The `tag_row` preference
-switches between `auto`, `always` and `never`. Counts come from the tableau, via
+**Tag row.** A thin strip in the header showing tag counts. By default it shows
+on the Cards view, where you judge card requirements, and nowhere else; `always`
+keeps it in the header on every view, folded away except on Cards. Tapping it
+overrides that until the next view change. The `tag_row` preference switches
+between `auto`, `always` and `never`. Counts come from the tableau, via
 the existing `PlayerTags` logic — do not recompute them independently.
 
 ## Entry and startup screens

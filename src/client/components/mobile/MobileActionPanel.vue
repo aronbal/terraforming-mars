@@ -10,8 +10,7 @@
     :data-snap="snap"
     :data-mode="mode"
     data-test="action-panel">
-    <!-- Only a sheet has a head: as a tab the panel is already the whole screen, and
-         the tab bar says where you are. -->
+    <!-- Only a sheet has a head: in tab mode the panel is the whole turn view. -->
     <div v-if="mode === 'sheet'" ref="head" class="mobile-sheet-head" data-test="sheet-head" @click="onHeadClick">
       <span class="mobile-sheet-grip"></span>
       <div class="mobile-sheet-title-row">
@@ -34,7 +33,7 @@ import {defineComponent, PropType} from 'vue';
 
 import WaitingFor from '@/client/components/WaitingFor.vue';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
-import {SheetSnap, SHEET_PEEK_PX, SHEET_SNAPS} from '@/client/components/mobile/MobileTab';
+import {SheetSnap, SHEET_PEEK_PX, SHEET_SNAPS} from '@/client/components/mobile/MobileView';
 import {pickFocus} from '@/client/utils/mobileFocus';
 
 /** How much of the sheet the `half` and `full` stops leave off screen. */
@@ -60,10 +59,10 @@ export default defineComponent({
       required: true,
     },
     /*
-     * `tab` while the server is waiting for the player to choose what to do: the
-     * menu is where they are going, so it is a screen of its own. `sheet` while the
-     * server is asking a follow-up question, which is an interruption and belongs
-     * over whatever they were looking at.
+     * `tab` while the player chooses their opening hand, which is the whole of what
+     * they are doing and gets the turn view to itself. `sheet` for everything else:
+     * an entry opened from the turn page, or a follow-up question, which belongs over
+     * whatever they were looking at.
      */
     mode: {
       type: String as PropType<'tab' | 'sheet'>,
@@ -71,10 +70,6 @@ export default defineComponent({
     },
     snap: {
       type: String as PropType<SheetSnap>,
-      required: true,
-    },
-    peekEnabled: {
-      type: Boolean,
       required: true,
     },
     cardScale: {
@@ -147,7 +142,7 @@ export default defineComponent({
       case 'closed':
         return height;
       case 'peek':
-        return this.peekEnabled ? Math.max(0, height - SHEET_PEEK_PX) : height;
+        return Math.max(0, height - SHEET_PEEK_PX);
       case 'half':
         return Math.round(height * HALF_FRACTION);
       default:
