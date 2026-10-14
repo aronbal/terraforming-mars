@@ -5,6 +5,6 @@ import App from '@/client/components/App.vue';
 //
 // This app's top level is probably not using a standard pattern, so some of this is
 // just messy. But at least this method simplifies access.
-export function vueRoot(component: ComponentPublicInstance): InstanceType<typeof App> {
+export function vueRoot(component: Pick<ComponentPublicInstance, '$root'>): InstanceType<typeof App> {
   return component.$root as any;
 }

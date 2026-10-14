@@ -1,0 +1,325 @@
+/*
+ * The play sheet: the card being played, or whose action is being used, with its
+ * price and the button, over a scrim.
+ *
+ * Painted entirely with the shell's tokens. The card inside is the desktop's own and
+ * is only scaled, never restyled.
+ */
+
+/*
+ * Above the shell's own sheet, its placement bar and the magnified card, which this
+ * replaces while it is open; below its dialogs, so an error from the server is shown
+ * over the sheet that sent the answer.
+ */
+@m-play-sheet-layer: 235;
+
+// The card's scale on the sheet, and on a phone too short to hold it at that size.
+@m-play-sheet-card-scale: 0.8;
+@m-play-sheet-card-scale-short: 0.62;
+
+@keyframes mobile-play-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes mobile-play-sheet-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-play-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: @m-play-sheet-layer;
+  font-family: @m-font;
+  color: @m-label;
+}
+
+.mobile-play-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: @m-scrim;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: mobile-play-sheet-scrim-in @m-duration @m-ease both;
+}
+
+.mobile-play-sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 560px;
+  max-height: calc(100% - 24px - env(safe-area-inset-top));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: @m-raised;
+  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 -12px 40px rgba(0, 0, 0, 0.35);
+  outline: none;
+  animation: mobile-play-sheet-in @m-duration @m-ease both;
+}
+
+.mobile-play-sheet-grabber {
+  flex: none;
+  align-self: center;
+  width: 36px;
+  height: 5px;
+  margin: 8px 0 4px;
+  border-radius: 3px;
+  background: @m-fill-strong;
+}
+
+.mobile-play-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px @m-gutter 4px;
+  scrollbar-width: none;
+}
+
+.mobile-play-sheet-title {
+  margin: 0;
+  font-size: @m-bar-title-size;
+  font-weight: 600;
+  line-height: 1.25;
+  color: @m-label;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The card at the size it is read at, held up the way the shell scales every card:
+ * `transform`, never `zoom`, with margins that give back the room the transform
+ * saves. See `.mobile-card-scaler` in mobile_shell.less for why.
+ */
+.mobile-play-sheet-card {
+  --play-sheet-card-scale: @m-play-sheet-card-scale;
+  flex: none;
+  display: flex;
+  justify-content: center;
+
+  .card-container {
+    transform: scale(var(--play-sheet-card-scale));
+    transform-origin: top left;
+    margin:
+      0
+      calc((var(--play-sheet-card-scale) - 1) * var(--card-natural-w, 240px))
+      calc((var(--play-sheet-card-scale) - 1) * var(--card-natural-h, 340px))
+      0;
+    cursor: default;
+  }
+}
+
+@media (max-height: 700px) {
+  .mobile-play-sheet-card {
+    --play-sheet-card-scale: @m-play-sheet-card-scale-short;
+  }
+}
+
+.mobile-play-sheet-note {
+  font-size: @m-secondary-size;
+  line-height: 1.35;
+  color: @m-warn;
+}
+
+.mobile-play-sheet-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-play-sheet-eyebrow {
+  .m-eyebrow();
+}
+
+.mobile-play-sheet-rows {
+  display: flex;
+  flex-direction: column;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+.mobile-play-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 0.5px solid @m-sep;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.mobile-play-sheet-row-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+}
+
+.mobile-play-sheet-row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mobile-play-sheet-row-title {
+  font-size: @m-row-title-size;
+  font-weight: 500;
+  color: @m-label;
+}
+
+.mobile-play-sheet-row-sub {
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+  .m-tabular();
+}
+
+.mobile-play-sheet-row-sub--warn {
+  color: @m-warn;
+}
+
+.mobile-play-sheet-row-value {
+  flex: none;
+  min-width: 24px;
+  font-size: @m-bar-title-size;
+  font-weight: 600;
+  text-align: center;
+  .m-tabular();
+}
+
+// M€ has no stepper; it lines up with the counts above it, under the gap a + leaves.
+.mobile-play-sheet-row-value--total {
+  margin-right: @m-tap;
+}
+
+/*
+ * A − or a +. The circle is drawn at the design's 30px, inside a button that is the
+ * full 44px a finger needs.
+ */
+.mobile-play-sheet-step {
+  position: relative;
+  flex: none;
+  width: @m-tap;
+  height: @m-tap;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  color: @m-label;
+  cursor: pointer;
+  touch-action: manipulation;
+  // Its own stacking context, so the circle drawn behind the glyph stays inside it.
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    z-index: -1;
+    border-radius: @m-radius-pill;
+    background: @m-fill;
+  }
+
+  &:disabled {
+    color: @m-label-3;
+    cursor: default;
+  }
+}
+
+.mobile-play-sheet-step--more:not(:disabled) {
+  color: @m-accent;
+}
+
+.mobile-play-sheet-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px @m-gutter calc(12px + env(safe-area-inset-bottom));
+}
+
+.mobile-play-sheet-reason {
+  margin: 0;
+  font-size: @m-secondary-size;
+  line-height: 1.35;
+  text-align: center;
+  color: @m-warn;
+}
+
+.mobile-play-sheet-reason--problem {
+  color: @m-bad;
+}
+
+.mobile-play-sheet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: @m-tap;
+  padding: 0 20px;
+  border: none;
+  border-radius: @m-radius-button-lg;
+  background: @m-fill;
+  font-family: @m-font;
+  font-size: 16px;
+  font-weight: 500;
+  color: @m-label;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 150ms @m-ease, transform 100ms @m-ease;
+  .m-tabular();
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+.mobile-play-sheet-button--primary {
+  background: @m-accent;
+  font-weight: 600;
+
+  &:disabled {
+    background: @m-fill;
+    color: @m-label-3;
+    cursor: default;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-play-sheet-panel,
+  .mobile-play-sheet-scrim {
+    animation: none;
+  }
+
+  .mobile-play-sheet-button {
+    transition: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}

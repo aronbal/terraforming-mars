@@ -16,6 +16,7 @@
 import {defineComponent} from 'vue';
 import AppButton from '@/client/components/common/AppButton.vue';
 import {SpendableResource} from '@/common/inputs/Spendable';
+import {paymentUnitIconClass} from '@/client/components/PaymentLedger';
 
 export default defineComponent({
   name: 'PaymentUnitComponent',
@@ -44,14 +45,7 @@ export default defineComponent({
   },
   computed: {
     iconClass(): string {
-      switch (this.unit) {
-      case 'kuiperAsteroids': return 'resource_icon--asteroid';
-      case 'lunaArchivesScience': return 'resource_icon--science';
-      case 'spireScience': return 'resource_icon--science';
-      case 'auroraiData': return 'resource_icon--auroraidata';
-      case 'seeds': return 'resource_icon--seed';
-      default: return 'resource_icon--' + this.unit;
-      }
+      return paymentUnitIconClass(this.unit);
     },
   },
   methods: {

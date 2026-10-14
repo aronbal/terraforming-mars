@@ -53,25 +53,14 @@ import {SpendableResource} from '@/common/inputs/Spendable';
 import {getPreferences} from '@/client/utils/PreferencesManager';
 import AppButton from '@/client/components/common/AppButton.vue';
 import PaymentUnitComponent from '@/client/components/PaymentUnit.vue';
-import {Ledger} from '@/client/components/PaymentLedger';
+import {
+  Ledger,
+  PAYMENT_UNIT_DESCRIPTIONS,
+  paymentProblem,
+  remainingMegacredits,
+  totalSpent,
+} from '@/client/components/PaymentLedger';
 import {computeDefaultPayment} from '@/client/components/PaymentDefaults';
-import {sum} from '@/common/utils/utils';
-
-const DESCRIPTIONS: Record<SpendableResource, string> = {
-  steel: 'Steel',
-  titanium: 'Titanium',
-  heat: 'Heat',
-  seeds: 'Seeds',
-  auroraiData: 'Data',
-  kuiperAsteroids: 'Asteroids',
-  spireScience: 'Science',
-  megacredits: 'M€',
-  floaters: 'Floaters',
-  graphene: 'Graphene',
-  lunaArchivesScience: 'Science',
-  microbes: 'Microbes',
-  plants: 'Plants',
-};
 
 type DataModel = {
   payment: Payment;
@@ -116,8 +105,8 @@ export default defineComponent({
     };
   },
   computed: {
-    descriptions(): Record<SpendableResource, string> {
-      return DESCRIPTIONS;
+    descriptions(): Readonly<Record<SpendableResource, string>> {
+      return PAYMENT_UNIT_DESCRIPTIONS;
     },
   },
   watch: {
@@ -158,15 +147,7 @@ export default defineComponent({
       }
     },
     setRemainingMCValue(): void {
-      // Amount of money non-megacredit resources account for.
-      const nonMCspend = this.totalSpent() - this.payment.megacredits;
-
-      // Amount MC has to make up for
-      const remainingMC = Math.max(0, this.cost - nonMCspend);
-
-      // If MC has to make up for more than it has, this caps it.
-      const megacredits = Math.min(this.ledger.megacredits.available, remainingMC);
-      this.payment.megacredits = megacredits;
+      this.payment.megacredits = remainingMegacredits(this.payment, this.cost, this.order, this.ledger);
     },
     maxValue(unit: SpendableResource): void {
       const target = Math.min(this.ledger[unit].available, Math.floor(this.cost / this.ledger[unit].rate));
@@ -184,7 +165,7 @@ export default defineComponent({
       }
     },
     totalSpent(): number {
-      return sum(this.order.map((unit) => this.payment[unit] * this.ledger[unit].rate));
+      return totalSpent(this.payment, this.order, this.ledger);
     },
     handleSave(): void {
       this.warning = undefined;
@@ -192,31 +173,16 @@ export default defineComponent({
         this.$emit('save', this.payment);
         return;
       }
-      for (const unit of this.order) {
-        if (this.payment[unit] > this.ledger[unit].available) {
-          // TODO(kberg): Make this a Message
-          this.warning = `You do not have enough ${unit}`;
-          return;
-        }
-      }
-      const delta = this.totalSpent() - this.cost;
-      if (delta < 0) {
-        this.warning = 'Haven\'t spent enough';
+      const problem = paymentProblem(this.payment, this.cost, this.order, this.ledger);
+      if (problem !== undefined) {
+        this.warning = problem;
         return;
       }
-      if (delta > 0) {
-        for (const unit of this.order) {
-          if (this.payment[unit] > 0 && delta >= this.ledger[unit].rate) {
-            // TODO(kberg): Make this a Message
-            this.warning = `You cannot overspend ${unit}`;
-            return;
-          }
-        }
-        if (getPreferences().show_alerts) {
-          if (!confirm('Warning: You are overpaying by ' + delta + ' M€')) {
-            this.warning = 'Please adjust payment amount';
-            return;
-          }
+      const delta = this.totalSpent() - this.cost;
+      if (delta > 0 && getPreferences().show_alerts) {
+        if (!confirm('Warning: You are overpaying by ' + delta + ' M€')) {
+          this.warning = 'Please adjust payment amount';
+          return;
         }
       }
       this.$emit('save', this.payment);
