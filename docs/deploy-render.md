@@ -1,7 +1,8 @@
 # Deploying on Render with Neon
 
-The server runs on Render's free web service, built from the repository's
-`Dockerfile` by the Blueprint in [`render.yaml`](../render.yaml). Games are stored
+The server runs on Render's free web service, built with Render's Node runtime
+(`npm ci && npm run build`, then `npm start`) by the Blueprint in
+[`render.yaml`](../render.yaml). Games are stored
 in a Neon Postgres database.
 
 ## What the free tiers mean for this game
