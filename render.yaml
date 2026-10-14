@@ -1,0 +1,33 @@
+# Render Blueprint: the game server on Render's free web service, with its games
+# stored in a Neon Postgres database. See docs/deploy-render.md.
+#
+# A free web service has no persistent disk, so SQLite would lose every game at the
+# next restart. POSTGRES_HOST must point at a real database before the first deploy.
+services:
+  - type: web
+    name: terraforming-mars
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      # Neon's pooled connection string. Set it in the dashboard; it is a secret and
+      # is never committed.
+      - key: POSTGRES_HOST
+        sync: false
+      # Unfinished games are purged after this many days. Postgres defaults to 10,
+      # which is shorter than a slow game between friends.
+      - key: MAX_GAME_DAYS
+        value: "30"
+      # Finished games are compressed after a day, to stay inside a free database.
+      - key: COMPRESS_COMPLETED_GAMES_DAYS
+        value: "1"
+      # Evict finished and abandoned games from memory: the free instance has 512 MB.
+      - key: GAME_CACHE
+        value: sweep=auto
+      # Protects the admin endpoints.
+      - key: SERVER_ID
+        generateValue: true
