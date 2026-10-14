@@ -121,17 +121,30 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.findComponent({name: 'MobileSelectionBar'}).exists()).is.true;
   });
 
-  /* Play hands the card to the existing flow: held up over the board, with the
-     price and the button in the sheet under it. */
-  it('Play opens the card in the sheet with its price', () => {
+  it('Play opens the card in the play sheet, with its payment', async () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.select(CardName.ANTS);
     wrapper.vm.confirmSelection();
+    await wrapper.vm.$nextTick();
 
-    expect(pickedCard.value).eq(CardName.ANTS);
-    expect(pickFocus.value).eq('staged');
-    expect(wrapper.vm.snap).eq('half');
+    expect(wrapper.vm.playing).deep.include({offer: 'play'});
+    expect(wrapper.vm.playing?.card.name).eq(CardName.ANTS);
     expect(wrapper.vm.selected).is.undefined;
+    expect(wrapper.findComponent({name: 'MobilePlaySheet'}).exists()).is.true;
+    // The action sheet stays out of it: nothing is picked for it.
+    expect(pickedCard.value).is.undefined;
+    expect(pickFocus.value).eq('none');
+  });
+
+  it('closing the play sheet puts the card back', async () => {
+    const wrapper = mount(actionMenu());
+    wrapper.vm.select(CardName.ANTS);
+    wrapper.vm.confirmSelection();
+    await wrapper.vm.$nextTick();
+
+    wrapper.findComponent({name: 'MobilePlaySheet'}).vm.$emit('close');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.playing).is.undefined;
   });
 
   it('a tile opens its entry, with room for a list to choose from', () => {
@@ -165,13 +178,9 @@ describe('MobilePlayerHome', () => {
 
   /* Only one thing is being acted on at a time, and the menu entry that opens is
      chosen by what was picked last. */
-  it('a card, a tile and an entry never stay picked at once', () => {
+  it('a tile under the board and an entry never stay picked at once', () => {
     const wrapper = mount(actionMenu());
-    wrapper.vm.select(CardName.ANTS);
-    wrapper.vm.confirmSelection();
     wrapper.vm.claimBoardThing('award', 'Landlord');
-
-    expect(pickedCard.value).is.undefined;
     expect(pickedBoardThing.value?.name).eq('Landlord');
 
     wrapper.vm.openEntry(0);

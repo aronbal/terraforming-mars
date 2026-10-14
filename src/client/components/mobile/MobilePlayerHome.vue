@@ -140,6 +140,15 @@
       @inspect="magnified = selection.card"/>
     <div v-else class="mobile-bottom-spacer"></div>
 
+    <!-- Play or Use from the bottom bar: the card large, its payment, and the one
+         button that pays and plays it. -->
+    <MobilePlaySheet
+      v-if="playing !== undefined"
+      :playerView="playerView"
+      :card="playing.card.name"
+      :offer="playing.offer"
+      @close="playing = undefined"/>
+
     <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
       <!-- Tapping anywhere puts it back down: the way out is wherever you look. -->
       <div class="mobile-magnify-holder">
@@ -175,6 +184,7 @@ import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileLogPane, {LogGeneration} from '@/client/components/mobile/MobileLogPane.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
+import MobilePlaySheet from '@/client/components/mobile/MobilePlaySheet.vue';
 import MobileSelectionBar from '@/client/components/mobile/MobileSelectionBar.vue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
@@ -193,7 +203,7 @@ import {Phase} from '@/common/Phase';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {ReadyCard, isActionMenu, readyCards} from '@/client/components/mobile/MobileActionMenu';
-import {clearPickedCard, pickCard} from '@/client/utils/cardSelection';
+import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
@@ -212,6 +222,8 @@ type DataModel = {
   selected: CardName | undefined;
   /** The card opened large from the bottom bar. */
   magnified: CardModel | undefined;
+  /** The card being paid for and played, or used, in the play sheet. */
+  playing: ReadyCard | undefined;
   overlay: Overlay | undefined;
   /** The log lines fetched so far, by generation, oldest line first. */
   logs: Record<number, ReadonlyArray<LogMessage>>;
@@ -249,6 +261,7 @@ export default defineComponent({
     MobileLogPane,
     MobileMore,
     MobileOverlay,
+    MobilePlaySheet,
     MobileSelectionBar,
     MobileTurnPage,
     MoonBoard,
@@ -265,6 +278,7 @@ export default defineComponent({
       preferences: {...getPreferences()},
       selected: undefined,
       magnified: undefined,
+      playing: undefined,
       overlay: undefined,
       logs: {},
       logLoading: false,
@@ -405,6 +419,7 @@ export default defineComponent({
      */
     waitingFor() {
       this.forgetPick();
+      this.playing = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -447,19 +462,18 @@ export default defineComponent({
       this.selected = this.selected === name ? undefined : name;
     },
     /*
-     * The bottom bar's button: the card goes to the sheet with its price, held up
-     * over a faded board, the way a card tapped anywhere else always has.
+     * The bottom bar's button: the card opens in the play sheet, large, with its
+     * payment and the button that pays for it. What the server asks after that -- a
+     * target, a tile -- arrives in the action sheet like any other question.
      */
     confirmSelection(): void {
-      const name = this.selected;
-      if (name === undefined) {
+      const selection = this.selection;
+      if (selection === undefined) {
         return;
       }
       this.selected = undefined;
-      clearBoardPick();
-      clearPickedEntry();
-      pickCard(name);
-      this.openPick('staged', 'half');
+      this.forgetPick();
+      this.playing = selection;
     },
     /** A tile or a button on the turn page: the entry it stands for, opened in the sheet. */
     openEntry(index: number): void {

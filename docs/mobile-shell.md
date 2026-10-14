@@ -275,11 +275,19 @@ sheet as a second line of defence.
 Only the `full` stop dims the board. At `half` the map stays fully readable,
 which is the entire point of the sheet.
 
-**Play and Use** hand the card to the flow that was already there: the card is
-held up over a faded board — at the size it was read at — and the panel under it
-is only the price and the button. The same happens for a milestone or award
-tapped under the board. Tapping the faded board, or the panel's head, abandons
-the pick. A colony is chosen inside the trade itself, alongside the fee, so there
+**Play and Use** open the **play sheet** (`MobilePlaySheet.vue`, proposal 2b): the
+card large, and — for a card to play — a row per resource it may be paid with,
+with − and + steppers, the M€ that is left to pay, and a full-width button that
+carries the price (`Play · 8 M€`). The rules are the desktop's own: which units a
+card takes, their values and reserves live in `ProjectCardPayment.ts` and
+`PaymentLedger.ts`, which `SelectProjectCardToPlay` and `PaymentForm` call too,
+and the starting payment is the desktop's auto-fill. The answer is posted the way
+`WaitingFor` posts one (`playerInputRequest.ts`). Whatever the server asks next —
+a target, a tile — arrives in the action sheet like any other question.
+
+A milestone or award tapped under the board still uses the older flow: the tile
+is held up over a faded board and the panel under it is only the price and the
+button. Tapping the faded board, or the panel's head, abandons the pick. A colony is chosen inside the trade itself, alongside the fee, so there
 is nothing to hold up and the panel keeps the whole screen.
 
 **The payment widget is left as the desktop draws it.** It is drawn for a desktop
