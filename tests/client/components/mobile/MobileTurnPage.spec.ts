@@ -10,7 +10,7 @@ import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures'
 
 describe('MobileTurnPage', () => {
   function event(n: number): LogEvent {
-    return {key: 'e' + n, generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false};
+    return {key: 'e' + n, generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false, effects: undefined};
   }
 
   function mount(waitingFor: PlayerInputModel | undefined, player: Record<string, unknown> = {}, recent: Array<LogEvent> = []) {

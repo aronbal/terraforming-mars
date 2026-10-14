@@ -18,7 +18,7 @@ function played(color: Color, card: CardName): LogMessage {
 }
 
 function event(color: Color | undefined, key: string): LogEvent {
-  return {key, generation: 1, title: key, color, icon: 'layers', timestamp: 0, private: false};
+  return {key, generation: 1, title: key, color, icon: 'layers', timestamp: 0, private: false, effects: undefined};
 }
 
 describe('MobileLog', () => {
@@ -58,6 +58,15 @@ describe('MobileLog', () => {
   it('leaves the generation headings out of the rows', () => {
     expect(isEventLine(played('red', CardName.COMET))).is.true;
     expect(isEventLine({...played('red', CardName.COMET), type: LogMessageType.NEW_GENERATION} as LogMessage)).is.false;
+  });
+
+  it('sums up what the action changed on Mars, when the server recorded it', () => {
+    const message = {
+      ...played('red', CardName.COMET),
+      effects: [{type: 'global', parameter: 'temperature', steps: 1}, {type: 'tile', tile: 'ocean', count: 1}],
+    } as LogMessage;
+    expect(toEvent(message, 3, 0, players, identity).effects).eq('+1 temp · ocean');
+    expect(toEvent(played('red', CardName.COMET), 3, 0, players, identity).effects).is.undefined;
   });
 
   it('marks a line only this player can see', () => {
