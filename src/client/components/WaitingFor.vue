@@ -23,24 +23,22 @@
 </template>
 
 <script lang="ts">
-/* global RequestInit */
-
 import {defineComponent} from 'vue';
 import * as constants from '@/common/constants';
 import raw_settings from '@/genfiles/settings.json';
 import {vueRoot} from '@/client/components/vueRoot';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {playerColorClass} from '@/common/utils/utils';
-import {PlayerViewModel, ViewModel} from '@/common/models/PlayerModel';
+import {ViewModel} from '@/common/models/PlayerModel';
 import {getPreferences} from '@/client/utils/PreferencesManager';
 import {SoundManager} from '@/client/utils/SoundManager';
 import {WaitingForModel} from '@/common/models/WaitingForModel';
 import {Phase} from '@/common/Phase';
 import {paths} from '@/common/app/paths';
 import {statusCode} from '@/common/http/statusCode';
+import {CANNOT_CONTACT_SERVER, postPlayerInput, requestPlayerView} from '@/client/utils/playerInputRequest';
 import {isPlayerId} from '@/common/Types';
 import {InputResponse} from '@/common/inputs/InputResponse';
-import {INVALID_RUN_ID, AppErrorResponse} from '@/common/app/AppErrorId';
 import {Color} from '@/common/Color';
 import {gameDocumentTitle} from '../utils/documentTitle';
 import {setFaviconStatus, setFaviconTurnFrame} from '@/client/utils/favicon';
@@ -62,8 +60,6 @@ function isDesktopBrowser(): boolean {
 type DataModel = {
   playersWaitingFor: Array<Color>
 }
-
-const CANNOT_CONTACT_SERVER = 'Unable to reach the server. It may be restarting or down for maintenance.';
 
 export default defineComponent({
   name: 'WaitingFor',
@@ -106,64 +102,10 @@ export default defineComponent({
       }
     },
     onsave(out: InputResponse) {
-      this.fetchPlayerInput(
-        paths.PLAYER_INPUT + '?id=' + this.playerView.id,
-        {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({runId: this.playerView.runId, ...out}),
-        });
+      postPlayerInput(this, this.playerView, out);
     },
     reset() {
-      this.fetchPlayerInput(
-        paths.RESET + '?id=' + this.playerView.id,
-        {method: 'GET'});
-    },
-    fetchPlayerInput(url: string, options: RequestInit) {
-      const root = vueRoot(this);
-      if (root.isServerSideRequestInProgress) {
-        console.warn('Server request in progress');
-        return;
-      }
-
-      root.isServerSideRequestInProgress = true;
-      fetch(url, options)
-        .then(async (response) => {
-          if (response.ok) {
-            this.updatePlayerView(await response.json());
-            return;
-          }
-
-          const showAlert = vueRoot(this).showAlert;
-          if (response.status === statusCode.badRequest) {
-            const resp = await response.json() as AppErrorResponse;
-            let cb = () => {};
-            if (resp.id === INVALID_RUN_ID) {
-              cb = () => setTimeout(() => window.location.reload(), 100);
-            }
-            showAlert('Error with input', resp.message, cb);
-          } else {
-            showAlert('Error processing response', 'Unexpected response from server. Please try again.');
-            console.error(response.statusText);
-          }
-        })
-        .catch((e) => {
-          root.showAlert('Error sending input,', CANNOT_CONTACT_SERVER);
-          console.error(e);
-        })
-        .finally(() => {
-          root.isServerSideRequestInProgress = false;
-        });
-    },
-    updatePlayerView(playerView: PlayerViewModel | undefined) {
-      const root = vueRoot(this);
-      root.screen = 'empty';
-      root.playerView = playerView;
-      root.playerkey++;
-      root.screen = 'player-home';
-      if (this.playerView.game.phase === 'end' && window.location.pathname !== paths.THE_END) {
-        window.location = window.location as any as (string & Location);
-      }
+      requestPlayerView(this, this.playerView, paths.RESET + '?id=' + this.playerView.id, {method: 'GET'});
     },
     waitForUpdate() {
       const vueApp = this;
