@@ -51,7 +51,7 @@ class ScientistsPolicy01 implements IPolicy {
 
   action(player: IPlayer) {
     const game = player.game;
-    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.SCIENTISTS));
+    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.SCIENTISTS), {actor: player});
     game.defer(new SelectPaymentDeferred(player, 10, {title: TITLES.payForPartyAction(PartyName.SCIENTISTS)}))
       .andThen(() => {
         player.drawCard(3);

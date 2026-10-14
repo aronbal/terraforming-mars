@@ -5,14 +5,13 @@ import MobileLogRow from '@/client/components/mobile/MobileLogRow.vue';
 import {LogEvent} from '@/client/components/mobile/MobileLog';
 
 describe('MobileLogRow', () => {
-  function mount(event: Partial<LogEvent> = {}, trailing?: string) {
+  function mount(event: Partial<LogEvent> = {}) {
     return shallowMount(MobileLogRow, {
       ...globalConfig,
       props: {
-        event: {key: 'k', generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false, ...event},
+        event: {key: 'k', generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false, effects: undefined, ...event},
         players: [{color: 'red', name: 'Mette'}],
         now: 2 * 60_000,
-        trailing,
       },
     });
   }
@@ -30,6 +29,6 @@ describe('MobileLogRow', () => {
 
   it('shows what the line changed when it is known', () => {
     expect(mount().find('[data-test="log-trailing"]').exists()).is.false;
-    expect(mount({}, '+1 temp · ocean').find('[data-test="log-trailing"]').text()).eq('+1 temp · ocean');
+    expect(mount({effects: '+1 temp · ocean'}).find('[data-test="log-trailing"]').text()).eq('+1 temp · ocean');
   });
 });

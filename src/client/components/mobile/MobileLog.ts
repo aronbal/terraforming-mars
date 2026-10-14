@@ -8,6 +8,7 @@ import {LogMessageType} from '@/common/logs/LogMessageType';
 import {ParticipantId} from '@/common/Types';
 import {tileTypeToString} from '@/common/TileType';
 import {getSpaceName} from '@/common/boards/spaces';
+import {summarizeLogEffects} from '@/common/logs/logEffects';
 import {undergroundResourceTokenDescription} from '@/common/underworld/UndergroundResourceToken';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 
@@ -35,6 +36,8 @@ export type LogEvent = {
   timestamp: number;
   /** Whether only this player can see the line (what they drew, for instance). */
   private: boolean;
+  /** What the action changed on Mars, when the server recorded it: `+1 temp · ocean`. */
+  effects: string | undefined;
 };
 
 /** What a row needs to know about the players to name them. */
@@ -143,6 +146,7 @@ export function toEvent(
     icon: iconFor(message.message),
     timestamp: message.timestamp,
     private: message.playerId !== undefined,
+    effects: summarizeLogEffects(message.effects),
   };
 }
 

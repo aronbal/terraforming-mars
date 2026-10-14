@@ -8,7 +8,7 @@
         <span class="mobile-row-title">{{ event.title }}</span>
         <span class="mobile-row-subtitle">{{ subtitle }}</span>
       </span>
-      <span v-if="trailing !== undefined" class="mobile-row-trailing" data-test="log-trailing">{{ trailing }}</span>
+      <span v-if="event.effects !== undefined" class="mobile-row-trailing" data-test="log-trailing">{{ event.effects }}</span>
     </span>
   </div>
 </template>
@@ -21,7 +21,7 @@ import {LogEvent, LogPlayer, formatAgo} from '@/client/components/mobile/MobileL
 
 /*
  * One line of the game log as a row: a glyph in the colour of the player who acted,
- * what they did, and who and when underneath.
+ * what they did, and who and when underneath. On the right, what it changed on Mars.
  */
 export default defineComponent({
   name: 'MobileLogRow',
@@ -38,12 +38,6 @@ export default defineComponent({
     now: {
       type: Number,
       required: true,
-    },
-    /** What the line changed, when the log says. */
-    trailing: {
-      type: String,
-      required: false,
-      default: undefined,
     },
   },
   components: {

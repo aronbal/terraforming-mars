@@ -64,7 +64,7 @@ export class Viron extends CorporationCard implements ICorporationCard {
       'Take action',
       this.getActionCards(player))
       .andThen(([card]) => {
-        player.game.log('${0} used ${1} action with ${2}', (b) => b.player(player).card(card).card(this));
+        player.game.log('${0} used ${1} action with ${2}', (b) => b.player(player).card(card).card(this), {actor: player});
         return card.action(player);
       });
   }

@@ -92,7 +92,7 @@ class MarsFirstPolicy04 implements IPolicy {
 
   action(player: IPlayer) {
     const game = player.game;
-    game.log('${0} used Turmoil Mars First action', (b) => b.player(player));
+    game.log('${0} used Turmoil Mars First action', (b) => b.player(player), {actor: player});
     player.politicalAgendasActionUsedCount += 1;
 
     game.defer(new SelectPaymentDeferred(player, 4, {title: TITLES.payForPartyAction(PartyName.MARS)}))

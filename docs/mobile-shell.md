@@ -295,6 +295,11 @@ states that size rather than inheriting it.
 same rows as the short list. Earlier generations are fetched one at a time when
 asked for. The log is refetched whenever the game's `step` moves.
 
+For the trailing effect summary on a log row (`+1 temp · ocean`), the server
+attaches structured effects to the log message of the action that caused them;
+see [`log-effects.md`](log-effects.md) for the data shape and the attribution
+rule.
+
 **The board's own tiles** take the tap directly. A milestone the turn's menu
 offers is ringed and claims itself; so does an award, and so does a colony tile
 the player can trade with. What is offered is read off the menu rather than

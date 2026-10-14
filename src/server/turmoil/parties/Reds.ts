@@ -160,7 +160,7 @@ class RedsPolicy03 implements IPolicy {
 
   action(player: IPlayer) {
     const game = player.game;
-    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.REDS));
+    game.log('${0} used Turmoil ${1} action', (b) => b.player(player).partyName(PartyName.REDS), {actor: player});
     player.politicalAgendasActionUsedCount += 1;
 
     game.defer(new SelectPaymentDeferred(player, 4, {title: TITLES.payForPartyAction(PartyName.REDS)}))
