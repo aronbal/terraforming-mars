@@ -5,6 +5,7 @@ import {Phase} from '../../src/common/Phase';
 import {SelectInitialCards} from '../../src/server/inputs/SelectInitialCards';
 import {InputResponse} from '../../src/common/inputs/InputResponse';
 import {TestPlayer} from '../TestPlayer';
+import {finishGeneration} from '../TestingUtils';
 
 describe('BotRunner', () => {
   it('reports whether a game has computer opponents', () => {
@@ -42,6 +43,26 @@ describe('BotRunner', () => {
     BotRunner.run(game);
 
     expect(game.phase).to.eq(Phase.END);
+  });
+
+  it('leaves the draft\'s offer to change a pick alone while a human is still choosing', () => {
+    const [game, human, computer] = testGame(2, {draftVariant: true}, '-repick');
+    computer.bot = 'medium';
+    let answers = 0;
+    const process = computer.process.bind(computer);
+    computer.process = (response) => {
+      answers++;
+      process(response);
+    };
+
+    game.generation = 1;
+    finishGeneration(game);
+    BotRunner.run(game);
+
+    expect(game.phase).eq(Phase.DRAFTING);
+    expect(answers, 'one pick, not a pick and then the same pick again and again').eq(1);
+    expect(computer.getWaitingFor()?.optional, 'the computer may still change its pick').is.true;
+    expect(human.getWaitingFor()?.optional, 'the human has not picked yet').is.not.true;
   });
 
   it('picks a reloaded game back up mid-turn', () => {

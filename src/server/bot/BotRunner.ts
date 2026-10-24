@@ -73,8 +73,17 @@ export class BotRunner {
     console.warn('Bot runner hit its decision ceiling; stopping to avoid a loop.');
   }
 
+  /*
+   * An optional input is one the game does not wait on -- the draft's offer to change
+   * a pick while the others are still choosing. Answering it only sets the same offer
+   * again, so a bot that took it would spin until the decision ceiling, saving the
+   * game each time, which is enough to run a small server out of memory.
+   */
   private nextWaitingBot(game: IGame): IPlayer | undefined {
-    return game.players.find((player) => player.bot !== undefined && player.getWaitingFor() !== undefined);
+    return game.players.find((player) => {
+      const input = player.getWaitingFor();
+      return player.bot !== undefined && input !== undefined && input.optional !== true;
+    });
   }
 
   /**
