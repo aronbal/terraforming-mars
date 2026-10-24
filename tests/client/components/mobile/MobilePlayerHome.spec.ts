@@ -306,6 +306,16 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('closed');
   });
 
+  it('puts a number to choose in the amount sheet, not the sheet', async () => {
+    const wrapper = mount({type: 'amount', title: 'Select amount', buttonLabel: 'Decrease', min: 1, max: 10, maxByDefault: false} as PlayerInputModel);
+    wrapper.vm.askingAmount = false;
+    wrapper.vm.raiseSheet();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.askingAmount).is.true;
+    expect(wrapper.vm.snap).eq('closed');
+    expect(wrapper.findComponent({name: 'MobileAmountSheet'}).exists()).is.true;
+  });
+
   it('raises a question with cards inside it all the way, so every card is on screen', () => {
     const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), option('Skip')]} as PlayerInputModel;
     const wrapper = mount(nested);
