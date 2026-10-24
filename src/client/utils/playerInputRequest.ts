@@ -19,6 +19,11 @@ import {statusCode} from '@/common/http/statusCode';
 
 export const CANNOT_CONTACT_SERVER = 'Unable to reach the server. It may be restarting or down for maintenance.';
 
+/** Whether `status` is the host saying the server cannot be reached, rather than the server's own answer. */
+export function isServerUnavailable(status: number): boolean {
+  return status === statusCode.badGateway || status === statusCode.serviceUnavailable || status === statusCode.gatewayTimeout;
+}
+
 /** Replaces the game on screen with the one the server sent back. */
 function updatePlayerView(component: Pick<ComponentPublicInstance, '$root'>, current: ViewModel, playerView: PlayerViewModel | undefined): void {
   const root = vueRoot(component);
@@ -65,8 +70,13 @@ export async function requestPlayerView(
         cb = () => setTimeout(() => window.location.reload(), 100);
       }
       showAlert('Error with input', resp.message, cb);
+    } else if (isServerUnavailable(response.status)) {
+      /* The host answers for the server while it is down or swapping in a new
+         version. Nothing was played; once it is back, the next try reaches it (and,
+         if it restarted, is told to reload). */
+      showAlert('Error sending input,', CANNOT_CONTACT_SERVER);
     } else {
-      showAlert('Error processing response', 'Unexpected response from server. Please try again.');
+      showAlert('Error processing response', 'Unexpected response from server. Please try again.' + ' (' + response.status + ')');
       console.error(response.statusText);
     }
     return false;

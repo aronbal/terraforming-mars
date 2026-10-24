@@ -20,6 +20,12 @@ export const statusCode = {
   tooManyRequests: 429,
   /** 500: internal server error */
   internalServerError: 500,
+  /** 502: bad gateway */
+  badGateway: 502,
+  /** 503: service unavailable */
+  serviceUnavailable: 503,
+  /** 504: gateway timeout */
+  gatewayTimeout: 504,
   /** 200: ok */
   ok: 200,
 } as const;
