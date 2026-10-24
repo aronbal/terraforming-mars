@@ -10,7 +10,7 @@ import {menu, projectCard} from './menuFixtures';
 describe('MobileCardsPane', () => {
   let localStorage: FakeLocalStorage;
 
-  function mount(selected?: CardName) {
+  function mount() {
     return shallowMount(MobileCardsPane, {
       ...globalConfig,
       props: {
@@ -18,7 +18,6 @@ describe('MobileCardsPane', () => {
           cardsInHand: [{name: CardName.BIRDS, calculatedCost: 10}, {name: CardName.ANTS, calculatedCost: 9}],
           waitingFor: menu(projectCard(CardName.ANTS)),
         } as never),
-        selected,
       },
     });
   }
@@ -54,9 +53,10 @@ describe('MobileCardsPane', () => {
     expect(birds.attributes('disabled')).is.not.undefined;
   });
 
-  it('rings the selected card', () => {
-    const ants = mount(CardName.ANTS).findAll('[data-test="hand-card"]')[0];
-    expect(ants.classes()).contains('mobile-card-button--selected');
+  it('passes a tap on a playable card up', async () => {
+    const wrapper = mount();
+    await wrapper.findAll('[data-test="hand-card"]')[0].trigger('click');
+    expect(wrapper.emitted('select')).deep.eq([[CardName.ANTS]]);
   });
 
   it('groups the tableau, dropping the groups that are empty', () => {

@@ -113,8 +113,12 @@
   flex: none;
   display: flex;
   justify-content: center;
+  // Up and down still scroll the sheet; sideways is the card's, for the swipe.
+  touch-action: pan-y;
 
   .card-container {
+    // A new card fades in as a swipe brings it up.
+    animation: mobile-play-sheet-card-in @m-duration @m-ease;
     transform: scale(var(--play-sheet-card-scale));
     transform-origin: top left;
     margin:
@@ -321,5 +325,48 @@
     &:active:not(:disabled) {
       transform: none;
     }
+  }
+}
+
+@keyframes mobile-play-sheet-card-in {
+  from {
+    opacity: 0;
+  }
+}
+
+// Which of the ready cards this is, when there is more than one to swipe between.
+.mobile-play-sheet-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 0 6px;
+}
+
+.mobile-play-sheet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: @m-fill-strong;
+  transition: background-color @m-duration @m-ease;
+}
+
+.mobile-play-sheet-dot--on {
+  background: @m-label;
+}
+
+/*
+ * A milestone or award tile in the claim sheet, at a size to read what it asks for
+ * and what it is worth. Scaled as a whole, never re-laid-out, as the board is.
+ */
+.mobile-claim-sheet-tile {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+  touch-action: pan-y;
+
+  .milestones,
+  .awards {
+    zoom: 1.5;
+    animation: mobile-play-sheet-card-in @m-duration @m-ease;
   }
 }

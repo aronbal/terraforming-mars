@@ -12,8 +12,21 @@
       <span class="mobile-play-sheet-grabber" aria-hidden="true"></span>
       <div class="mobile-play-sheet-body">
         <h2 :id="titleId" class="mobile-play-sheet-title">{{ $t(model.name) }}</h2>
-        <div class="mobile-play-sheet-card">
-          <Card :card="model" :cubeColor="playerView.thisPlayer.color"/>
+        <!-- A sideways swipe on the card moves to the next card the turn can use. -->
+        <div
+          class="mobile-play-sheet-card"
+          data-test="play-sheet-card"
+          @pointerdown="onSwipeStart"
+          @pointerup="onSwipeEnd"
+          @pointercancel="swipeFrom = undefined">
+          <Card :key="card" :card="model" :cubeColor="playerView.thisPlayer.color"/>
+        </div>
+        <div v-if="count > 1" class="mobile-play-sheet-dots" aria-hidden="true" data-test="play-sheet-dots">
+          <span
+            v-for="dot in count"
+            :key="dot"
+            class="mobile-play-sheet-dot"
+            :class="{'mobile-play-sheet-dot--on': dot - 1 === position}"></span>
         </div>
         <template v-if="entry.kind === 'play'">
           <template v-if="model.additionalProjectCosts !== undefined">
@@ -67,7 +80,7 @@ import {defineComponent, PropType} from 'vue';
 import Card from '@/client/components/card/Card.vue';
 import WarningsComponent from '@/client/components/WarningsComponent.vue';
 import MobilePlaySheetPayment from '@/client/components/mobile/MobilePlaySheetPayment.vue';
-import {findPlaySheetEntry, PlaySheetEntry, PlaySheetPaymentState, playSheetResponse} from '@/client/components/mobile/PlaySheet';
+import {findPlaySheetEntry, PlaySheetEntry, PlaySheetPaymentState, playSheetResponse, swipeDirection} from '@/client/components/mobile/PlaySheet';
 import {CardOffer} from '@/client/utils/cardSelection';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {CardName} from '@/common/cards/CardName';
@@ -81,6 +94,8 @@ type DataModel = {
   paymentState: PlaySheetPaymentState | undefined;
   submitting: boolean;
   titleId: string;
+  /** Where a swipe on the card began, while one is under way. */
+  swipeFrom: {x: number, y: number} | undefined;
 };
 
 let unique = 0;
@@ -116,13 +131,24 @@ export default defineComponent({
       type: String as PropType<CardOffer>,
       required: true,
     },
+    /** Where this card sits among the cards the turn can use, for the dots under it. */
+    position: {
+      type: Number,
+      default: 0,
+    },
+    /** How many cards the turn can use; with more than one, a swipe moves between them. */
+    count: {
+      type: Number,
+      default: 1,
+    },
   },
-  emits: ['close'],
+  emits: ['close', 'next', 'previous'],
   data(): DataModel {
     return {
       paymentState: undefined,
       submitting: false,
       titleId: 'mobile-play-sheet-title-' + unique++,
+      swipeFrom: undefined,
     };
   },
   computed: {
@@ -215,6 +241,20 @@ export default defineComponent({
     },
     cancel(): void {
       this.$emit('close');
+    },
+    onSwipeStart(event: PointerEvent): void {
+      this.swipeFrom = {x: event.clientX, y: event.clientY};
+    },
+    onSwipeEnd(event: PointerEvent): void {
+      const from = this.swipeFrom;
+      this.swipeFrom = undefined;
+      if (from === undefined || this.count < 2) {
+        return;
+      }
+      const direction = swipeDirection(from, {x: event.clientX, y: event.clientY});
+      if (direction !== undefined) {
+        this.$emit(direction);
+      }
     },
   },
 });

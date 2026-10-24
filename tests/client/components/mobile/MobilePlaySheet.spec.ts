@@ -231,4 +231,52 @@ describe('MobilePlaySheet', () => {
     expect(wrapper.find('[data-test=play-sheet]').exists()).is.false;
     expect(wrapper.emitted('close')).has.length(1);
   });
+
+  describe('swiping between ready cards', () => {
+    function swipeable(count: number) {
+      return mount(MobilePlaySheet, {
+        ...globalConfig,
+        props: {
+          playerView: view(menu(pass, projectCard(CardName.ASTEROID_DEFLECTION_SYSTEM, 13)), {megacredits: 20}),
+          card: CardName.ASTEROID_DEFLECTION_SYSTEM,
+          offer: 'play',
+          position: 1,
+          count,
+        },
+      });
+    }
+
+    // JSDOM has no PointerEvent to dispatch, so the handlers are called with the parts they read.
+    function swipe(wrapper: ReturnType<typeof swipeable>, dx: number, dy: number) {
+      wrapper.vm.onSwipeStart({clientX: 200, clientY: 300} as PointerEvent);
+      wrapper.vm.onSwipeEnd({clientX: 200 + dx, clientY: 300 + dy} as PointerEvent);
+    }
+
+    it('turns to the next card on a swipe left, and back on a swipe right', async () => {
+      const wrapper = swipeable(3);
+      await flushPromises();
+      swipe(wrapper, -80, 5);
+      swipe(wrapper, 80, -5);
+      expect(wrapper.emitted('next')).has.length(1);
+      expect(wrapper.emitted('previous')).has.length(1);
+    });
+
+    it('leaves a tap and an up-and-down scroll alone', async () => {
+      const wrapper = swipeable(3);
+      await flushPromises();
+      swipe(wrapper, 10, 0);
+      swipe(wrapper, 60, 120);
+      expect(wrapper.emitted('next')).is.undefined;
+      expect(wrapper.emitted('previous')).is.undefined;
+    });
+
+    it('shows a dot per card, with this one lit', async () => {
+      const wrapper = swipeable(3);
+      await flushPromises();
+      const dots = wrapper.findAll('.mobile-play-sheet-dot');
+      expect(dots).has.length(3);
+      expect(dots[1].classes()).contains('mobile-play-sheet-dot--on');
+      expect(swipeable(1).find('[data-test=play-sheet-dots]').exists()).is.false;
+    });
+  });
 });

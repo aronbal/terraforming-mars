@@ -66,8 +66,9 @@
  * The page behind the shell is painted the shell's own ground.
  *
  * In an iOS home-screen app the fixed shell can stop short of the bottom of the
- * screen, by about the height of the status bar, and the desktop's grey page showed
- * through the gap as a bar under every view.
+ * screen, by the height of the status bar, and the desktop's grey page showed
+ * through the gap as a bar under every view. `standaloneHeight.ts` stretches the
+ * shell back down; this keeps any gap that is left the shell's own colour.
  */
 html:has(> body.mobile-shell-active),
 .mobile-shell-active {
@@ -887,13 +888,6 @@ html:has(> body.mobile-shell-active),
   flex: none;
 }
 
-// The card the bottom bar is about: a 3px accent ring, as on the turn page.
-.mobile-card-button--selected .cardbox {
-  box-shadow: 0 0 0 3px @m-accent;
-  border-radius: 10px;
-  transition: box-shadow @m-duration @m-ease;
-}
-
 /* One you cannot act on right now. Dimmed rather than hidden, because a card you
    cannot afford this generation is still what you plan the next one around. */
 .mobile-card-button--idle .cardbox {
@@ -1211,7 +1205,6 @@ html:has(> body.mobile-shell-active),
 .mobile-cards > .mobile-segmented,
 .mobile-cards .mobile-eyebrow,
 .mobile-log,
-.mobile-selection-bar,
 .mobile-overlay-sheet,
 .mobile-sheet-head {
   font-family: @m-font;
@@ -1414,40 +1407,55 @@ html:has(> body.mobile-shell-active),
 
 .mobile-resource {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 5px 0;
-  border-radius: 10px;
-  background: @m-fill;
+  justify-content: center;
+  gap: 11px;
   min-width: 0;
+  padding: 4px 0 6px;
 }
 
-.mobile-resource-amount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.mobile-resource-badged {
+  position: relative;
+  flex: none;
 }
 
-// The desktop's own resource art, at the size the design gives an icon.
+// The desktop's own resource art, at the size the tags are drawn.
 .mobile-resource-icon.resource_icon {
-  width: 16px;
-  height: 16px;
+  display: block;
+  width: 24px;
+  height: 24px;
   margin: 0;
   background-size: contain;
-  flex: none;
 }
 
 .mobile-resource-count {
   .m-tabular();
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
+// Production, as a badge on the icon's corner. None is shown when there is none.
 .mobile-resource-production {
+  position: absolute;
+  right: -8px;
+  bottom: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: @m-radius-pill;
+  background: @m-raised;
+  box-shadow: 0 0 0 1.5px @m-card;
+  color: @m-label;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
   .m-tabular();
-  font-size: @m-small-size;
-  color: @m-label-2;
+}
+
+.mobile-resource-production--negative {
+  color: @m-bad;
 }
 
 .mobile-segmented {
@@ -1685,10 +1693,6 @@ html:has(> body.mobile-shell-active),
   transition: box-shadow @m-duration @m-ease;
 }
 
-.mobile-ready-card--selected .mobile-ready-frame {
-  box-shadow: 0 0 0 3px @m-accent;
-}
-
 .mobile-tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1781,79 +1785,17 @@ html:has(> body.mobile-shell-active),
 }
 
 //
-// The bottom bar a selected card raises, and the room the shell keeps when there is none
+// The bottom row
 //
 
-.mobile-selection-bar {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  // The tab bar under it keeps clear of the home indicator.
-  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
-  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
-  background: @m-raised;
-  color: @m-label;
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 -12px 40px rgba(0, 0, 0, 0.35);
-  animation: mobile-bar-in @m-duration @m-ease both;
-}
-
+// Slides a sheet up from the bottom edge as it opens.
 @keyframes mobile-bar-in {
   from {
     transform: translateY(100%);
   }
 }
 
-.mobile-selection-text {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  padding: 0;
-  text-align: left;
-}
-
-.mobile-selection-name {
-  font-size: @m-bar-title-size;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-selection-sub {
-  font-size: @m-secondary-size;
-  color: @m-label-2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-bar-button {
-  flex: none;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: @m-radius-button-lg;
-  background: @m-fill;
-  font-size: 16px;
-  font-weight: 500;
-
-  &:active {
-    background: @m-fill-strong;
-  }
-}
-
-:where(#mobile-shell) .mobile-bar-button--primary {
-  background: @m-accent;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* The shell's last row: the selected card's bar, when there is one, over the tabs. */
+// The shell's last row: the tabs.
 .mobile-bottom {
   position: relative;
   z-index: 3;
@@ -1862,9 +1804,8 @@ html:has(> body.mobile-shell-active),
 .mobile-tabbar {
   display: flex;
   gap: 4px;
-  /* Lifted clear of the bottom edge: on a phone without a home indicator the tabs
-     would otherwise sit right on it, where the thumb has to reach down to them. */
-  padding: 8px calc(10px + env(safe-area-inset-right)) max(20px, calc(8px + env(safe-area-inset-bottom))) calc(10px + env(safe-area-inset-left));
+  /* Clear of the home indicator, and of the bottom edge on a phone without one. */
+  padding: 8px calc(10px + env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
   background: @m-glass;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -2013,12 +1954,10 @@ html:has(> body.mobile-shell-active),
 @media (prefers-reduced-motion: reduce) {
   .mobile-ring-arc,
   .mobile-ready-frame,
-  .mobile-tile,
-  .mobile-card-button--selected .cardbox {
+  .mobile-tile {
     transition: none;
   }
 
-  .mobile-selection-bar,
   .mobile-overlay-sheet {
     animation: none;
   }

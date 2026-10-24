@@ -49,12 +49,18 @@
     </div>
 
     <div class="mobile-resources">
+      <!-- What the player has beside each icon, and what it makes each generation
+           tucked into the icon's corner, the way the tags carry their counts. -->
       <div v-for="resource in resources" :key="resource.type" class="mobile-resource" :data-test="'resource-' + resource.type">
-        <div class="mobile-resource-amount">
+        <span class="mobile-resource-badged">
           <i class="resource_icon mobile-resource-icon" :class="'resource_icon--' + resource.type"></i>
-          <span class="mobile-resource-count">{{ resource.count }}</span>
-        </div>
-        <span class="mobile-resource-production">{{ signed(resource.production) }}</span>
+          <span
+            v-if="resource.production !== 0"
+            class="mobile-resource-production"
+            :class="{'mobile-resource-production--negative': resource.production < 0}"
+            data-test="resource-production">{{ signed(resource.production) }}</span>
+        </span>
+        <span class="mobile-resource-count">{{ resource.count }}</span>
       </div>
     </div>
 

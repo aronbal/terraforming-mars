@@ -1,5 +1,5 @@
 <template>
-  <div id="mobile-shell">
+  <div id="mobile-shell" :style="shellStyle">
     <MobileHeader
       :game="game"
       :player="thisPlayer"
@@ -19,7 +19,6 @@
         :aria-label="$t('Turn')">
         <MobileTurnPage
           :playerView="playerView"
-          :selected="selected"
           :recent="recentEvents"
           :players="logPlayers"
           :now="now"
@@ -95,7 +94,6 @@
         id="shortkey-hand">
         <MobileCardsPane
           :playerView="playerView"
-          :selected="selected"
           @select="select($event)"/>
       </section>
 
@@ -130,32 +128,34 @@
     </main>
 
     <div class="mobile-bottom">
-      <MobileSelectionBar
-        v-if="selection !== undefined"
-        :card="selection.card"
-        :offer="selection.offer"
-        :megacredits="thisPlayer.megacredits"
-        @cancel="selected = undefined"
-        @confirm="confirmSelection()"
-        @inspect="magnified = selection.card"/>
       <MobileTabBar :view="view" :badges="tabBadges" @update:view="selectView($event)"/>
     </div>
 
-    <!-- Play or Use from the bottom bar: the card large, its payment, and the one
-         button that pays and plays it. -->
+    <!-- A tapped card, large, with its payment and the one button that pays for it and
+         plays it, or uses its action. -->
     <MobilePlaySheet
       v-if="playing !== undefined"
       :playerView="playerView"
       :card="playing.card.name"
       :offer="playing.offer"
+      :position="playingIndex"
+      :count="ready.length"
+      @next="turnCard(1)"
+      @previous="turnCard(-1)"
       @close="playing = undefined"/>
 
-    <div v-if="magnified !== undefined" class="mobile-magnify" data-test="magnified-card" @click="magnified = undefined">
-      <!-- Tapping anywhere puts it back down: the way out is wherever you look. -->
-      <div class="mobile-magnify-holder">
-        <Card class="cardbox" :card="magnified" :cubeColor="thisPlayer.color"/>
-      </div>
-    </div>
+    <!-- A milestone or award, held up with the one button that claims or funds it. -->
+    <MobileClaimSheet
+      v-if="claiming !== undefined"
+      :key="claiming.kind + claiming.name"
+      :playerView="playerView"
+      :kind="claiming.kind"
+      :name="claiming.name"
+      :position="claimingIndex"
+      :count="claimables.length"
+      @next="turnClaim(1)"
+      @previous="turnClaim(-1)"
+      @close="claiming = undefined"/>
 
     <MobileLogCards
       v-if="magnifiedLine !== undefined"
@@ -179,7 +179,6 @@
 import {defineComponent, PropType} from 'vue';
 
 import Awards from '@/client/components/Awards.vue';
-import Card from '@/client/components/card/Card.vue';
 import Colony from '@/client/components/colonies/Colony.vue';
 import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
 import Milestones from '@/client/components/Milestones.vue';
@@ -187,6 +186,7 @@ import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue'
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
 import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileLogCards from '@/client/components/mobile/MobileLogCards.vue';
@@ -194,7 +194,6 @@ import MobileLogPane, {LogGeneration} from '@/client/components/mobile/MobileLog
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
 import MobilePlaySheet from '@/client/components/mobile/MobilePlaySheet.vue';
-import MobileSelectionBar from '@/client/components/mobile/MobileSelectionBar.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
@@ -202,7 +201,6 @@ import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue
 import PlayersOverview from '@/client/components/overview/PlayersOverview.vue';
 import Turmoil from '@/client/components/turmoil/Turmoil.vue';
 
-import {CardModel} from '@/common/models/CardModel';
 import {CardName} from '@/common/cards/CardName';
 import {GameModel} from '@/common/models/GameModel';
 import {HomeMixin} from '@/client/mixins/HomeMixin';
@@ -217,28 +215,31 @@ import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
+import {readViewport, standaloneShellHeight} from '@/client/utils/standaloneHeight';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
 type Overlay = 'players' | 'menu';
+
+type Claimable = {kind: 'milestone' | 'award', name: string};
 
 type DataModel = {
   view: MobileView;
   snap: SheetSnap;
   preferences: Preferences;
-  /** The card tapped on the turn page or in the Cards view, which the bottom bar is about. */
-  selected: CardName | undefined;
-  /** The card opened large from the bottom bar. */
-  magnified: CardModel | undefined;
   /** The log line tapped open for the cards it names. */
   magnifiedLine: LogEvent | undefined;
   /** The card being paid for and played, or used, in the play sheet. */
   playing: ReadyCard | undefined;
+  /** The milestone or award in the claim sheet. */
+  claiming: Claimable | undefined;
   overlay: Overlay | undefined;
   /** The log lines fetched so far, by generation, oldest line first. */
   logs: Record<number, ReadonlyArray<LogMessage>>;
   logLoading: boolean;
   /** The clock the log's "2 min" is measured against, ticked so it does not go stale. */
   now: number;
+  /** The screen height to fill on an iOS home screen whose viewport stops short. */
+  shellHeight: number | undefined;
 };
 
 // The largest count a tab badge spells out.
@@ -260,7 +261,6 @@ export default defineComponent({
   },
   components: {
     Awards,
-    Card,
     Colony,
     DynamicTitle,
     Milestones,
@@ -268,6 +268,7 @@ export default defineComponent({
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
+    MobileClaimSheet,
     MobileFocusStage,
     MobileHeader,
     MobileLogCards,
@@ -275,7 +276,6 @@ export default defineComponent({
     MobileMore,
     MobileOverlay,
     MobilePlaySheet,
-    MobileSelectionBar,
     MobileTabBar,
     MobileTurnPage,
     MoonBoard,
@@ -288,14 +288,14 @@ export default defineComponent({
       view: 'turn',
       snap: 'closed',
       preferences: {...getPreferences()},
-      selected: undefined,
-      magnified: undefined,
       magnifiedLine: undefined,
       playing: undefined,
+      claiming: undefined,
       overlay: undefined,
       logs: {},
       logLoading: false,
       now: Date.now(),
+      shellHeight: undefined,
     };
   },
   computed: {
@@ -304,6 +304,9 @@ export default defineComponent({
     },
     thisPlayer(): PublicPlayerModel {
       return this.playerView.thisPlayer;
+    },
+    shellStyle(): Record<string, string> {
+      return this.shellHeight === undefined ? {} : {height: this.shellHeight + 'px'};
     },
     cardScale(): number {
       return this.preferences.card_scale;
@@ -370,13 +373,21 @@ export default defineComponent({
       const waitingFor = this.playerView.waitingFor;
       return readyCards(isActionMenu(waitingFor) ? waitingFor : undefined);
     },
-    /** The selected card and what can be done with it, while the turn still offers it. */
-    selection(): ReadyCard | undefined {
-      const selected = this.selected;
-      if (selected === undefined || pickFocused.value) {
-        return undefined;
-      }
-      return this.ready.find((item) => item.card.name === selected);
+    /** Every milestone the turn lets this player claim, then every award it lets them fund. */
+    claimables(): ReadonlyArray<Claimable> {
+      return [
+        ...this.claimableMilestones.map((name) => ({kind: 'milestone' as const, name})),
+        ...this.fundableAwards.map((name) => ({kind: 'award' as const, name})),
+      ];
+    },
+    claimingIndex(): number {
+      const claiming = this.claiming;
+      return Math.max(0, this.claimables.findIndex((each) => each.kind === claiming?.kind && each.name === claiming?.name));
+    },
+    /** Where the card in the play sheet sits among the ready cards. */
+    playingIndex(): number {
+      const name = this.playing?.card.name;
+      return Math.max(0, this.ready.findIndex((item) => item.card.name === name));
     },
     /** The milestones the turn's menu offers, which are the ones worth tapping. */
     claimableMilestones(): ReadonlyArray<string> {
@@ -437,6 +448,7 @@ export default defineComponent({
     waitingFor() {
       this.forgetPick();
       this.playing = undefined;
+      this.claiming = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -484,27 +496,31 @@ export default defineComponent({
     raiseSheet(): void {
       this.setSnap(this.choosingCards ? 'full' : 'half');
     },
-    /** A tap on a ready card selects it; a second tap on the same card lets go. */
-    select(name: CardName): void {
-      this.selected = this.selected === name ? undefined : name;
-    },
     /*
-     * The bottom bar's button: the card opens in the play sheet, large, with its
-     * payment and the button that pays for it. What the server asks after that -- a
-     * target, a tile -- arrives in the action sheet like any other question.
+     * A tap on a card the turn can use opens it in the play sheet straight away: the
+     * card large, its payment, and the one button that plays or uses it. That sheet is
+     * the confirmation, so nothing is played by the tap itself. What the server asks
+     * after that -- a target, a tile -- arrives in the action sheet like any other
+     * question.
      */
-    confirmSelection(): void {
-      const selection = this.selection;
-      if (selection === undefined) {
+    select(name: CardName): void {
+      const item = this.ready.find((each) => each.card.name === name);
+      if (item === undefined) {
         return;
       }
-      this.selected = undefined;
       this.forgetPick();
-      this.playing = selection;
+      this.playing = item;
+    },
+    /** Swiping in the play sheet: the next or previous ready card, round and round. */
+    turnCard(step: number): void {
+      const count = this.ready.length;
+      if (this.playing === undefined || count < 2) {
+        return;
+      }
+      this.playing = this.ready[(this.playingIndex + step + count) % count];
     },
     /** A tile or a button on the turn page: the entry it stands for, opened in the sheet. */
     openEntry(index: number): void {
-      this.selected = undefined;
       clearPickedCard();
       clearBoardPick();
       pickEntry(index);
@@ -514,8 +530,16 @@ export default defineComponent({
       const tall = input !== undefined && (input.type === 'card' || input.type === 'projectCard' || input.type === 'or');
       this.openPick('panel', tall ? 'full' : 'half');
     },
-    /* Milestones and awards are printed on the board, so that is where they are claimed. */
+    /* The turn page's tile: straight into the claim sheet at the first milestone or
+       award on offer, with the rest a swipe away. With none on offer, the board shows
+       where they stand. */
     openMilestones(): void {
+      const first = this.claimables[0];
+      if (first !== undefined) {
+        this.forgetPick();
+        this.claiming = first;
+        return;
+      }
       this.selectView('board');
       this.$nextTick(() => {
         const below = this.$refs.below as HTMLElement | undefined;
@@ -523,16 +547,27 @@ export default defineComponent({
       });
     },
     claimBoardThing(kind: BoardThing, name: string): void {
+      /* A milestone or an award opens in the claim sheet, the way a card opens in the
+         play sheet. */
+      if (kind !== 'colony') {
+        this.forgetPick();
+        this.claiming = {kind, name};
+        return;
+      }
+      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
+         is nothing to hold up over the board and the panel needs the whole screen. */
       clearPickedCard();
       clearPickedEntry();
       pickBoardThing(kind, name);
-      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
-         is nothing to hold up over the board and the panel needs the whole screen. */
-      if (kind === 'colony') {
-        this.openPick('panel', 'full');
-      } else {
-        this.openPick('staged', 'half');
+      this.openPick('panel', 'full');
+    },
+    /** Swiping in the claim sheet: the next or previous one on offer, round and round. */
+    turnClaim(step: number): void {
+      const count = this.claimables.length;
+      if (this.claiming === undefined || count < 2) {
+        return;
       }
+      this.claiming = this.claimables[(this.claimingIndex + step + count) % count];
     },
     openPick(mode: 'staged' | 'panel', snap: SheetSnap): void {
       setPickFocus(mode);
@@ -543,15 +578,15 @@ export default defineComponent({
       clearPickedCard();
       clearBoardPick();
       clearPickedEntry();
-      if (this.selection === undefined) {
-        this.selected = undefined;
-      }
     },
     scrollBoardPaneTo(top: number): void {
       const pane = this.$refs.boardPane as HTMLElement | undefined;
       if (pane !== undefined) {
         pane.scrollTop = top;
       }
+    },
+    fitToScreen(): void {
+      this.shellHeight = standaloneShellHeight(readViewport());
     },
     refreshPreferences(): void {
       this.preferences = {...getPreferences()};
@@ -595,12 +630,22 @@ export default defineComponent({
   },
   mounted() {
     document.body.classList.add('mobile-shell-active');
+    this.fitToScreen();
+    window.addEventListener('resize', this.fitToScreen);
+    /* Every answer the server accepts redraws the shell from scratch, so the watcher
+       that raises a question never sees it arrive. A draft pick, the cards to buy, a
+       follow-up: whatever is waiting is up in front of the player from the start,
+       rather than behind a row they must tap first. */
+    if (this.sheetInUse) {
+      this.raiseSheet();
+    }
     this.refreshLog();
     clock = setInterval(() => {
       this.now = Date.now();
     }, CLOCK_TICK_MS);
   },
   unmounted() {
+    window.removeEventListener('resize', this.fitToScreen);
     this.forgetPick();
     if (clock !== undefined) {
       clearInterval(clock);

@@ -103,7 +103,6 @@ mobile/MobilePlayerHome.vue             composes the SAME children into views an
 mobile/MobileHeader.vue                 generation, rings, resources, tag row
 mobile/MobileTabBar.vue                 the views, along the bottom edge
 mobile/MobileTurnPage.vue               what the player can do now, read off the turn's menu
-mobile/MobileSelectionBar.vue           the bar a selected card raises: name, price, Play or Use
 mobile/MobileLog.ts                     log lines as rows, and what happened since your last turn
 mobile/MobileLogRow.vue                 one log line: player glyph, what, who and when
 mobile/MobileLogPane.vue                the whole log, a group per generation
@@ -217,7 +216,8 @@ Under them the global parameters are progress rings of the steps each has taken
 (temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
 15 when it is on), each with its value and label beside it — no number inside the
 ring, which only repeated the value — and TR on the right. Then the
-six resources as amount over production, then the player's tags as small icons
+six resources, each an icon with the amount beside it and its production as a
+badge on the icon's corner (none when there is no production), then the player's tags as small icons
 with their counts. The views are a tab bar at the bottom of the screen
 (`MobileTabBar.vue`: Turn, Board, Cards, Log, each an icon over its name), where
 the thumb already is; at the top of the header they were the furthest control
@@ -265,11 +265,18 @@ a follow-up — the page offers a row back to the sheet that holds the question,
 so does the header's `Your turn ›` pill, from any view, while the sheet is put
 away.
 
-**Selecting a card.** A tap on a ready card rings it (3px accent) and raises a
-bottom bar: the name, the price against what the player has (`14 M€ · 34
-available`) or the action's own text without `Action:`, and **Cancel** and
-**Play**/**Use**. Tapping the card again, or Cancel, lets go. Tapping the name
-opens the card large enough to read. The Cards view selects the same way.
+**Playing a card.** A tap on a ready card, on the turn page or in the Cards view,
+opens it straight in the play sheet: no bar to confirm on first, since the sheet
+is itself the confirmation and nothing is played by the tap. A sideways swipe on
+the card in the sheet turns to the next or previous ready card, round and round,
+with a dot per card under it.
+
+**Claiming a milestone, funding an award.** The same sheet, for what is printed on
+the board (`MobileClaimSheet.vue`): the tile held up to read, and one button —
+`Claim`, or `Fund · 14 M€` with the price the server put in the entry's title. A
+swipe moves through every milestone on offer, then every award. A tap on a tile
+under the board opens it there, and the turn page's Milestones & awards tile opens
+the first one on offer straight away; with none on offer it shows the board.
 
 **The sheet** is no longer a destination. It carries only what was opened from the
 turn page — a card with its price, a tile's entry — and the questions the server
@@ -506,6 +513,12 @@ is deliberately empty ("needed for client side notifications"). What is missing:
 Respect the safe areas: `viewport-fit=cover` plus
 `env(safe-area-inset-bottom)` padding on the tab bar and
 `env(safe-area-inset-top)` on the header.
+
+On an iOS home screen the fixed shell stops the status bar's height short of the
+bottom of the screen (48px on an iPhone 11), which left an empty band under the
+tab bar. `utils/standaloneHeight.ts` gives the shell the screen's own height when
+`navigator.standalone` is set and the viewport is shorter than the screen, and
+does nothing in a browser tab or once the viewport is right.
 
 ## Phasing
 
