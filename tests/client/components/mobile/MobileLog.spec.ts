@@ -3,7 +3,7 @@ import {CardName} from '@/common/cards/CardName';
 import {LogMessage} from '@/common/logs/LogMessage';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {LogMessageType} from '@/common/logs/LogMessageType';
-import {LogEvent, actorOf, formatAgo, iconFor, isEventLine, sinceLastTurn, titleOf, toEvent} from '@/client/components/mobile/MobileLog';
+import {LogEvent, actorOf, cardsOf, formatAgo, iconFor, isEventLine, sinceLastTurn, subtitleOf, titleOf, toEvent} from '@/client/components/mobile/MobileLog';
 import {Color} from '@/common/Color';
 
 const players = [{color: 'red' as Color, name: 'Mette'}, {color: 'blue' as Color, name: 'You'}];
@@ -18,7 +18,7 @@ function played(color: Color, card: CardName): LogMessage {
 }
 
 function event(color: Color | undefined, key: string): LogEvent {
-  return {key, generation: 1, title: key, color, icon: 'layers', timestamp: 0, private: false, effects: undefined};
+  return {key, generation: 1, title: key, color, icon: 'layers', timestamp: 0, private: false, effects: undefined, cards: []};
 }
 
 describe('MobileLog', () => {
@@ -72,6 +72,34 @@ describe('MobileLog', () => {
   it('marks a line only this player can see', () => {
     const message = {...played('blue', CardName.COMET), playerId: 'p-blue'} as LogMessage;
     expect(toEvent(message, 3, 0, players, identity)).deep.include({key: '3:0', generation: 3, private: true});
+  });
+
+  it('carries the cards a line names, each once', () => {
+    expect(toEvent(played('red', CardName.COMET), 3, 0, players, identity).cards).deep.eq([CardName.COMET]);
+    const message = {
+      message: '${0} drafted ${1} and ${2}',
+      data: [
+        {type: LogMessageDataType.PLAYER, value: 'red'},
+        {type: LogMessageDataType.CARDS, value: [CardName.ANTS, CardName.COMET]},
+        {type: LogMessageDataType.CARD, value: CardName.ANTS},
+      ],
+      timestamp: 0,
+    } as LogMessage;
+    expect(cardsOf(message)).deep.eq([CardName.ANTS, CardName.COMET]);
+  });
+
+  it('carries no cards for a line that names none', () => {
+    const message = {
+      message: '${0} passed',
+      data: [{type: LogMessageDataType.PLAYER, value: 'red'}],
+      timestamp: 0,
+    } as LogMessage;
+    expect(toEvent(message, 3, 0, players, identity).cards).deep.eq([]);
+  });
+
+  it('names who acted and when, under the line', () => {
+    expect(subtitleOf(event('red', 'a'), players, 2 * 60_000)).eq('Mette · 2 min');
+    expect(subtitleOf(event(undefined, 'a'), players, 0)).eq('now');
   });
 
   it('says how long ago, as short as a subtitle needs', () => {

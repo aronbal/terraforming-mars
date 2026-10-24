@@ -47,7 +47,8 @@
           :key="event.key"
           :event="event"
           :players="players"
-          :now="now"/>
+          :now="now"
+          @inspect="$emit('inspect', $event)"/>
         <div v-if="recentEvents.length === 0" class="mobile-row mobile-row--empty" v-i18n>Nothing has happened since your last turn</div>
       </div>
     </section>
@@ -215,7 +216,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView'],
+  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView', 'inspect'],
   components: {
     Card,
     MobileIcon,

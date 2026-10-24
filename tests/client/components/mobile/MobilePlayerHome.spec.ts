@@ -220,6 +220,22 @@ describe('MobilePlayerHome', () => {
     expect(mount().vm.turnLabel).eq('Waiting');
   });
 
+  it('a tapped log line opens its cards large, and a tap puts them down', async () => {
+    const wrapper = mount();
+    wrapper.vm.logs = {
+      1: [{message: '${0} played ${1}', data: [{type: 2, value: 'red'}, {type: 3, value: CardName.ANTS}], timestamp: 0}],
+    } as never;
+    const line = wrapper.vm.logGenerations[0].events[0];
+    expect(wrapper.findComponent({name: 'MobileLogCards'}).exists()).is.false;
+    wrapper.findComponent({name: 'MobileLogPane'}).vm.$emit('inspect', line);
+    await wrapper.vm.$nextTick();
+    const cards = wrapper.findComponent({name: 'MobileLogCards'});
+    expect(cards.props('event').cards).deep.eq([CardName.ANTS]);
+    cards.vm.$emit('close');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findComponent({name: 'MobileLogCards'}).exists()).is.false;
+  });
+
   it('reads the log it has fetched into rows, newest generation first', () => {
     const wrapper = mount();
     wrapper.vm.logs = {

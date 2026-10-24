@@ -8,7 +8,8 @@
           :key="event.key"
           :event="event"
           :players="players"
-          :now="now"/>
+          :now="now"
+          @inspect="$emit('inspect', $event)"/>
         <div v-if="group.events.length === 0" class="mobile-row mobile-row--empty" v-i18n>Nothing has happened yet</div>
       </div>
     </section>
@@ -62,7 +63,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['loadEarlier'],
+  emits: ['loadEarlier', 'inspect'],
   components: {
     MobileLogRow,
   },

@@ -1,4 +1,5 @@
 import {paths} from '@/common/app/paths';
+import {CardName} from '@/common/cards/CardName';
 import {Color} from '@/common/Color';
 import {Log} from '@/common/logs/Log';
 import {LogMessage} from '@/common/logs/LogMessage';
@@ -38,6 +39,8 @@ export type LogEvent = {
   private: boolean;
   /** What the action changed on Mars, when the server recorded it: `+1 temp · ocean`. */
   effects: string | undefined;
+  /** The cards the line names, in the order it names them, each once. */
+  cards: ReadonlyArray<CardName>;
 };
 
 /** What a row needs to know about the players to name them. */
@@ -111,6 +114,26 @@ export function actorOf(message: LogMessage): Color | undefined {
   return first.value;
 }
 
+/*
+ * The cards a line names, which a tap on its row opens large.
+ *
+ * A list the desktop shortens to an ellipsis is still opened in full, as the desktop's
+ * own card panel does.
+ */
+export function cardsOf(message: LogMessage): ReadonlyArray<CardName> {
+  const names = message.data.flatMap((datum) => {
+    switch (datum.type) {
+    case LogMessageDataType.CARD:
+      return [datum.value];
+    case LogMessageDataType.CARDS:
+      return datum.value;
+    default:
+      return [];
+    }
+  });
+  return Array.from(new Set(names));
+}
+
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -147,7 +170,24 @@ export function toEvent(
     timestamp: message.timestamp,
     private: message.playerId !== undefined,
     effects: summarizeLogEffects(message.effects),
+    cards: cardsOf(message),
   };
+}
+
+/** The glyph's colour class: the desktop's own player colours, so a player is the same colour everywhere. */
+export function glyphClassOf(color: Color | undefined): string {
+  return color === undefined ? 'mobile-glyph--neutral' : 'player_bg_color_' + color;
+}
+
+/** A row's subtitle: who acted, when it is about a player, and how long ago. */
+export function subtitleOf(event: LogEvent, players: ReadonlyArray<LogPlayer>, now: number): string {
+  const color = event.color;
+  const ago = formatAgo(event.timestamp, now);
+  if (color === undefined) {
+    return ago;
+  }
+  const name = players.find((player) => player.color === color)?.name ?? color;
+  return name + ' · ' + ago;
 }
 
 /** Whether a line is worth a row: the generation headings are drawn as headings instead. */

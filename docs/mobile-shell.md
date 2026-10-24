@@ -106,6 +106,7 @@ mobile/MobileSelectionBar.vue           the bar a selected card raises: name, pr
 mobile/MobileLog.ts                     log lines as rows, and what happened since your last turn
 mobile/MobileLogRow.vue                 one log line: player glyph, what, who and when
 mobile/MobileLogPane.vue                the whole log, a group per generation
+mobile/MobileLogCards.vue               the cards a log line names, opened large
 mobile/MobileOverlay.vue                the sheet the players and the menu open in
 mobile/MobileIcon.vue, MobileIcons.ts   the Lucide icons the chrome draws, inlined
 mobile/MobileInitialCards.vue           the opening hand, one selection at a time
@@ -302,6 +303,11 @@ states that size rather than inheriting it.
 **The Log view** is the whole log, a group per generation, newest first, in the
 same rows as the short list. Earlier generations are fetched one at a time when
 asked for. The log is refetched whenever the game's `step` moves.
+
+A row whose line names cards (`Played Comet`) is a button, here and in "Since
+your last turn": a tap opens the cards large, side by side, under the line itself
+with who and when, and a tap anywhere puts them down. Rows that name no card stay
+plain rows.
 
 For the trailing effect summary on a log row (`+1 temp · ocean`), the server
 attaches structured effects to the log message of the action that caused them;
