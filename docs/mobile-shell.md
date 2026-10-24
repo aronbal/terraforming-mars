@@ -103,7 +103,6 @@ mobile/MobilePlayerHome.vue             composes the SAME children into views an
 mobile/MobileHeader.vue                 generation, rings, resources, tag row
 mobile/MobileTabBar.vue                 the views, along the bottom edge
 mobile/MobileTurnPage.vue               what the player can do now, read off the turn's menu
-mobile/MobileSelectionBar.vue           the bar a selected card raises: name, price, Play or Use
 mobile/MobileLog.ts                     log lines as rows, and what happened since your last turn
 mobile/MobileLogRow.vue                 one log line: player glyph, what, who and when
 mobile/MobileLogPane.vue                the whole log, a group per generation
@@ -266,11 +265,11 @@ a follow-up — the page offers a row back to the sheet that holds the question,
 so does the header's `Your turn ›` pill, from any view, while the sheet is put
 away.
 
-**Selecting a card.** A tap on a ready card rings it (3px accent) and raises a
-bottom bar: the name, the price against what the player has (`14 M€ · 34
-available`) or the action's own text without `Action:`, and **Cancel** and
-**Play**/**Use**. Tapping the card again, or Cancel, lets go. Tapping the name
-opens the card large enough to read. The Cards view selects the same way.
+**Playing a card.** A tap on a ready card, on the turn page or in the Cards view,
+opens it straight in the play sheet: no bar to confirm on first, since the sheet
+is itself the confirmation and nothing is played by the tap. A sideways swipe on
+the card in the sheet turns to the next or previous ready card, round and round,
+with a dot per card under it.
 
 **The sheet** is no longer a destination. It carries only what was opened from the
 turn page — a card with its price, a tile's entry — and the questions the server

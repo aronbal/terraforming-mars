@@ -27,7 +27,6 @@
             class="mobile-card-button"
             :class="cardClass(card)"
             :disabled="offerFor(card) === undefined"
-            :aria-pressed="selected === card.name"
             data-test="hand-card"
             @click="$emit('select', card.name)">
             <Card class="cardbox" :card="card"/>
@@ -45,7 +44,6 @@
               class="mobile-card-button"
               :class="cardClass(card)"
               :disabled="offerFor(card) === undefined"
-              :aria-pressed="selected === card.name"
               data-test="played-card"
               @click="$emit('select', card.name)">
               <Card
@@ -67,7 +65,6 @@ import {defineComponent, PropType} from 'vue';
 
 import Card from '@/client/components/card/Card.vue';
 import {CardModel} from '@/common/models/CardModel';
-import {CardName} from '@/common/cards/CardName';
 import {CardType} from '@/common/cards/CardType';
 import {CardOrderStorage} from '@/client/utils/CardOrderStorage';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
@@ -81,8 +78,8 @@ import {CardOffer, offerIn} from '@/client/utils/cardSelection';
  *
  * The cards the turn has a move for come first and are the only ones that take a
  * tap; the rest are dimmed in place, because a card you cannot afford this generation
- * is still what you plan the next one around. A tap selects, exactly as on the turn
- * page, and the bottom bar takes it from there.
+ * is still what you plan the next one around. A tap opens the card in the play
+ * sheet, exactly as on the turn page.
  */
 
 type CardGroup = {
@@ -101,11 +98,6 @@ export default defineComponent({
     playerView: {
       type: Object as PropType<PlayerViewModel>,
       required: true,
-    },
-    selected: {
-      type: String as PropType<CardName | undefined>,
-      required: false,
-      default: undefined,
     },
   },
   components: {
@@ -173,7 +165,6 @@ export default defineComponent({
     cardClass(card: CardModel): Record<string, boolean> {
       const ready = this.offerFor(card) !== undefined;
       return {
-        'mobile-card-button--selected': this.selected === card.name,
         'mobile-card-button--idle': this.actionWaiting && !ready,
       };
     },

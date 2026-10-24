@@ -113,8 +113,12 @@
   flex: none;
   display: flex;
   justify-content: center;
+  // Up and down still scroll the sheet; sideways is the card's, for the swipe.
+  touch-action: pan-y;
 
   .card-container {
+    // A new card fades in as a swipe brings it up.
+    animation: mobile-play-sheet-card-in @m-duration @m-ease;
     transform: scale(var(--play-sheet-card-scale));
     transform-origin: top left;
     margin:
@@ -322,4 +326,30 @@
       transform: none;
     }
   }
+}
+
+@keyframes mobile-play-sheet-card-in {
+  from {
+    opacity: 0;
+  }
+}
+
+// Which of the ready cards this is, when there is more than one to swipe between.
+.mobile-play-sheet-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 0 6px;
+}
+
+.mobile-play-sheet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: @m-fill-strong;
+  transition: background-color @m-duration @m-ease;
+}
+
+.mobile-play-sheet-dot--on {
+  background: @m-label;
 }

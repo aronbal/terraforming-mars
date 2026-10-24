@@ -12,8 +12,21 @@
       <span class="mobile-play-sheet-grabber" aria-hidden="true"></span>
       <div class="mobile-play-sheet-body">
         <h2 :id="titleId" class="mobile-play-sheet-title">{{ $t(model.name) }}</h2>
-        <div class="mobile-play-sheet-card">
-          <Card :card="model" :cubeColor="playerView.thisPlayer.color"/>
+        <!-- A sideways swipe on the card moves to the next card the turn can use. -->
+        <div
+          class="mobile-play-sheet-card"
+          data-test="play-sheet-card"
+          @pointerdown="onSwipeStart"
+          @pointerup="onSwipeEnd"
+          @pointercancel="swipeFrom = undefined">
+          <Card :key="card" :card="model" :cubeColor="playerView.thisPlayer.color"/>
+        </div>
+        <div v-if="count > 1" class="mobile-play-sheet-dots" aria-hidden="true" data-test="play-sheet-dots">
+          <span
+            v-for="dot in count"
+            :key="dot"
+            class="mobile-play-sheet-dot"
+            :class="{'mobile-play-sheet-dot--on': dot - 1 === position}"></span>
         </div>
         <template v-if="entry.kind === 'play'">
           <template v-if="model.additionalProjectCosts !== undefined">
@@ -81,7 +94,12 @@ type DataModel = {
   paymentState: PlaySheetPaymentState | undefined;
   submitting: boolean;
   titleId: string;
+  /** Where a swipe on the card began, while one is under way. */
+  swipeFrom: {x: number, y: number} | undefined;
 };
+
+// How far, in CSS pixels, a finger must travel sideways for a swipe to turn the card.
+const SWIPE_DISTANCE = 50;
 
 let unique = 0;
 
@@ -116,13 +134,24 @@ export default defineComponent({
       type: String as PropType<CardOffer>,
       required: true,
     },
+    /** Where this card sits among the cards the turn can use, for the dots under it. */
+    position: {
+      type: Number,
+      default: 0,
+    },
+    /** How many cards the turn can use; with more than one, a swipe moves between them. */
+    count: {
+      type: Number,
+      default: 1,
+    },
   },
-  emits: ['close'],
+  emits: ['close', 'next', 'previous'],
   data(): DataModel {
     return {
       paymentState: undefined,
       submitting: false,
       titleId: 'mobile-play-sheet-title-' + unique++,
+      swipeFrom: undefined,
     };
   },
   computed: {
@@ -215,6 +244,24 @@ export default defineComponent({
     },
     cancel(): void {
       this.$emit('close');
+    },
+    onSwipeStart(event: PointerEvent): void {
+      this.swipeFrom = {x: event.clientX, y: event.clientY};
+    },
+    /* Mostly sideways and far enough: left for the next card, right for the one before.
+       Anything else was a tap or a scroll, and is left alone. */
+    onSwipeEnd(event: PointerEvent): void {
+      const from = this.swipeFrom;
+      this.swipeFrom = undefined;
+      if (from === undefined || this.count < 2) {
+        return;
+      }
+      const dx = event.clientX - from.x;
+      const dy = event.clientY - from.y;
+      if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < 1.5 * Math.abs(dy)) {
+        return;
+      }
+      this.$emit(dx < 0 ? 'next' : 'previous');
     },
   },
 });

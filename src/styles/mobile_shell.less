@@ -888,13 +888,6 @@ html:has(> body.mobile-shell-active),
   flex: none;
 }
 
-// The card the bottom bar is about: a 3px accent ring, as on the turn page.
-.mobile-card-button--selected .cardbox {
-  box-shadow: 0 0 0 3px @m-accent;
-  border-radius: 10px;
-  transition: box-shadow @m-duration @m-ease;
-}
-
 /* One you cannot act on right now. Dimmed rather than hidden, because a card you
    cannot afford this generation is still what you plan the next one around. */
 .mobile-card-button--idle .cardbox {
@@ -1212,7 +1205,6 @@ html:has(> body.mobile-shell-active),
 .mobile-cards > .mobile-segmented,
 .mobile-cards .mobile-eyebrow,
 .mobile-log,
-.mobile-selection-bar,
 .mobile-overlay-sheet,
 .mobile-sheet-head {
   font-family: @m-font;
@@ -1701,10 +1693,6 @@ html:has(> body.mobile-shell-active),
   transition: box-shadow @m-duration @m-ease;
 }
 
-.mobile-ready-card--selected .mobile-ready-frame {
-  box-shadow: 0 0 0 3px @m-accent;
-}
-
 .mobile-tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1797,79 +1785,17 @@ html:has(> body.mobile-shell-active),
 }
 
 //
-// The bottom bar a selected card raises, and the room the shell keeps when there is none
+// The bottom row
 //
 
-.mobile-selection-bar {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  // The tab bar under it keeps clear of the home indicator.
-  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
-  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
-  background: @m-raised;
-  color: @m-label;
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 -12px 40px rgba(0, 0, 0, 0.35);
-  animation: mobile-bar-in @m-duration @m-ease both;
-}
-
+// Slides a sheet up from the bottom edge as it opens.
 @keyframes mobile-bar-in {
   from {
     transform: translateY(100%);
   }
 }
 
-.mobile-selection-text {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  padding: 0;
-  text-align: left;
-}
-
-.mobile-selection-name {
-  font-size: @m-bar-title-size;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-selection-sub {
-  font-size: @m-secondary-size;
-  color: @m-label-2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-bar-button {
-  flex: none;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: @m-radius-button-lg;
-  background: @m-fill;
-  font-size: 16px;
-  font-weight: 500;
-
-  &:active {
-    background: @m-fill-strong;
-  }
-}
-
-:where(#mobile-shell) .mobile-bar-button--primary {
-  background: @m-accent;
-  color: #fff;
-  font-weight: 600;
-}
-
-/* The shell's last row: the selected card's bar, when there is one, over the tabs. */
+// The shell's last row: the tabs.
 .mobile-bottom {
   position: relative;
   z-index: 3;
@@ -2028,12 +1954,10 @@ html:has(> body.mobile-shell-active),
 @media (prefers-reduced-motion: reduce) {
   .mobile-ring-arc,
   .mobile-ready-frame,
-  .mobile-tile,
-  .mobile-card-button--selected .cardbox {
+  .mobile-tile {
     transition: none;
   }
 
-  .mobile-selection-bar,
   .mobile-overlay-sheet {
     animation: none;
   }

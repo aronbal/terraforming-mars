@@ -102,44 +102,38 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('closed');
   });
 
-  it('a tap on a ready card selects it, and a second tap lets go', () => {
+  /* No bar to confirm on first: the play sheet is the confirmation. */
+  it('a tap on a ready card opens it in the play sheet, with its payment', async () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.select(CardName.ANTS);
-    expect(wrapper.vm.selection?.card.name).eq(CardName.ANTS);
-    expect(wrapper.vm.selection?.offer).eq('play');
-
-    wrapper.vm.select(CardName.ANTS);
-    expect(wrapper.vm.selection).is.undefined;
-  });
-
-  it('shows the bottom bar only while a card is selected', async () => {
-    const wrapper = mount(actionMenu());
-    expect(wrapper.findComponent({name: 'MobileSelectionBar'}).exists()).is.false;
-
-    wrapper.vm.select(CardName.ANTS);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.findComponent({name: 'MobileSelectionBar'}).exists()).is.true;
-  });
-
-  it('Play opens the card in the play sheet, with its payment', async () => {
-    const wrapper = mount(actionMenu());
-    wrapper.vm.select(CardName.ANTS);
-    wrapper.vm.confirmSelection();
     await wrapper.vm.$nextTick();
 
     expect(wrapper.vm.playing).deep.include({offer: 'play'});
     expect(wrapper.vm.playing?.card.name).eq(CardName.ANTS);
-    expect(wrapper.vm.selected).is.undefined;
     expect(wrapper.findComponent({name: 'MobilePlaySheet'}).exists()).is.true;
     // The action sheet stays out of it: nothing is picked for it.
     expect(pickedCard.value).is.undefined;
     expect(pickFocus.value).eq('none');
   });
 
+  it('a swipe in the play sheet turns to the next ready card, round and round', () => {
+    const wrapper = mount(menu(projectCard(CardName.ANTS, CardName.BIRDS)));
+    wrapper.vm.select(CardName.BIRDS);
+    wrapper.vm.turnCard(1);
+    expect(wrapper.vm.playing?.card.name).eq(CardName.ANTS);
+    wrapper.vm.turnCard(-1);
+    expect(wrapper.vm.playing?.card.name).eq(CardName.BIRDS);
+  });
+
+  it('a tap on a card the turn has no move for does nothing', () => {
+    const wrapper = mount(actionMenu());
+    wrapper.vm.select(CardName.COMET);
+    expect(wrapper.vm.playing).is.undefined;
+  });
+
   it('closing the play sheet puts the card back', async () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.select(CardName.ANTS);
-    wrapper.vm.confirmSelection();
     await wrapper.vm.$nextTick();
 
     wrapper.findComponent({name: 'MobilePlaySheet'}).vm.$emit('close');

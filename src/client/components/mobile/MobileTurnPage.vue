@@ -64,8 +64,6 @@
             v-for="item in ready"
             :key="item.card.name"
             class="mobile-ready-card"
-            :class="{'mobile-ready-card--selected': selected === item.card.name}"
-            :aria-pressed="selected === item.card.name"
             data-test="ready-card"
             @click="$emit('select', item.card.name)">
             <span class="mobile-ready-frame">
@@ -163,7 +161,6 @@ import MobileLogRow from '@/client/components/mobile/MobileLogRow.vue';
 import * as constants from '@/common/constants';
 import {ActionEntry, ReadyCard, entryFor, isActionMenu, otherEntries, readyCards} from '@/client/components/mobile/MobileActionMenu';
 import {ActionAnnotation} from '@/common/input/Annotation';
-import {CardName} from '@/common/cards/CardName';
 import {LogEvent, LogPlayer} from '@/client/components/mobile/MobileLog';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
@@ -206,12 +203,6 @@ export default defineComponent({
     playerView: {
       type: Object as PropType<PlayerViewModel>,
       required: true,
-    },
-    /** The ready card the player has tapped, which the bottom bar is about. */
-    selected: {
-      type: String as PropType<CardName | undefined>,
-      required: false,
-      default: undefined,
     },
     /** What other players did since this one last acted, newest first. */
     recent: {
