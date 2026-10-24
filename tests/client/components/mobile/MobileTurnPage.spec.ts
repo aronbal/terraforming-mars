@@ -10,7 +10,7 @@ import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures'
 
 describe('MobileTurnPage', () => {
   function event(n: number): LogEvent {
-    return {key: 'e' + n, generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false, effects: undefined};
+    return {key: 'e' + n, generation: 5, title: 'Played Comet', color: 'red', icon: 'layers', timestamp: 0, private: false, effects: undefined, cards: []};
   }
 
   function mount(waitingFor: PlayerInputModel | undefined, player: Record<string, unknown> = {}, recent: Array<LogEvent> = []) {
@@ -125,6 +125,13 @@ describe('MobileTurnPage', () => {
   it('shows the three newest things that happened since the last turn', () => {
     const wrapper = mount(fullMenu(), {}, [event(1), event(2), event(3), event(4)]);
     expect(wrapper.vm.recentEvents.map((each) => each.key)).deep.eq(['e1', 'e2', 'e3']);
+  });
+
+  it('passes on a tap on a row that names cards', () => {
+    const comet = {...event(1), cards: [CardName.COMET]};
+    const wrapper = mount(fullMenu(), {}, [comet]);
+    wrapper.findComponent({name: 'MobileLogRow'}).vm.$emit('inspect', comet);
+    expect(wrapper.emitted('inspect')).deep.eq([[comet]]);
   });
 
   it('says whose turn it is when it is not this player\'s', () => {

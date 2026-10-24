@@ -48,7 +48,8 @@
           :key="event.key"
           :event="event"
           :players="players"
-          :now="now"/>
+          :now="now"
+          @inspect="$emit('inspect', $event)"/>
       </div>
     </section>
 
@@ -231,7 +232,7 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView'],
+  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView', 'inspect'],
   components: {
     Card,
     MobileIcon,

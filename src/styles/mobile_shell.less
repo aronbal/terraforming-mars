@@ -861,6 +861,32 @@ html:has(> body.mobile-shell-active),
   overflow: auto;
 }
 
+// The log line a card was opened from, whole: there is room here for all of it.
+.mobile-log-cards-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+
+  .mobile-row-title,
+  .mobile-row-subtitle {
+    white-space: normal;
+  }
+}
+
+// The line's cards side by side, centred while they fit and scrolled when they do not.
+.mobile-log-cards-row {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+  max-height: 72%;
+  overflow: auto;
+}
+
+.mobile-log-cards-card {
+  flex: none;
+}
+
 // The card the bottom bar is about: a 3px accent ring, as on the turn page.
 .mobile-card-button--selected .cardbox {
   box-shadow: 0 0 0 3px @m-accent;

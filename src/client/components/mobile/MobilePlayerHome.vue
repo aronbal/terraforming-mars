@@ -28,7 +28,8 @@
           @openEntry="openEntry($event)"
           @openSheet="raiseSheet()"
           @openMilestones="openMilestones()"
-          @showView="selectView($event)"/>
+          @showView="selectView($event)"
+          @inspect="magnifiedLine = $event"/>
       </section>
 
       <section
@@ -108,7 +109,8 @@
           :players="logPlayers"
           :now="now"
           :loading="logLoading"
-          @loadEarlier="loadEarlierLog()"/>
+          @loadEarlier="loadEarlierLog()"
+          @inspect="magnifiedLine = $event"/>
       </section>
 
       <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('closed')"></div>
@@ -155,6 +157,13 @@
       </div>
     </div>
 
+    <MobileLogCards
+      v-if="magnifiedLine !== undefined"
+      :event="magnifiedLine"
+      :players="logPlayers"
+      :now="now"
+      @close="magnifiedLine = undefined"/>
+
     <MobileOverlay v-if="overlay === 'players'" :title="$t('Players')" @close="overlay = undefined">
       <MobileFitBlock id="shortkey-playersoverview">
         <PlayersOverview :playerView="playerView" v-trim-whitespace/>
@@ -180,6 +189,7 @@ import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
+import MobileLogCards from '@/client/components/mobile/MobileLogCards.vue';
 import MobileLogPane, {LogGeneration} from '@/client/components/mobile/MobileLogPane.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
@@ -219,6 +229,8 @@ type DataModel = {
   selected: CardName | undefined;
   /** The card opened large from the bottom bar. */
   magnified: CardModel | undefined;
+  /** The log line tapped open for the cards it names. */
+  magnifiedLine: LogEvent | undefined;
   /** The card being paid for and played, or used, in the play sheet. */
   playing: ReadyCard | undefined;
   overlay: Overlay | undefined;
@@ -258,6 +270,7 @@ export default defineComponent({
     MobileFitBlock,
     MobileFocusStage,
     MobileHeader,
+    MobileLogCards,
     MobileLogPane,
     MobileMore,
     MobileOverlay,
@@ -277,6 +290,7 @@ export default defineComponent({
       preferences: {...getPreferences()},
       selected: undefined,
       magnified: undefined,
+      magnifiedLine: undefined,
       playing: undefined,
       overlay: undefined,
       logs: {},
