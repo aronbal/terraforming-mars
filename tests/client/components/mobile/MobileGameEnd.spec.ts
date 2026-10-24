@@ -3,7 +3,7 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import MobileGameEnd from '@/client/components/mobile/MobileGameEnd.vue';
-import {chartPoints, chartStep, scoreParts, standings, winners} from '@/client/components/mobile/GameEnd';
+import {categories, chartPoints, chartStep, standings, winners} from '@/client/components/mobile/GameEnd';
 import {Color} from '@/common/Color';
 import {PublicPlayerModel} from '@/common/models/PlayerModel';
 
@@ -41,8 +41,14 @@ describe('MobileGameEnd', () => {
     expect(winners([aron, green, tied]).map((p) => p.name)).deep.eq(['Green', 'Tied']);
   });
 
-  it('lists what a score is made of, largest first, without the empty parts', () => {
-    expect(scoreParts(green).map((p) => p.key)).deep.eq(['tr', 'cards', 'milestones', 'awards']);
+  it('compares every category someone scored in, with its leader and margin', () => {
+    const byCategory = categories([green, aron]);
+    expect(byCategory.map((c) => c.key)).deep.eq(['tr', 'milestones', 'awards', 'city', 'cards']);
+    expect(byCategory[1]).deep.include({leader: 'green', margin: 15});
+    expect(byCategory[2]).deep.include({leader: 'red', margin: 5});
+    expect(byCategory[2].scores).deep.eq([{color: 'green', points: 5, leading: false}, {color: 'red', points: 10, leading: true}]);
+    // Both on 40 TR: no one leads it.
+    expect(byCategory[0]).deep.include({leader: undefined, margin: 0});
   });
 
   it('scales the chart to round steps', () => {
@@ -56,11 +62,14 @@ describe('MobileGameEnd', () => {
     expect(render([aron, green], 'green').find('[data-test="end-headline"]').text()).eq('You won!');
   });
 
-  it('shows each player\'s total, best first, with its parts', () => {
+  it('shows each player\'s total, best first, and a tile per category', () => {
     const wrapper = render([aron, green]);
     const totals = wrapper.findAll('[data-test="end-total"]').map((t) => t.text());
     expect(totals).deep.eq(['80 VP', '78 VP']);
-    expect(wrapper.findAll('[data-test="end-player"]')[0].find('[data-test="end-part-milestones"]').text()).contains('15');
+    const milestones = wrapper.find('[data-test="end-category-milestones"]');
+    expect(milestones.find('[data-test="end-category-lead"]').text()).eq('+15');
+    expect(milestones.find('[data-test="end-category-lead"]').classes()).contains('mobile-end-ink--green');
+    expect(wrapper.find('[data-test="end-category-tr"] [data-test="end-category-lead"]').text()).eq('=');
     expect(wrapper.find('[data-test="end-chart"]').exists()).is.true;
   });
 

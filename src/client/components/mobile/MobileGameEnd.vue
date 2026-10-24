@@ -8,45 +8,52 @@
       <p class="mobile-end-subline">{{ say('After ${0} generations', String(game.generation)) }}</p>
     </header>
 
-    <!-- The scores, best first: each a total with what it is made of under it. -->
+    <!-- The totals, best first. -->
     <section class="mobile-section mobile-gutter">
       <h2 class="mobile-eyebrow" v-i18n>Final score</h2>
-      <div class="mobile-end-players">
-        <article
+      <div class="mobile-list">
+        <div
           v-for="(player, index) in ranked"
           :key="player.color"
-          class="mobile-end-player"
+          class="mobile-row mobile-end-player"
           :class="{'mobile-end-player--me': player.color === myColor}"
           data-test="end-player">
-          <div class="mobile-end-player-head">
-            <span class="mobile-end-place" :class="'player_bg_color_' + player.color">{{ index + 1 }}</span>
-            <span class="mobile-end-player-name">
+          <span class="mobile-end-place" :class="'player_bg_color_' + player.color">{{ index + 1 }}</span>
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
               <span class="mobile-row-title">{{ player.name }}</span>
-              <span class="mobile-row-subtitle">{{ corporations(player) }}</span>
+              <span class="mobile-row-subtitle">{{ corporations(player) }} · {{ say('${0} M€', String(player.megacredits)) }}</span>
             </span>
-            <span class="mobile-end-total" data-test="end-total">
-              {{ player.victoryPointsBreakdown.total }}
-              <small v-i18n>VP</small>
+            <span class="mobile-end-total" data-test="end-total">{{ player.victoryPointsBreakdown.total }} <small v-i18n>VP</small></span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Each source of points as a tile with everyone's share of it, so who did better
+         where is read across the grid. The lead, in the leader's colour, says by how much. -->
+    <section class="mobile-section mobile-gutter">
+      <h2 class="mobile-eyebrow" v-i18n>By category</h2>
+      <div class="mobile-end-tiles">
+        <div v-for="category in byCategory" :key="category.key" class="mobile-end-tile" :data-test="'end-category-' + category.key">
+          <div class="mobile-end-tile-head">
+            <span>{{ $t(category.label) }}</span>
+            <b
+              class="mobile-end-tile-lead"
+              :class="category.leader === undefined ? 'mobile-end-tile-lead--tie' : 'mobile-end-ink--' + category.leader"
+              data-test="end-category-lead">{{ category.leader === undefined ? '=' : '+' + category.margin }}</b>
+          </div>
+          <div
+            v-for="score in category.scores"
+            :key="score.color"
+            class="mobile-end-tile-row"
+            :class="{'mobile-end-tile-row--trailing': !score.leading}">
+            <span class="mobile-end-tile-track">
+              <span class="mobile-end-tile-fill" :class="'player_bg_color_' + score.color" :style="{width: (100 * Math.max(0, score.points) / categoryMax) + '%'}"></span>
             </span>
+            <span class="mobile-end-tile-points">{{ score.points }}</span>
           </div>
-          <!-- The score as a bar of its parts, as long as the best score is. -->
-          <div class="mobile-end-bar" aria-hidden="true">
-            <span
-              v-for="part in parts(player)"
-              :key="part.key"
-              class="mobile-end-bar-part"
-              :class="'mobile-end-part--' + part.key"
-              :style="{width: (100 * Math.max(0, part.points) / best) + '%'}"></span>
-          </div>
-          <ul class="mobile-end-parts">
-            <li v-for="part in parts(player)" :key="part.key" class="mobile-end-part" :data-test="'end-part-' + part.key">
-              <span class="mobile-end-part-dot" :class="'mobile-end-part--' + part.key"></span>
-              <span class="mobile-end-part-label">{{ $t(part.label) }}</span>
-              <span class="mobile-end-part-points">{{ part.points }}</span>
-            </li>
-          </ul>
-          <p class="mobile-end-tiebreak">{{ say('${0} M€ left', String(player.megacredits)) }}</p>
-        </article>
+        </div>
       </div>
     </section>
 
@@ -109,7 +116,7 @@
 import {defineComponent, PropType} from 'vue';
 
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
-import {CHART, ScorePart, chartPoints, chartStep, scoreParts, standings, winners} from '@/client/components/mobile/GameEnd';
+import {CHART, Category, categories, chartPoints, chartStep, standings, winners} from '@/client/components/mobile/GameEnd';
 import {translateAwardDetails, translateMilestoneDetails} from '@/client/components/gameend/maDetails';
 import {getCard} from '@/client/cards/ClientCardManifest';
 import {translateTextWithParams} from '@/client/directives/i18n';
@@ -139,9 +146,10 @@ type ChartLine = {
 /*
  * The results, on a phone.
  *
- * Who won, said once and large; then each player's total with what it is made of,
- * as numbers and as a bar, so a close game reads as close; the score over the
- * generations; and, folded away, the cards and awards behind it. The buttons to
+ * Who won, said once and large; then the totals; then every source of points as a
+ * tile with each player's share of it, so where each did better reads across the
+ * grid; the score over the generations; and, folded away, the cards and awards
+ * behind it. The buttons to
  * move on sit at the bottom, where a thumb is.
  */
 export default defineComponent({
@@ -177,9 +185,12 @@ export default defineComponent({
       }
       return this.say('${0} won!', won.map((p) => p.name).join(' & '));
     },
-    /** The best total, which every bar is measured against. */
-    best(): number {
-      return Math.max(1, ...this.ranked.map((p) => p.victoryPointsBreakdown.total));
+    byCategory(): Array<Category> {
+      return categories(this.ranked);
+    },
+    /** The most anyone scored in any one category, which every tile's bars are measured against. */
+    categoryMax(): number {
+      return Math.max(1, ...this.byCategory.flatMap((category) => category.scores.map((score) => score.points)));
     },
     chart(): typeof CHART {
       return CHART;
@@ -222,9 +233,6 @@ export default defineComponent({
   methods: {
     say(message: string, ...args: Array<string>): string {
       return translateTextWithParams(message, args);
-    },
-    parts(player: PublicPlayerModel): Array<ScorePart> {
-      return scoreParts(player);
     },
     corporations(player: PublicPlayerModel): string {
       return player.tableau
