@@ -255,6 +255,15 @@ describe('MobilePlayerHome', () => {
     expect(question.vm.snap).eq('half');
   });
 
+  /* The shell is drawn afresh after every answer, so a draft pick or the cards to buy
+     must be up from the start, not behind the turn page's row. */
+  it('opens with a waiting question already up', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    expect(mount({...draft, annotation: undefined} as PlayerInputModel).vm.snap).eq('full');
+    expect(mount(option('Pay 3 M€?')).vm.snap).eq('half');
+    expect(mount(actionMenu()).vm.snap).eq('closed');
+  });
+
   it('knows a draft from the menu', () => {
     const draft = cardList('draft', [CardName.ANTS]);
     expect(mount({...draft, annotation: undefined} as PlayerInputModel).vm.choosingCards).is.true;

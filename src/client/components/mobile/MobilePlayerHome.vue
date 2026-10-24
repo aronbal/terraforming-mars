@@ -632,6 +632,13 @@ export default defineComponent({
     document.body.classList.add('mobile-shell-active');
     this.fitToScreen();
     window.addEventListener('resize', this.fitToScreen);
+    /* Every answer the server accepts redraws the shell from scratch, so the watcher
+       that raises a question never sees it arrive. A draft pick, the cards to buy, a
+       follow-up: whatever is waiting is up in front of the player from the start,
+       rather than behind a row they must tap first. */
+    if (this.sheetInUse) {
+      this.raiseSheet();
+    }
     this.refreshLog();
     clock = setInterval(() => {
       this.now = Date.now();
