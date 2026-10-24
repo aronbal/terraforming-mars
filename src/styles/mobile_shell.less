@@ -1427,6 +1427,24 @@ html:has(> body.mobile-shell-active),
   transition: stroke-dashoffset @m-duration @m-ease;
 }
 
+.mobile-ring-check {
+  fill: none;
+  stroke: @m-ok;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mobile-global--done .mobile-ring-arc {
+  stroke: @m-ok;
+}
+
+// The goal after the value, quieter, as the second half of `5/9` reads.
+.mobile-stat-goal {
+  font-weight: 500;
+  color: @m-label-2;
+}
+
 .mobile-stat {
   display: flex;
   flex-direction: column;

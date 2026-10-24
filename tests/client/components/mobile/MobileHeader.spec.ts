@@ -33,14 +33,26 @@ describe('MobileHeader', () => {
     const parameters = mount(false).vm.globalParameters;
     expect(parameters.map((p) => p.key)).deep.eq(['temperature', 'oxygen', 'oceans']);
     // -30 to +8 in steps of two degrees: 19 steps, 7 of them taken at -16.
-    expect(parameters[0]).deep.include({value: '-16°', passed: 7, total: 19});
-    expect(parameters[1]).deep.include({value: '9%', passed: 9, total: 14});
-    expect(parameters[2]).deep.include({value: '5/9', passed: 5, total: 9});
+    expect(parameters[0]).deep.include({value: '-16°', goal: '+8°', passed: 7, total: 19});
+    expect(parameters[1]).deep.include({value: '9', goal: '14%', passed: 9, total: 14});
+    expect(parameters[2]).deep.include({value: '5', goal: '9', passed: 5, total: 9});
+  });
+
+  it('shows each parameter against its goal, and ticks off the ones that reached it', async () => {
+    const wrapper = mount(false);
+    expect(wrapper.find('[data-test="global-value-temperature"]').text()).eq('-16°/+8°');
+    expect(wrapper.find('[data-test="global-value-oxygen"]').text()).eq('9/14%');
+    expect(wrapper.find('[data-test="global-done"]').exists()).is.false;
+
+    await wrapper.setProps({game: {...wrapper.props('game'), oceans: 9}});
+    expect(wrapper.find('[data-test="global-oceans"]').classes()).contains('mobile-global--done');
+    expect(wrapper.find('[data-test="global-oceans"] [data-test="global-done"]').exists()).is.true;
+    expect(wrapper.find('[data-test="global-oxygen"]').classes()).does.not.contain('mobile-global--done');
   });
 
   it('shows Venus only when the expansion is on', () => {
     const venus = mount(true).vm.globalParameters.find((p) => p.key === 'venus');
-    expect(venus).deep.include({value: '12%', passed: 6, total: 15});
+    expect(venus).deep.include({value: '12', goal: '30%', passed: 6, total: 15});
     expect(mount(false).vm.globalParameters.map((p) => p.key)).does.not.contain('venus');
   });
 

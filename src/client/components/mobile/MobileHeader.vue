@@ -25,6 +25,7 @@
         v-for="parameter in globalParameters"
         :key="parameter.key"
         class="mobile-global"
+        :class="{'mobile-global--done': parameter.passed >= parameter.total}"
         :data-test="'global-' + parameter.key">
         <svg class="mobile-ring" width="28" height="28" viewBox="0 0 32 32" role="img" :aria-label="parameter.passed + '/' + parameter.total">
           <circle class="mobile-ring-track" cx="16" cy="16" r="14"/>
@@ -36,9 +37,11 @@
             :stroke-dasharray="ringLength"
             :stroke-dashoffset="ringLength * (1 - parameter.passed / parameter.total)"
             transform="rotate(-90 16 16)"/>
+          <!-- At its maximum: a tick in the ring, so a finished parameter is told apart at a glance. -->
+          <path v-if="parameter.passed >= parameter.total" class="mobile-ring-check" d="M10 16.5l4 4 8-9" data-test="global-done"/>
         </svg>
         <div class="mobile-stat">
-          <span class="mobile-stat-value">{{ parameter.value }}</span>
+          <span class="mobile-stat-value" :data-test="'global-value-' + parameter.key">{{ parameter.value }}<span class="mobile-stat-goal">/{{ parameter.goal }}</span></span>
           <span class="mobile-stat-label">{{ $t(parameter.label) }}</span>
         </div>
       </div>
@@ -83,16 +86,18 @@ import {Resource} from '@/common/Resource';
  * The shell's header: whose turn it is, how far Mars has come, what the player has,
  * and which tags they hold.
  *
- * Each global parameter is a ring of the steps it has left to go, with its value
- * beside it, so how close the game is to ending is read at a glance rather than
- * worked out from current-over-maximum. The ring carries no number of its own: the
- * value beside it already says it.
+ * Each global parameter is a ring of the steps it has left to go, with its value and
+ * its goal beside it -- `-4°/+8°`, `9/14%`, `5/9` -- so how close the game is to
+ * ending is read at a glance. A parameter at its goal turns its ring green with a
+ * tick in it.
  */
 
 type GlobalParameter = {
   key: string;
   label: string;
   value: string;
+  /** The value it ends at, written the way `value` is. */
+  goal: string;
   /** Steps taken from the parameter's starting value. */
   passed: number;
   /** Steps from its start to its maximum. */
@@ -155,6 +160,7 @@ export default defineComponent({
           key: 'temperature',
           label: 'Temp',
           value: this.signed(game.temperature) + '°',
+          goal: this.signed(constants.MAX_TEMPERATURE) + '°',
           // The temperature moves in steps of two degrees.
           passed: (game.temperature - constants.MIN_TEMPERATURE) / 2,
           total: (constants.MAX_TEMPERATURE - constants.MIN_TEMPERATURE) / 2,
@@ -162,14 +168,16 @@ export default defineComponent({
         {
           key: 'oxygen',
           label: 'Oxygen',
-          value: game.oxygenLevel + '%',
+          value: String(game.oxygenLevel),
+          goal: constants.MAX_OXYGEN_LEVEL + '%',
           passed: game.oxygenLevel - constants.MIN_OXYGEN_LEVEL,
           total: constants.MAX_OXYGEN_LEVEL - constants.MIN_OXYGEN_LEVEL,
         },
         {
           key: 'oceans',
           label: 'Oceans',
-          value: game.oceans + '/' + constants.MAX_OCEAN_TILES,
+          value: String(game.oceans),
+          goal: String(constants.MAX_OCEAN_TILES),
           passed: game.oceans,
           total: constants.MAX_OCEAN_TILES,
         },
@@ -178,7 +186,8 @@ export default defineComponent({
         parameters.push({
           key: 'venus',
           label: 'Venus',
-          value: game.venusScaleLevel + '%',
+          value: String(game.venusScaleLevel),
+          goal: constants.MAX_VENUS_SCALE + '%',
           // Venus moves in steps of two percent.
           passed: (game.venusScaleLevel - constants.MIN_VENUS_SCALE) / 2,
           total: (constants.MAX_VENUS_SCALE - constants.MIN_VENUS_SCALE) / 2,
