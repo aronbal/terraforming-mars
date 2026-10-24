@@ -242,11 +242,9 @@ import {Color} from '@/common/Color';
 import {CardType} from '@/common/cards/CardType';
 import {getCard} from '@/client/cards/ClientCardManifest';
 import {GlobalParameter} from '@/common/GlobalParameter';
-import {$t, translateTextWithParams, translateMessage} from '@/client/directives/i18n';
-import {Message} from '@/common/logs/Message';
-import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
+import {$t} from '@/client/directives/i18n';
 import {MADetail} from '@/common/game/VictoryPointsBreakdown';
-import {AwardName} from '@/common/ma/AwardName';
+import {translateAwardDetails, translateMilestoneDetails} from '@/client/components/gameend/maDetails';
 
 function getViewModel(playerView: ViewModel | undefined, spectator: ViewModel | undefined): ViewModel {
   if (playerView !== undefined) {
@@ -429,39 +427,10 @@ export default defineComponent({
       return corporationCards.length === 0 ? [''] : corporationCards;
     },
     translateMilestoneDetails(data: MADetail): string {
-      const args = (data.messageArgs || []).map($t);
-      return translateTextWithParams(data.message, args);
+      return translateMilestoneDetails(data);
     },
     translateAwardDetails(data: MADetail): string {
-      if ( ! data.messageArgs || data.messageArgs.length < 3) {
-        console.error( // data.message: ${0} place for ${1} award (funded by ${2})
-          `Award detail has not enought data.
-          It must contain at least 3 arguments:
-          1) a Player's place in the race for the award
-          2) translatable Award name
-          3) not translatable Player name
-          `,
-        );
-        return this.translateMilestoneDetails(data);
-      }
-      const message: Message = {
-        message: data.message,
-        data: [
-          {
-            type: LogMessageDataType.STRING,
-            value: data.messageArgs[0],
-          },
-          {
-            type: LogMessageDataType.AWARD,
-            value: data.messageArgs[1] as AwardName,
-          },
-          {
-            type: LogMessageDataType.PLAYER,
-            value: data.messageArgs[2] as Color,
-          },
-        ],
-      };
-      return translateMessage(message);
+      return translateAwardDetails(data);
     },
   },
 });
