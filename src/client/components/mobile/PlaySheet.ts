@@ -1,8 +1,16 @@
 import {CardName} from '@/common/cards/CardName';
+import {CardModel} from '@/common/models/CardModel';
 import {InputResponse} from '@/common/inputs/InputResponse';
 import {Payment} from '@/common/inputs/Payment';
 import {PlayerInputModel, SelectCardModel, SelectProjectCardToPlayModel} from '@/common/models/PlayerInputModel';
+import {PublicPlayerModel} from '@/common/models/PlayerModel';
+import {SpendableResource} from '@/common/inputs/Spendable';
+import {Units} from '@/common/Units';
 import {CardOffer, offerFor} from '@/client/utils/cardSelection';
+import {computeDefaultPayment} from '@/client/components/PaymentDefaults';
+import {newDefaultLedger} from '@/client/components/PaymentLedger';
+import {projectCardPaymentOrder, projectCardTitaniumRate, unitsAfterReserve} from '@/client/components/ProjectCardPayment';
+import {getCard} from '@/client/cards/ClientCardManifest';
 
 /**
  * The input that offers a card to the play sheet, and where it sits in the input the
@@ -77,4 +85,45 @@ export function playSheetResponse(entry: PlaySheetEntry, name: CardName, payment
     response = {type: 'card', cards: [name]};
   }
   return entry.index === undefined ? response : {type: 'or', index: entry.index, response};
+}
+
+/** One part of a price: so many of one unit. */
+export type PricePart = {
+  unit: SpendableResource;
+  amount: number;
+};
+
+// The units a price preview spends: the ones a player keeps in stock to pay with.
+const PREVIEW_UNITS: ReadonlyArray<SpendableResource> = ['steel', 'titanium', 'megacredits'];
+
+/**
+ * What playing `card` from `input` would cost, split the way the play sheet first
+ * offers it: steel and titanium where the card takes them, M€ for the rest.
+ *
+ * A preview only. The rarer units -- heat for Helion, microbes, floaters -- are left
+ * to the play sheet, which is where a payment is actually made.
+ */
+export function pricePreview(input: SelectProjectCardToPlayModel, card: CardModel, thisPlayer: PublicPlayerModel): ReadonlyArray<PricePart> {
+  const cost = card.calculatedCost ?? getCard(card.name)?.cost ?? 0;
+  const tags = getCard(card.name)?.tags ?? [];
+  const context = {card, tags, playerinput: input, thisPlayer};
+  const order = projectCardPaymentOrder(context).filter((unit) => PREVIEW_UNITS.includes(unit));
+  const available = unitsAfterReserve(thisPlayer, thisPlayer.heat, card.reserveUnits ?? Units.EMPTY);
+
+  const ledger = newDefaultLedger();
+  ledger.megacredits = {available: thisPlayer.megacredits, rate: 1};
+  ledger.steel = {available: available.steel, rate: thisPlayer.steelValue};
+  ledger.titanium = {available: available.titanium, rate: projectCardTitaniumRate(context)};
+
+  const payment = computeDefaultPayment(cost, order, ledger, /* reserveMegacredits= */ false);
+  const covered = order.reduce((total, unit) => total + payment[unit] * ledger[unit].rate, 0);
+  if (covered < cost) {
+    // The rest comes from a unit the preview leaves out, so the plain price is the honest one.
+    return [{unit: 'megacredits', amount: cost}];
+  }
+  const parts = order
+    .map((unit) => ({unit, amount: payment[unit]}))
+    .filter((part) => part.amount > 0);
+  // A free card is still a price: nothing to pay is worth saying.
+  return parts.length > 0 ? parts : [{unit: 'megacredits', amount: 0}];
 }

@@ -38,11 +38,6 @@
         <button class="mobile-button mobile-confirm-back" @click="$emit('showActions')" v-i18n>Actions</button>
       </div>
     </div>
-
-    <button class="mobile-below-handle" data-test="below-handle" @click="$emit('toggleBelow')">
-      <span v-i18n>Milestones &amp; awards</span>
-      <span class="mobile-below-handle-chevron">{{ belowOpen ? '&#9650;' : '&#9660;' }}</span>
-    </button>
   </div>
 </template>
 
@@ -120,12 +115,8 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    belowOpen: {
-      type: Boolean,
-      required: true,
-    },
   },
-  emits: ['toggleTileView', 'toggleBelow', 'showActions'],
+  emits: ['toggleTileView', 'showActions'],
   components: {
     Board,
   },

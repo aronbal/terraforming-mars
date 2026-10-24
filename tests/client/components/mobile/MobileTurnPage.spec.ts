@@ -48,8 +48,23 @@ describe('MobileTurnPage', () => {
     const wrapper = mount(fullMenu());
     const cards = wrapper.findAll('[data-test="ready-card"]');
     expect(cards).has.length(2);
-    expect(cards[0].text()).contains('Play · 9 M€');
+    expect(cards[0].find('[data-test="ready-price"]').text()).contains('9');
     expect(cards[1].text()).contains('Use');
+  });
+
+  /* Steel goes towards a building card, so the M€ alone would overstate the price. */
+  it('prices a card in the units it would be paid with', () => {
+    const wrapper = mount(menu(projectCard(CardName.MINE)), {megacredits: 20, steel: 2});
+    expect(wrapper.vm.priceOf(wrapper.vm.ready[0])).deep.eq([
+      {unit: 'steel', amount: 2},
+      {unit: 'megacredits', amount: 5},
+    ]);
+    expect(wrapper.find('[data-test="ready-price"] .resource_icon--steel').exists()).is.true;
+  });
+
+  it('prices a card no stock can pay for in M€ alone', () => {
+    const wrapper = mount(menu(projectCard(CardName.ANTS)), {megacredits: 20, steel: 2, titanium: 2});
+    expect(wrapper.vm.priceOf(wrapper.vm.ready[0])).deep.eq([{unit: 'megacredits', amount: 9}]);
   });
 
   it('selects a ready card on tap', async () => {

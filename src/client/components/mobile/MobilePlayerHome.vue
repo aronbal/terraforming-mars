@@ -1,5 +1,5 @@
 <template>
-  <div id="mobile-shell" :style="shellStyle">
+  <div id="mobile-shell">
     <MobileHeader
       :game="game"
       :player="thisPlayer"
@@ -8,7 +8,9 @@
       :turnLabel="turnLabel"
       :showTagRow="tagRowVisible"
       :tagRowOpen="tagRowOpen"
+      :canOpenSheet="sheetInUse && snap === 'closed'"
       @update:view="selectView($event)"
+      @openSheet="setSnap('half')"
       @openPlayers="overlay = 'players'"
       @openMenu="overlay = 'menu'"
       @toggleTagRow="toggleTagRow()"/>
@@ -42,9 +44,7 @@
           :game="game"
           :tileView="tileView"
           :tapTargets="tapTargets"
-          :belowOpen="belowOpen"
           @toggleTileView="cycleTileView()"
-          @toggleBelow="toggleBelow()"
           @showActions="setSnap('half')"/>
 
         <div class="mobile-below" ref="below">
@@ -114,7 +114,7 @@
           @loadEarlier="loadEarlierLog()"/>
       </section>
 
-      <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('peek')"></div>
+      <div v-show="scrimVisible" class="mobile-scrim" data-test="sheet-scrim" @click="setSnap('closed')"></div>
 
       <!-- The card or tile being acted on, over a faded board. The panel below it is
            then only the price and the button. -->
@@ -198,11 +198,11 @@ import {GameModel} from '@/common/models/GameModel';
 import {HomeMixin} from '@/client/mixins/HomeMixin';
 import {LogEvent, LogPlayer, fetchGenerationLog, isEventLine, sinceLastTurn, toEvent} from '@/client/components/mobile/MobileLog';
 import {LogMessage} from '@/common/logs/LogMessage';
-import {MobileView, SHEET_PEEK_PX, SheetSnap} from '@/client/components/mobile/MobileView';
+import {MobileView, SheetSnap} from '@/client/components/mobile/MobileView';
 import {Phase} from '@/common/Phase';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
-import {ReadyCard, isActionMenu, readyCards} from '@/client/components/mobile/MobileActionMenu';
+import {ReadyCard, asksForCards, isActionMenu, readyCards} from '@/client/components/mobile/MobileActionMenu';
 import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
@@ -214,7 +214,6 @@ type Overlay = 'players' | 'menu';
 type DataModel = {
   view: MobileView;
   snap: SheetSnap;
-  belowOpen: boolean;
   /** Set when the player opens or closes the tag row by hand, until the next view change. */
   tagRowOverride: boolean | undefined;
   preferences: Preferences;
@@ -273,7 +272,6 @@ export default defineComponent({
     return {
       view: 'turn',
       snap: 'closed',
-      belowOpen: false,
       tagRowOverride: undefined,
       preferences: {...getPreferences()},
       selected: undefined,
@@ -295,29 +293,31 @@ export default defineComponent({
     cardScale(): number {
       return this.preferences.card_scale;
     },
-    /*
-     * The sheet's peek handle floats over the bottom of whichever pane is open, so
-     * while it shows every pane leaves that much room free. Without it the last row
-     * of a pane sits under the handle, out of reach.
-     */
-    shellStyle(): Record<string, string> {
-      return {'--mobile-pane-gap': (this.sheetInUse ? SHEET_PEEK_PX : 0) + 'px'};
-    },
     tapTargets(): boolean {
       return this.preferences.mobile_tap_targets;
     },
     /* The tags are what card requirements are judged against, so by default they
-       show where the hand is: on the Cards view. */
+       show wherever cards are being weighed: on the Cards view, and while a draft or
+       a purchase asks which cards to take. */
     tagRowVisible(): boolean {
       const mode = this.preferences.tag_row;
-      return mode === 'always' || (mode === 'auto' && this.view === 'cards');
+      return mode === 'always' || (mode === 'auto' && (this.view === 'cards' || this.choosingCards));
     },
-    /** Open on the Cards view, where card requirements are judged, unless overridden. */
+    /** Open wherever card requirements are judged, unless overridden. */
     tagRowOpen(): boolean {
       if (this.tagRowOverride !== undefined) {
         return this.tagRowOverride;
       }
-      return this.preferences.tag_row === 'always' || this.view === 'cards';
+      return this.preferences.tag_row === 'always' || this.view === 'cards' || this.choosingCards;
+    },
+    /*
+     * Whether the sheet is asking which cards to keep or buy: a draft, the research
+     * phase, a card's own pick. Whether a card needing three science tags is worth
+     * taking turns on the tags already in play, so they belong beside the question.
+     */
+    choosingCards(): boolean {
+      const waitingFor = this.playerView.waitingFor;
+      return this.sheetInUse && !isActionMenu(waitingFor) && asksForCards(waitingFor);
     },
     actionWaiting(): boolean {
       const waitingFor = this.playerView.waitingFor;
@@ -432,7 +432,7 @@ export default defineComponent({
         this.scrollBoardPaneTo(0);
         this.setSnap('closed');
       } else {
-        this.setSnap(this.sheetInUse ? 'peek' : 'closed');
+        this.setSnap(this.sheetInUse ? 'half' : 'closed');
       }
     },
     // Something happened in the game, so the log has something new to say.
@@ -443,7 +443,7 @@ export default defineComponent({
   methods: {
     selectView(view: MobileView): void {
       if (this.snap === 'full') {
-        this.setSnap('peek');
+        this.setSnap('closed');
       }
       this.view = view;
       this.tagRowOverride = undefined;
@@ -454,7 +454,7 @@ export default defineComponent({
          page, on the board or in the hand is still shown as chosen. */
       if (pickFocused.value && snap !== 'half' && snap !== 'full') {
         this.forgetPick();
-        this.snap = this.sheetInUse ? 'peek' : 'closed';
+        this.snap = 'closed';
       }
     },
     /** A tap on a ready card selects it; a second tap on the same card lets go. */
@@ -528,21 +528,6 @@ export default defineComponent({
       if (pane !== undefined) {
         pane.scrollTop = top;
       }
-      this.belowOpen = top > 0;
-    },
-    /*
-     * Scrolls between the board and what sits under it.
-     *
-     * The board viewport takes `touch-action: none` for pinch and pan, so dragging on
-     * the map cannot scroll the column. The header is the handle that does.
-     */
-    toggleBelow(): void {
-      const pane = this.$refs.boardPane as HTMLElement | undefined;
-      const below = this.$refs.below as HTMLElement | undefined;
-      if (pane === undefined || below === undefined) {
-        return;
-      }
-      this.scrollBoardPaneTo(pane.scrollTop > 8 ? 0 : below.offsetTop);
     },
     refreshPreferences(): void {
       this.preferences = {...getPreferences()};
