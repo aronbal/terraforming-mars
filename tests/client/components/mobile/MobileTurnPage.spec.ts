@@ -96,9 +96,17 @@ describe('MobileTurnPage', () => {
     expect(mount(fullMenu()).vm.tiles.find((tile) => tile.key === 'board')?.subtitle).eq('Award from 8 M€');
   });
 
-  it('a tile opens the entry it stands for', async () => {
+  it('a tile opens the sheet for what it stands for', async () => {
     const wrapper = mount(fullMenu());
     await wrapper.find('[data-test="tile-heat"]').trigger('click');
+    await wrapper.find('[data-test="tile-projects"]').trigger('click');
+    expect(wrapper.emitted('confirm')).deep.eq([['convertHeat']]);
+    expect(wrapper.emitted('openProjects')).has.length(1);
+  });
+
+  it('greenery opens its entry, which goes straight to the map', async () => {
+    const wrapper = mount(menu({type: 'space', title: 'Convert 8 plants into greenery', buttonLabel: 'Save', annotation: 'convertPlants', spaces: []} as never));
+    await wrapper.find('[data-test="tile-greenery"]').trigger('click');
     expect(wrapper.emitted('openEntry')).deep.eq([[0]]);
   });
 
@@ -108,11 +116,12 @@ describe('MobileTurnPage', () => {
     expect(wrapper.emitted('openMilestones')).has.length(1);
   });
 
-  it('passing and selling patents are buttons for their entries', async () => {
+  it('passing is a button for its entry, and selling patents opens the card chooser', async () => {
     const wrapper = mount(fullMenu());
     await wrapper.find('[data-test="pass"]').trigger('click');
     await wrapper.find('[data-test="sell-patents"]').trigger('click');
-    expect(wrapper.emitted('openEntry')).deep.eq([[5], [6]]);
+    expect(wrapper.emitted('openEntry')).deep.eq([[5]]);
+    expect(wrapper.emitted('openChooser')).deep.eq([[6]]);
     expect(wrapper.find('[data-test="end-turn"]').exists()).is.false;
   });
 

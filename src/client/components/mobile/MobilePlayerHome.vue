@@ -6,7 +6,7 @@
       :yourTurn="actionWaiting"
       :turnLabel="turnLabel"
       :showTagRow="tagRowVisible"
-      :canOpenSheet="sheetInUse && snap === 'closed'"
+      :canOpenSheet="sheetInUse && snap === 'closed' && choosing === undefined"
       @openSheet="raiseSheet()"
       @openPlayers="overlay = 'players'"
       @openMenu="overlay = 'menu'"/>
@@ -22,11 +22,15 @@
           :recent="recentEvents"
           :players="logPlayers"
           :now="now"
-          :sheetOpen="snap !== 'closed'"
+          :sheetOpen="snap !== 'closed' || choosing !== undefined"
           @select="select($event)"
           @openEntry="openEntry($event)"
           @openSheet="raiseSheet()"
           @openMilestones="openMilestones()"
+          @openProjects="openProjects()"
+          @openTrade="openTrade()"
+          @openChooser="openChooser($event)"
+          @confirm="confirming = $event"
           @showView="selectView($event)"
           @inspect="magnifiedLine = $event"/>
       </section>
@@ -139,7 +143,9 @@
       :card="playing.card.name"
       :offer="playing.offer"
       :position="playingIndex"
-      :count="ready.length"
+      :count="playList.length"
+      :choices="playSet === 'projects' ? playList.map((item) => item.card.name) : []"
+      @choose="choose($event)"
       @next="turnCard(1)"
       @previous="turnCard(-1)"
       @close="playing = undefined"/>
@@ -156,6 +162,34 @@
       @next="turnClaim(1)"
       @previous="turnClaim(-1)"
       @close="claiming = undefined"/>
+
+    <!-- A colony, held up with the fee to pay and the one button that trades with it. -->
+    <MobileTradeSheet
+      v-if="trading !== undefined"
+      :playerView="playerView"
+      :name="trading"
+      :position="tradingIndex"
+      :count="tradeableColonies.length"
+      @next="turnTrade(1)"
+      @previous="turnTrade(-1)"
+      @close="trading = undefined"/>
+
+    <!-- An action with nothing to choose -- converting heat -- and its one button. -->
+    <MobileConfirmSheet
+      v-if="confirming !== undefined"
+      :playerView="playerView"
+      :annotation="confirming"
+      icon="thermometer"
+      tone="warn"
+      @close="confirming = undefined"/>
+
+    <!-- A pick among cards: the draft, the cards to buy, the patents to sell. -->
+    <MobileCardChooser
+      v-if="choosing !== undefined"
+      :key="String(choosing.entry)"
+      :playerView="playerView"
+      :entry="choosing.entry"
+      @close="choosing = undefined"/>
 
     <MobileLogCards
       v-if="magnifiedLine !== undefined"
@@ -186,7 +220,9 @@ import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue'
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue';
 import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
+import MobileConfirmSheet from '@/client/components/mobile/MobileConfirmSheet.vue';
 import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileLogCards from '@/client/components/mobile/MobileLogCards.vue';
@@ -195,6 +231,7 @@ import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
 import MobilePlaySheet from '@/client/components/mobile/MobilePlaySheet.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
+import MobileTradeSheet from '@/client/components/mobile/MobileTradeSheet.vue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
@@ -210,9 +247,12 @@ import {MobileView, SheetSnap} from '@/client/components/mobile/MobileView';
 import {Phase} from '@/common/Phase';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
-import {ReadyCard, asksForCards, isActionMenu, readyCards} from '@/client/components/mobile/MobileActionMenu';
+import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
+import {isCardChoice} from '@/client/components/mobile/CardChooser';
+import {ActionAnnotation} from '@/common/input/Annotation';
+import {ColonyName} from '@/common/colonies/ColonyName';
 import {clearPickedCard} from '@/client/utils/cardSelection';
-import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
+import {BoardThing, boardNamesIn, clearBoardPick} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {readViewport, standaloneGap} from '@/client/utils/standaloneHeight';
@@ -222,6 +262,8 @@ type Overlay = 'players' | 'menu';
 
 type Claimable = {kind: 'milestone' | 'award', name: string};
 
+type PlaySet = 'ready' | 'projects';
+
 type DataModel = {
   view: MobileView;
   snap: SheetSnap;
@@ -230,6 +272,14 @@ type DataModel = {
   magnifiedLine: LogEvent | undefined;
   /** The card being paid for and played, or used, in the play sheet. */
   playing: ReadyCard | undefined;
+  /** What a swipe in the play sheet moves through: the ready cards, or the standard projects. */
+  playSet: PlaySet;
+  /** The colony in the trade sheet. */
+  trading: ColonyName | undefined;
+  /** The menu entry in the confirmation sheet. */
+  confirming: ActionAnnotation | undefined;
+  /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
+  choosing: {entry: number | undefined} | undefined;
   /** The milestone or award in the claim sheet. */
   claiming: Claimable | undefined;
   overlay: Overlay | undefined;
@@ -268,7 +318,9 @@ export default defineComponent({
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
+    MobileCardChooser,
     MobileClaimSheet,
+    MobileConfirmSheet,
     MobileFocusStage,
     MobileHeader,
     MobileLogCards,
@@ -277,6 +329,7 @@ export default defineComponent({
     MobileOverlay,
     MobilePlaySheet,
     MobileTabBar,
+    MobileTradeSheet,
     MobileTurnPage,
     MoonBoard,
     PlanetaryTracks,
@@ -290,6 +343,10 @@ export default defineComponent({
       preferences: {...getPreferences()},
       magnifiedLine: undefined,
       playing: undefined,
+      playSet: 'ready',
+      trading: undefined,
+      confirming: undefined,
+      choosing: undefined,
       claiming: undefined,
       overlay: undefined,
       logs: {},
@@ -384,10 +441,22 @@ export default defineComponent({
       const claiming = this.claiming;
       return Math.max(0, this.claimables.findIndex((each) => each.kind === claiming?.kind && each.name === claiming?.name));
     },
-    /** Where the card in the play sheet sits among the ready cards. */
+    /** The cards a swipe in the play sheet moves through. */
+    playList(): ReadonlyArray<ReadyCard> {
+      if (this.playSet === 'projects') {
+        const waitingFor = this.playerView.waitingFor;
+        return standardProjects(isActionMenu(waitingFor) ? waitingFor : undefined);
+      }
+      return this.ready;
+    },
+    /** Where the card in the play sheet sits among them. */
     playingIndex(): number {
       const name = this.playing?.card.name;
-      return Math.max(0, this.ready.findIndex((item) => item.card.name === name));
+      return Math.max(0, this.playList.findIndex((item) => item.card.name === name));
+    },
+    tradingIndex(): number {
+      const trading = this.trading;
+      return trading === undefined ? 0 : Math.max(0, this.tradeableColonies.indexOf(trading));
     },
     /** The milestones the turn's menu offers, which are the ones worth tapping. */
     claimableMilestones(): ReadonlyArray<string> {
@@ -396,8 +465,8 @@ export default defineComponent({
     fundableAwards(): ReadonlyArray<string> {
       return boardNamesIn(this.playerView.waitingFor, 'award');
     },
-    tradeableColonies(): ReadonlyArray<string> {
-      return boardNamesIn(this.playerView.waitingFor, 'colony');
+    tradeableColonies(): ReadonlyArray<ColonyName> {
+      return boardNamesIn(this.playerView.waitingFor, 'colony') as ReadonlyArray<ColonyName>;
     },
     scrimVisible(): boolean {
       return this.panelMode === 'sheet' && this.snap === 'full';
@@ -449,6 +518,9 @@ export default defineComponent({
       this.forgetPick();
       this.playing = undefined;
       this.claiming = undefined;
+      this.trading = undefined;
+      this.confirming = undefined;
+      this.choosing = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -494,6 +566,12 @@ export default defineComponent({
     /* A choice between cards needs every card on screen; anything else leaves the
        board readable above it. */
     raiseSheet(): void {
+      // A plain pick among cards has a sheet of its own, a card at a time.
+      if (isCardChoice(this.playerView.waitingFor)) {
+        this.setSnap('closed');
+        this.choosing = {entry: undefined};
+        return;
+      }
       this.setSnap(this.choosingCards ? 'full' : 'half');
     },
     /*
@@ -509,15 +587,54 @@ export default defineComponent({
         return;
       }
       this.forgetPick();
+      this.playSet = 'ready';
       this.playing = item;
     },
-    /** Swiping in the play sheet: the next or previous ready card, round and round. */
+    /* The turn page's tile: the play sheet with every standard project the player can
+       pay for side by side, the first one picked. */
+    openProjects(): void {
+      this.playSet = 'projects';
+      const first = this.playList[0];
+      if (first !== undefined) {
+        this.forgetPick();
+        this.playing = first;
+      }
+    },
+    /** A tap on one of the cards the play sheet shows side by side. */
+    choose(name: CardName): void {
+      const item = this.playList.find((each) => each.card.name === name);
+      if (item !== undefined) {
+        this.playing = item;
+      }
+    },
+    /** Swiping in the play sheet: the next or previous card, round and round. */
     turnCard(step: number): void {
-      const count = this.ready.length;
+      const count = this.playList.length;
       if (this.playing === undefined || count < 2) {
         return;
       }
-      this.playing = this.ready[(this.playingIndex + step + count) % count];
+      this.playing = this.playList[(this.playingIndex + step + count) % count];
+    },
+    /* The turn page's tile: the trade sheet at the first colony on offer. */
+    openTrade(): void {
+      const first = this.tradeableColonies[0];
+      if (first !== undefined) {
+        this.forgetPick();
+        this.trading = first;
+      }
+    },
+    /** Swiping in the trade sheet: the next or previous colony, round and round. */
+    turnTrade(step: number): void {
+      const count = this.tradeableColonies.length;
+      if (this.trading === undefined || count < 2) {
+        return;
+      }
+      this.trading = this.tradeableColonies[(this.tradingIndex + step + count) % count];
+    },
+    /** A menu entry that is a pick among cards -- selling patents -- in the card chooser. */
+    openChooser(entry: number): void {
+      this.forgetPick();
+      this.choosing = {entry};
     },
     /** A tile or a button on the turn page: the entry it stands for, opened in the sheet. */
     openEntry(index: number): void {
@@ -554,12 +671,9 @@ export default defineComponent({
         this.claiming = {kind, name};
         return;
       }
-      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
-         is nothing to hold up over the board and the panel needs the whole screen. */
-      clearPickedCard();
-      clearPickedEntry();
-      pickBoardThing(kind, name);
-      this.openPick('panel', 'full');
+      // A colony opens in the trade sheet, the fee alongside it.
+      this.forgetPick();
+      this.trading = name as ColonyName;
     },
     /** Swiping in the claim sheet: the next or previous one on offer, round and round. */
     turnClaim(step: number): void {

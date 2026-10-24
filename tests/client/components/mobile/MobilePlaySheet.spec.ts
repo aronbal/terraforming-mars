@@ -133,6 +133,43 @@ describe('MobilePlaySheet', () => {
     expect(posted).is.empty;
   });
 
+  it('builds a standard project, under its printed name', async () => {
+    const projects = {...projectCard(CardName.POWER_PLANT_STANDARD_PROJECT, 11), annotation: 'standardProject'} as PlayerInputModel;
+    const wrapper = render(view(menu(pass, projects), {megacredits: 20}), CardName.POWER_PLANT_STANDARD_PROJECT, 'play');
+    await flushPromises();
+
+    expect(wrapper.find('.mobile-play-sheet-title').text()).eq('Power Plant');
+    expect(wrapper.find('[data-test=play-sheet-submit]').text()).eq('Build · 11 M€');
+    await wrapper.find('[data-test=play-sheet-submit]').trigger('click');
+    await flushPromises();
+    expect(posted[0].body).deep.include({
+      type: 'or',
+      index: 1,
+      response: {type: 'projectCard', card: CardName.POWER_PLANT_STANDARD_PROJECT, payment: {...Payment.EMPTY, megacredits: 11}},
+    });
+  });
+
+  it('shows several choices side by side, the one being paid for picked out', async () => {
+    const projects = {...projectCard(CardName.POWER_PLANT_STANDARD_PROJECT, 11), annotation: 'standardProject'} as PlayerInputModel;
+    (projects as unknown as {cards: Array<unknown>}).cards.push({name: CardName.ASTEROID_STANDARD_PROJECT, calculatedCost: 14});
+    const wrapper = mount(MobilePlaySheet, {
+      ...globalConfig,
+      props: {
+        playerView: view(menu(pass, projects), {megacredits: 20}),
+        card: CardName.POWER_PLANT_STANDARD_PROJECT,
+        offer: 'play',
+        choices: [CardName.POWER_PLANT_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT],
+      },
+    });
+    await flushPromises();
+    const choices = wrapper.findAll('[data-test=play-sheet-choice]');
+    expect(choices).has.length(2);
+    expect(choices[0].attributes('aria-pressed')).eq('true');
+    expect(wrapper.find('[data-test=play-sheet-card]').exists()).is.false;
+    await choices[1].trigger('click');
+    expect(wrapper.emitted('choose')).deep.eq([[CardName.ASTEROID_STANDARD_PROJECT]]);
+  });
+
   it('plays the card with the answer the desktop menu sends', async () => {
     const wrapper = deflection({megacredits: 10, steel: 3, titanium: 2});
     await flushPromises();

@@ -8,8 +8,9 @@ import {
   otherEntries,
   pickedEntryIn,
   readyCards,
+  standardProjects,
 } from '@/client/components/mobile/MobileActionMenu';
-import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures';
+import {cardList, menu, namedChoices, option, projectCard, standardProjects as standardProjectEntry} from './menuFixtures';
 
 describe('MobileActionMenu', () => {
   describe('isActionMenu', () => {
@@ -133,6 +134,19 @@ describe('MobileActionMenu', () => {
 
     it('is undefined for a card without an action', () => {
       expect(actionTextOf(CardName.COMET)).is.undefined;
+    });
+  });
+
+  describe('standardProjects', () => {
+    it('lists the standard projects the turn can pay for, in order', () => {
+      const projects = standardProjectEntry(CardName.POWER_PLANT_STANDARD_PROJECT, CardName.CITY_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT);
+      (projects as unknown as {cards: Array<{isDisabled?: boolean}>}).cards[1].isDisabled = true;
+      const names = standardProjects(menu(projectCard(CardName.ANTS), projects)).map((item) => item.card.name);
+      expect(names).deep.eq([CardName.POWER_PLANT_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT]);
+    });
+
+    it('is empty without the menu', () => {
+      expect(standardProjects(undefined)).is.empty;
     });
   });
 });

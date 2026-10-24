@@ -11,7 +11,7 @@ import {pickedCard, resetPickedCardForTest} from '@/client/utils/cardSelection';
 import {pickedBoardThing, resetBoardPickForTest} from '@/client/utils/boardSelection';
 import {pickFocus, pickedEntry, resetPickFocusForTest} from '@/client/utils/mobileFocus';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
-import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures';
+import {cardChoice, cardList, menu, namedChoices, option, projectCard, standardProjects, trade} from './menuFixtures';
 
 describe('MobilePlayerHome', () => {
   let localStorage: FakeLocalStorage;
@@ -193,21 +193,75 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.claiming).deep.eq({kind: 'award', name: 'Banker'});
   });
 
-  it('a colony tile still opens its trade in the panel', () => {
-    const wrapper = mount(actionMenu());
-    wrapper.vm.claimBoardThing('colony', 'Luna');
-    expect(pickedBoardThing.value).deep.eq({kind: 'colony', name: 'Luna'});
-    expect(pickFocus.value).eq('panel');
+  /* The menu with three colonies to trade with. */
+  function tradeMenu(): PlayerInputModel {
+    return menu(option('Pass for this generation', 'pass'), trade(['Luna', 'Io', 'Europa']));
+  }
+
+  it('a colony tile tapped under the board opens in the trade sheet, with nothing picked for the panel', () => {
+    const wrapper = mount(tradeMenu());
+    wrapper.vm.claimBoardThing('colony', 'Io');
+    expect(wrapper.vm.trading).eq('Io');
+    expect(pickedBoardThing.value).is.undefined;
+    expect(pickFocus.value).eq('none');
   });
 
-  /* Only one thing is being acted on at a time, and the menu entry that opens is
-     chosen by what was picked last. */
-  it('a colony tile and an entry never stay picked at once', () => {
-    const wrapper = mount(actionMenu());
-    wrapper.vm.claimBoardThing('colony', 'Luna');
-    wrapper.vm.openEntry(0);
-    expect(pickedBoardThing.value).is.undefined;
-    expect(pickedEntry.value).eq(0);
+  it('Trade opens the first colony on offer, and a swipe goes round them', () => {
+    const wrapper = mount(tradeMenu());
+    wrapper.vm.openTrade();
+    expect(wrapper.vm.trading).eq('Luna');
+    wrapper.vm.turnTrade(-1);
+    expect(wrapper.vm.trading).eq('Europa');
+    wrapper.vm.turnTrade(1);
+    expect(wrapper.vm.trading).eq('Luna');
+  });
+
+  it('Standard projects opens the play sheet at the first one, all of them side by side', async () => {
+    const wrapper = mount(menu(
+      projectCard(CardName.ANTS),
+      standardProjects(CardName.POWER_PLANT_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT)));
+    wrapper.findComponent({name: 'MobileTurnPage'}).vm.$emit('openProjects');
+    expect(wrapper.vm.playing?.card.name).eq(CardName.POWER_PLANT_STANDARD_PROJECT);
+    wrapper.vm.turnCard(1);
+    expect(wrapper.vm.playing?.card.name).eq(CardName.ASTEROID_STANDARD_PROJECT);
+    wrapper.vm.turnCard(1);
+    expect(wrapper.vm.playing?.card.name).eq(CardName.POWER_PLANT_STANDARD_PROJECT);
+
+    await wrapper.vm.$nextTick();
+    const sheet = wrapper.findComponent({name: 'MobilePlaySheet'});
+    expect(sheet.props('choices')).deep.eq([CardName.POWER_PLANT_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT]);
+    sheet.vm.$emit('choose', CardName.ASTEROID_STANDARD_PROJECT);
+    expect(wrapper.vm.playing?.card.name).eq(CardName.ASTEROID_STANDARD_PROJECT);
+
+    // A card tapped afterwards swipes among the ready cards again.
+    wrapper.vm.select(CardName.ANTS);
+    expect(wrapper.vm.playList.map((item) => item.card.name)).deep.eq([CardName.ANTS]);
+  });
+
+  it('the turn page\'s heat tile opens the confirmation sheet', async () => {
+    const wrapper = mount(menu(option('Convert 8 heat into temperature', 'convertHeat')));
+    wrapper.findComponent({name: 'MobileTurnPage'}).vm.$emit('confirm', 'convertHeat');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findComponent({name: 'MobileConfirmSheet'}).props('annotation')).eq('convertHeat');
+  });
+
+  it('selling patents opens the card chooser for its entry', async () => {
+    const wrapper = mount(menu(option('Pass for this generation', 'pass'), cardChoice([CardName.ANTS], {annotation: 'sellPatents'})));
+    wrapper.findComponent({name: 'MobileTurnPage'}).vm.$emit('openChooser', 1);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.choosing).deep.eq({entry: 1});
+    expect(wrapper.findComponent({name: 'MobileCardChooser'}).props('entry')).eq(1);
+  });
+
+  it('a new question puts down every sheet opened for the last one', async () => {
+    const wrapper = mount(tradeMenu());
+    wrapper.vm.openTrade();
+    wrapper.vm.confirming = 'convertHeat';
+    wrapper.vm.choosing = {entry: 1};
+    await wrapper.setProps({playerView: fakePlayerViewModel({waitingFor: actionMenu()} as never)});
+    expect(wrapper.vm.trading).is.undefined;
+    expect(wrapper.vm.confirming).is.undefined;
+    expect(wrapper.vm.choosing).is.undefined;
   });
 
   it('putting the panel down abandons what it was raised for', () => {
@@ -244,9 +298,17 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.view).eq('cards');
   });
 
-  it('raises a choice between cards all the way, so every card is on screen', () => {
-    const draft = cardList('draft', [CardName.ANTS]);
-    const wrapper = mount({...draft, annotation: undefined} as PlayerInputModel);
+  it('puts a plain pick among cards in the card chooser, not the sheet', () => {
+    const wrapper = mount(cardChoice([CardName.ANTS, CardName.BIRDS]));
+    wrapper.vm.choosing = undefined;
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.choosing).deep.eq({entry: undefined});
+    expect(wrapper.vm.snap).eq('closed');
+  });
+
+  it('raises a question with cards inside it all the way, so every card is on screen', () => {
+    const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), option('Skip')]} as PlayerInputModel;
+    const wrapper = mount(nested);
     wrapper.vm.raiseSheet();
     expect(wrapper.vm.snap).eq('full');
 
@@ -258,10 +320,20 @@ describe('MobilePlayerHome', () => {
   /* The shell is drawn afresh after every answer, so a draft pick or the cards to buy
      must be up from the start, not behind the turn page's row. */
   it('opens with a waiting question already up', () => {
-    const draft = cardList('draft', [CardName.ANTS]);
-    expect(mount({...draft, annotation: undefined} as PlayerInputModel).vm.snap).eq('full');
+    expect(mount(cardChoice([CardName.ANTS])).vm.choosing).deep.eq({entry: undefined});
     expect(mount(option('Pay 3 M€?')).vm.snap).eq('half');
-    expect(mount(actionMenu()).vm.snap).eq('closed');
+    const idle = mount(actionMenu());
+    expect(idle.vm.snap).eq('closed');
+    expect(idle.vm.choosing).is.undefined;
+  });
+
+  it('a card chooser put down for a question that must be answered comes back from the header', async () => {
+    const wrapper = mount(cardChoice([CardName.ANTS]));
+    await wrapper.vm.$nextTick();
+    wrapper.findComponent({name: 'MobileCardChooser'}).vm.$emit('close');
+    expect(wrapper.vm.choosing).is.undefined;
+    wrapper.findComponent({name: 'MobileHeader'}).vm.$emit('openSheet');
+    expect(wrapper.vm.choosing).deep.eq({entry: undefined});
   });
 
   it('knows a draft from the menu', () => {
