@@ -1,4 +1,7 @@
 import {computed, ComputedRef, ref, shallowRef} from 'vue';
+import {Color} from '@/common/Color';
+import {TileType} from '@/common/TileType';
+import {SpaceId} from '@/common/Types';
 
 /*
  * Whether the player is being asked to pick a board space.
@@ -27,6 +30,11 @@ export function resetSpaceSelectionForTest(): void {
 
 /** A space tapped on the board, waiting for the player to place on it or think again. */
 export type PendingPlacement = {
+  spaceId: SpaceId;
+  /** The tile it would get, when the server says; the board shows it there, faded. */
+  tileType: TileType | undefined;
+  /** The player placing it, whose cube goes on it. */
+  color: Color;
   confirm: () => void;
   cancel: () => void;
 };

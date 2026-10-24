@@ -5,8 +5,12 @@ import {SelectSpaceModel} from '../../common/models/PlayerInputModel';
 import {BasePlayerInput} from '../PlayerInput';
 import {InputError} from './InputError';
 import {toID} from '../../common/utils/utils';
+import {TileType} from '../../common/TileType';
 
 export class SelectSpace extends BasePlayerInput<Space> {
+  /** The tile the chosen space will get, so the client can show it there before it is placed. */
+  public tileType: TileType | undefined;
+
   constructor(
     title: string | Message,
     public spaces: ReadonlyArray<Space>) {
@@ -16,13 +20,23 @@ export class SelectSpace extends BasePlayerInput<Space> {
     }
   }
 
+  /** Says which tile the chosen space will get. */
+  public placing(tileType: TileType): this {
+    this.tileType = tileType;
+    return this;
+  }
+
   public override toModel(): SelectSpaceModel {
-    return {
+    const model: SelectSpaceModel = {
       title: this.title,
       buttonLabel: this.buttonLabel,
       type: 'space',
       spaces: this.spaces.map(toID),
     };
+    if (this.tileType !== undefined) {
+      model.tileType = this.tileType;
+    }
+    return model;
   }
 
   public process(input: InputResponse) {

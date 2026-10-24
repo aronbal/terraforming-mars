@@ -29,6 +29,7 @@ import {SelectPaymentDeferred} from './deferredActions/SelectPaymentDeferred';
 import {SelectProjectCardToPlay} from './inputs/SelectProjectCardToPlay';
 import {SelectOption} from './inputs/SelectOption';
 import {SelectSpace} from './inputs/SelectSpace';
+import {TileType} from '../common/TileType';
 import {SelfReplicatingRobots} from './cards/promo/SelfReplicatingRobots';
 import {SerializedPlayer} from './SerializedPlayer';
 import {StormCraftIncorporated} from './cards/colonies/StormCraftIncorporated';
@@ -1195,6 +1196,7 @@ export class Player implements IPlayer {
         new SelectSpace(
           'Select space for greenery tile',
           this.game.board.getAvailableSpacesForGreenery(this))
+          .placing(TileType.GREENERY)
           .andThen((space) => {
             // Do not raise oxygen or award TR for final greenery placements
             this.game.addGreenery(this, space, false);
