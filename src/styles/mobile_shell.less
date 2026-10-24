@@ -66,8 +66,9 @@
  * The page behind the shell is painted the shell's own ground.
  *
  * In an iOS home-screen app the fixed shell can stop short of the bottom of the
- * screen, by about the height of the status bar, and the desktop's grey page showed
- * through the gap as a bar under every view.
+ * screen, by the height of the status bar, and the desktop's grey page showed
+ * through the gap as a bar under every view. `standaloneHeight.ts` stretches the
+ * shell back down; this keeps any gap that is left the shell's own colour.
  */
 html:has(> body.mobile-shell-active),
 .mobile-shell-active {
@@ -1877,9 +1878,8 @@ html:has(> body.mobile-shell-active),
 .mobile-tabbar {
   display: flex;
   gap: 4px;
-  /* Lifted clear of the bottom edge: on a phone without a home indicator the tabs
-     would otherwise sit right on it, where the thumb has to reach down to them. */
-  padding: 8px calc(10px + env(safe-area-inset-right)) max(20px, calc(8px + env(safe-area-inset-bottom))) calc(10px + env(safe-area-inset-left));
+  /* Clear of the home indicator, and of the bottom edge on a phone without one. */
+  padding: 8px calc(10px + env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
   background: @m-glass;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);

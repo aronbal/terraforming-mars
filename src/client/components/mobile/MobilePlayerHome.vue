@@ -1,5 +1,5 @@
 <template>
-  <div id="mobile-shell">
+  <div id="mobile-shell" :style="shellStyle">
     <MobileHeader
       :game="game"
       :player="thisPlayer"
@@ -217,6 +217,7 @@ import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick, pickBoardThing} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
+import {readViewport, standaloneShellHeight} from '@/client/utils/standaloneHeight';
 import {selectingSpace} from '@/client/utils/spaceSelection';
 
 type Overlay = 'players' | 'menu';
@@ -239,6 +240,8 @@ type DataModel = {
   logLoading: boolean;
   /** The clock the log's "2 min" is measured against, ticked so it does not go stale. */
   now: number;
+  /** The screen height to fill on an iOS home screen whose viewport stops short. */
+  shellHeight: number | undefined;
 };
 
 // The largest count a tab badge spells out.
@@ -296,6 +299,7 @@ export default defineComponent({
       logs: {},
       logLoading: false,
       now: Date.now(),
+      shellHeight: undefined,
     };
   },
   computed: {
@@ -304,6 +308,9 @@ export default defineComponent({
     },
     thisPlayer(): PublicPlayerModel {
       return this.playerView.thisPlayer;
+    },
+    shellStyle(): Record<string, string> {
+      return this.shellHeight === undefined ? {} : {height: this.shellHeight + 'px'};
     },
     cardScale(): number {
       return this.preferences.card_scale;
@@ -553,6 +560,9 @@ export default defineComponent({
         pane.scrollTop = top;
       }
     },
+    fitToScreen(): void {
+      this.shellHeight = standaloneShellHeight(readViewport());
+    },
     refreshPreferences(): void {
       this.preferences = {...getPreferences()};
       refreshMobileLayoutPreference();
@@ -595,12 +605,15 @@ export default defineComponent({
   },
   mounted() {
     document.body.classList.add('mobile-shell-active');
+    this.fitToScreen();
+    window.addEventListener('resize', this.fitToScreen);
     this.refreshLog();
     clock = setInterval(() => {
       this.now = Date.now();
     }, CLOCK_TICK_MS);
   },
   unmounted() {
+    window.removeEventListener('resize', this.fitToScreen);
     this.forgetPick();
     if (clock !== undefined) {
       clearInterval(clock);
