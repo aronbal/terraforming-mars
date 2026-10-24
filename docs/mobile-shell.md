@@ -214,8 +214,9 @@ without switching anywhere.
 in a sheet, and **⋯**, which opens the settings and the links to another game.
 Under them the global parameters are progress rings of the steps each has taken
 (temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
-15 when it is on), each with its value and label beside it — no number inside the
-ring, which only repeated the value — and TR on the right. Then the
+15 when it is on), each with its value and goal beside it, the way oceans always
+read (`-4°/+8°`, `9/14%`, `5/9`), and its label. A parameter at its goal turns its
+ring green with a tick inside. TR is on the right. Then the
 six resources, each an icon with the amount beside it and its production as a
 badge on the icon's corner (none when there is no production), then the player's tags as small icons
 with their counts. The views are a tab bar at the bottom of the screen
