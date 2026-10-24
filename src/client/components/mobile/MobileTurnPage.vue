@@ -70,9 +70,18 @@
             <span class="mobile-ready-frame">
               <Card class="cardbox" :card="item.card" :cubeColor="playerView.thisPlayer.color"/>
             </span>
-            <span class="mobile-pill" :class="item.offer === 'play' ? 'mobile-pill--accent' : 'mobile-pill--pr'">
-              <MobileIcon :name="item.offer === 'play' ? 'play' : 'zap'" :size="12" :strokeWidth="2.4"/>
-              {{ pillLabel(item) }}
+            <!-- What playing it takes out of the player's stock, in the units it is paid
+                 with, rather than a bare M€ figure the steel would have changed. -->
+            <span v-if="item.offer === 'play'" class="mobile-pill mobile-pill--price" data-test="ready-price">
+              <span v-for="part in priceOf(item)" :key="part.unit" class="mobile-price-part">
+                <i class="resource_icon mobile-price-icon" :class="iconClass(part.unit)" aria-hidden="true"></i>
+                <span class="mobile-num">{{ part.amount }}</span>
+                <span class="mobile-visually-hidden">{{ $t(unitName(part.unit)) }}</span>
+              </span>
+            </span>
+            <span v-else class="mobile-pill mobile-pill--pr">
+              <MobileIcon name="zap" :size="12" :strokeWidth="2.4"/>
+              {{ $t('Use') }}
             </span>
           </button>
         </div>
@@ -159,6 +168,9 @@ import {LogEvent, LogPlayer} from '@/client/components/mobile/MobileLog';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
+import {PAYMENT_UNIT_DESCRIPTIONS, paymentUnitIconClass} from '@/client/components/PaymentLedger';
+import {PricePart, pricePreview} from '@/client/components/mobile/PlaySheet';
+import {SpendableResource} from '@/common/inputs/Spendable';
 import {getCard} from '@/client/cards/ClientCardManifest';
 import {translateTextWithParams} from '@/client/directives/i18n';
 
@@ -317,12 +329,19 @@ export default defineComponent({
     entry(annotation: ActionAnnotation): ActionEntry | undefined {
       return entryFor(this.menu, annotation);
     },
-    pillLabel(item: ReadyCard): string {
-      if (item.offer === 'action') {
-        return this.$t('Use');
+    priceOf(item: ReadyCard): ReadonlyArray<PricePart> {
+      const input = this.entry('projectCard')?.input;
+      if (input?.type !== 'projectCard') {
+        const cost = item.card.calculatedCost ?? getCard(item.card.name)?.cost ?? 0;
+        return [{unit: 'megacredits', amount: cost}];
       }
-      const cost = item.card.calculatedCost ?? getCard(item.card.name)?.cost ?? 0;
-      return this.say('Play · ${0} M€', cost);
+      return pricePreview(input, item.card, this.player);
+    },
+    iconClass(unit: SpendableResource): string {
+      return paymentUnitIconClass(unit);
+    },
+    unitName(unit: SpendableResource): string {
+      return PAYMENT_UNIT_DESCRIPTIONS[unit];
     },
     heatTile(): Tile {
       const entry = this.entry('convertHeat');

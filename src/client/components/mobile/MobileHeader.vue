@@ -2,7 +2,14 @@
   <header class="mobile-header">
     <div class="mobile-header-top">
       <span class="mobile-header-title">{{ $t('Generation') }} {{ game.generation }}</span>
-      <span class="mobile-pill" :class="{'mobile-pill--accent': yourTurn}" data-test="turn-pill">{{ $t(turnLabel) }}</span>
+      <!-- With a question waiting and the sheet put away, the pill is the way back to it
+           from any view. -->
+      <button
+        v-if="canOpenSheet"
+        class="mobile-pill mobile-pill--accent mobile-pill--button"
+        data-test="turn-pill"
+        @click="$emit('openSheet')">{{ $t(turnLabel) }} <span aria-hidden="true">&rsaquo;</span></button>
+      <span v-else class="mobile-pill" :class="{'mobile-pill--accent': yourTurn}" data-test="turn-pill">{{ $t(turnLabel) }}</span>
       <div class="mobile-header-tools">
         <button class="mobile-icon-button" :aria-label="$t('Players')" data-test="open-players" @click="$emit('openPlayers')">
           <MobileIcon name="users"/>
@@ -147,8 +154,13 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
+    /** Whether a question is waiting in the sheet while the sheet is put away. */
+    canOpenSheet: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ['update:view', 'openPlayers', 'openMenu', 'toggleTagRow'],
+  emits: ['update:view', 'openPlayers', 'openMenu', 'toggleTagRow', 'openSheet'],
   components: {
     MobileIcon,
     MobileTagRow,

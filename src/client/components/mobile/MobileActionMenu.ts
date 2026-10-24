@@ -80,6 +80,23 @@ export function isActionMenu(input: PlayerInputModel | undefined): input is OrOp
     input.options.some((option) => option.annotation !== undefined);
 }
 
+/**
+ * Whether `input` asks the player to choose among cards, directly or as one of the
+ * parts of an `or` or an `and`.
+ */
+export function asksForCards(input: PlayerInputModel | undefined): boolean {
+  if (input === undefined) {
+    return false;
+  }
+  if (input.type === 'card' || input.type === 'projectCard') {
+    return true;
+  }
+  if (input.type === 'or' || input.type === 'and') {
+    return input.options.some(asksForCards);
+  }
+  return false;
+}
+
 /** Every entry of the menu, in the server's order. */
 export function menuEntries(menu: OrOptionsModel): ReadonlyArray<ActionEntry> {
   return menu.options.map((input, index) => ({

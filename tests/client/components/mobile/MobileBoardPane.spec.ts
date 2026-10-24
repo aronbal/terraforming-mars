@@ -12,7 +12,6 @@ describe('MobileBoardPane', () => {
         game: fakeGameModel(),
         tileView: 'show',
         tapTargets: false,
-        belowOpen: false,
       },
     });
   }

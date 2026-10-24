@@ -119,7 +119,7 @@ mobile/MobileFitBlock.vue               scales a desktop-width block down to the
 mobile/MobileFocusStage.vue             the card or tile being acted on, over a faded board
 mobile/MobileMore.vue                   the settings and the way to another game
 mobile/MobileSettings.vue               the preferences that mean something on a phone
-mobile/MobileView.ts                    the view and snap names, and the peek height
+mobile/MobileView.ts                    the view and snap names
 components/InitialCards.ts              the opening hand's arithmetic, shared with the desktop
 create/CreateGameSection.vue            a headed section of the create-game form
 utils/useMobileLayout.ts                viewport width + preference -> which shell
@@ -187,11 +187,12 @@ Below the board, in the same scrolling column: **milestones and awards** — the
 are printed on the physical board, so they belong to the board, not to a menu.
 Colonies, Turmoil, the Moon board and Pathfinders tracks go here too.
 
-Known friction to watch: the board viewport has `touch-action: none`, so you
-cannot scroll the column by dragging on the board. Leave ~52px of the
-"Milestones & Awards" header visible as a tappable handle that scrolls the
-column. Validate this on a real device; if it still feels stuck, consider a
-dedicated scroll affordance.
+The board viewport has `touch-action: none`, so you cannot scroll the column by
+dragging on the board. It never fills the pane (`max-height: 62dvh`), so the top of
+what lies under it is always on screen and the column is scrolled from there. A
+tappable "Milestones & awards ▼" handle used to sit between the two; on a phone it
+read as clutter and was removed. The turn page's Milestones & awards tile still
+scrolls the column straight to them.
 
 ## Navigation
 
@@ -228,8 +229,13 @@ them, leaving the client nothing to match on but translated titles.
 2. **Ready now · N** — the hand cards the `projectCard` entry offers, then the
    played cards the `actionCard` entry offers, then a CEO's once-per-game action,
    at half size in one sideways row. A pill under each says what a tap leads to:
-   blue `Play · 14 M€` or purple `Use`. Unplayable cards are not shown here; the
-   Cards view has them, dimmed.
+   for a card to play, its price in the units it would be paid with — steel and
+   titanium where the card takes them and the player has them, M€ for the rest,
+   each with its resource icon (`PlaySheet.pricePreview`, the play sheet's own
+   auto-fill limited to those three units); for an action, a purple `Use`. A bare
+   blue `Play · 14 M€` read as a link, and overstated the price whenever steel
+   would pay part of it. Unplayable cards are not shown here; the Cards view has
+   them, dimmed.
 3. **Tiles** — Heat to temp, Greenery, Standard projects, Milestones & awards,
    plus Trade when colonies are in the game and Delegate (and Party action, when
    the menu offers it) with Turmoil. A tile the menu does not offer is dimmed to
@@ -244,7 +250,9 @@ them, leaving the client nothing to match on but translated titles.
 
 When it is not the player's turn the page says whose it is and keeps the rest
 readable but inert. When the server asks something other than the menu — a draft,
-a follow-up — the page offers a row back to the sheet that holds the question.
+a follow-up — the page offers a row back to the sheet that holds the question, and
+so does the header's `Your turn ›` pill, from any view, while the sheet is put
+away.
 
 **Selecting a card.** A tap on a ready card rings it (3px accent) and raises a
 bottom bar: the name, the price against what the player has (`14 M€ · 34
@@ -257,20 +265,22 @@ turn page — a card with its price, a tile's entry — and the questions the se
 asks between moves, which come up to `half` by themselves. Over a bare menu it is
 closed entirely. When opened from a tile it shows that entry alone, chosen by its
 position in the menu (`pickEntry`); a list to choose from (the standard projects,
-the hand to sell) opens at `full`, a confirmation at `half`. It has four stops:
+the hand to sell) opens at `full`, a confirmation at `half`. It has three stops:
 
 | Stop | Position |
 | --- | --- |
 | closed | fully off screen |
-| peek | a fixed **46px** handle at the bottom |
 | half | 50% of the sheet height |
 | full | 96% |
 
-Compute the stops in **pixels, not percentages**. The prototype originally used
-percentages of the sheet height, which made "peek" ~74px and let it cover the
-placement confirm bar — the confirm button was unreachable without manually
-dragging the sheet down. The confirm bar also needs a higher `z-index` than the
-sheet as a second line of defence.
+There used to be a fourth, `peek`: a 46px "Your turn · Tap to open" handle left at
+the bottom of every pane. It read as a second screen half-hidden behind the first,
+and was removed. Tapping the head, the scrim or dragging it down now puts the sheet
+away entirely; the turn page's question row, the placement bar's **Actions** and
+the header's turn pill bring it back.
+
+Compute the stops in **pixels, not percentages**, from the sheet's measured
+height. The placement confirm bar also needs a higher `z-index` than the sheet.
 
 Only the `full` stop dims the board. At `half` the map stays fully readable,
 which is the entire point of the sheet.
@@ -416,7 +426,9 @@ that plays a card costs a turn. The existing `magnify_cards` preference is
 hover-based and therefore dead on touch.
 
 **Tag row.** A thin strip in the header showing tag counts. By default it shows
-on the Cards view, where you judge card requirements, and nowhere else; `always`
+where you judge card requirements: on the Cards view, and while the sheet asks
+which cards to take — a draft, the research phase, a card's own pick — since
+whether a card needing three science tags is worth keeping turns on them; `always`
 keeps it in the header on every view, folded away except on Cards. Tapping it
 overrides that until the next view change. The `tag_row` preference switches
 between `auto`, `always` and `never`. Counts come from the tableau, via
@@ -549,9 +561,6 @@ Four places where the implementation departs from the plan above, and why.
 
 ## Open questions
 
-- Does the 52px scroll handle below the board feel right, or does the board read
-  as stuck? It is a tap rather than a drag: tapping it scrolls the column to the
-  milestones and back.
 - Landscape: leave it to whatever the portrait CSS does, or give the board a
   dedicated landscape layout where 620px nearly fits 1:1?
 - Turmoil and Colonies sit under the board with milestones and awards. In a full

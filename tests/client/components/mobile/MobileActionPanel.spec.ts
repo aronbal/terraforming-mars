@@ -11,7 +11,7 @@ describe('MobileActionPanel', () => {
       props: {
         playerView: fakePlayerViewModel(),
         mode: 'sheet',
-        snap: 'peek',
+        snap: 'closed',
         cardScale: 0.62,
         actionWaiting: false,
         ...props,
@@ -23,12 +23,11 @@ describe('MobileActionPanel', () => {
     expect(mount().exists()).is.true;
   });
 
-  it('computes its stops in pixels, leaving a fixed handle at peek', () => {
+  it('computes its stops in pixels', () => {
     const wrapper = mount();
     wrapper.vm.height = 600;
 
     expect(wrapper.vm.offsetFor('closed')).eq(600);
-    expect(wrapper.vm.offsetFor('peek')).eq(554);
     expect(wrapper.vm.offsetFor('half')).eq(300);
     expect(wrapper.vm.offsetFor('full')).eq(24);
   });
@@ -41,10 +40,15 @@ describe('MobileActionPanel', () => {
     expect(wrapper.vm.nearestSnap(40)).eq('full');
   });
 
-  it('tapping the head toggles between half and peek', () => {
+  /* No handle is left behind: a raised sheet goes all the way down. */
+  it('tapping the head toggles between half and closed', async () => {
     const wrapper = mount();
     wrapper.vm.onHeadClick();
     expect(wrapper.emitted('update:snap')?.[0]).deep.eq(['half']);
+
+    await wrapper.setProps({snap: 'full'});
+    wrapper.vm.onHeadClick();
+    expect(wrapper.emitted('update:snap')?.[1]).deep.eq(['closed']);
   });
 
   it('is a sheet, with a head to drag, for an opened entry or a question', () => {
@@ -66,11 +70,7 @@ describe('MobileActionPanel', () => {
     expect(wrapper.vm.boundHead).is.undefined;
   });
 
-  it('says what a tap on the head will do', async () => {
-    const wrapper = mount({snap: 'peek'});
-    expect(wrapper.vm.hint).eq('Tap to open');
-
-    await wrapper.setProps({snap: 'full'});
-    expect(wrapper.vm.hint).eq('Tap to close');
+  it('says what a tap on the head will do', () => {
+    expect(mount({snap: 'half'}).vm.hint).eq('Tap to close');
   });
 });

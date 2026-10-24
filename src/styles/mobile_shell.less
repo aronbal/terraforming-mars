@@ -34,9 +34,8 @@
 // Apple's minimum recommended touch target, drawn by the tap-target overlay.
 @mobile-tap: 44px;
 
-// A fixed handle, in pixels. Percentages of the sheet height made "peek" tall
-// enough to cover the tile-placement confirmation.
-@mobile-sheet-peek: 46px;
+// The sheet's head: a grab bar over a line that says whose move it is.
+@mobile-sheet-head: 46px;
 
 
 /*
@@ -62,6 +61,18 @@
 @mobile-stage-bleed: 26px;
 @mobile-stage-width: (620px + 2 * @mobile-stage-bleed);
 @mobile-stage-height: 600px;
+
+/*
+ * The page behind the shell is painted the shell's own ground.
+ *
+ * In an iOS home-screen app the fixed shell can stop short of the bottom of the
+ * screen, by about the height of the status bar, and the desktop's grey page showed
+ * through the gap as a bar under every view.
+ */
+html:has(> body.mobile-shell-active),
+.mobile-shell-active {
+  background: @mobile-ground;
+}
 
 .mobile-shell-active {
   // The shell owns the whole viewport; the page behind it must not scroll with it.
@@ -204,21 +215,13 @@
      clipping them would hide resource counts rather than let the player reach them. */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-
-  /* The sheet's peek handle floats over the bottom of the pane. Scrolled to the end,
-     the last row would otherwise sit under it: reachable by eye, not by thumb.
-     `--mobile-pane-gap` is 0 when the player turns the handle off. */
-  &::after {
-    content: "";
-    display: block;
-    height: var(--mobile-pane-gap, 0px);
-  }
 }
 
 .mobile-pane--board {
   // The board scales to fit, so only the column below it ever needs to move.
   overflow-x: hidden;
-  // The board viewport swallows drags, so the column is scrolled by its handle.
+  /* The board viewport swallows drags, so the column scrolls from what is under the
+     board, which always starts on screen. */
   overscroll-behavior: contain;
 }
 
@@ -314,29 +317,6 @@
     font-size: 11px;
     letter-spacing: 0.06em;
   }
-}
-
-// Tapping the header scrolls the column, because dragging the board cannot.
-.mobile-below-handle {
-  width: 100%;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: @mobile-surface;
-  border-top: 1px solid @mobile-line;
-  border-bottom: 1px solid @mobile-line;
-  font-family: Prototype, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-muted;
-}
-
-.mobile-below-handle-chevron {
-  margin-left: auto;
-  color: @mobile-dim;
 }
 
 .mobile-below {
@@ -552,11 +532,9 @@
   max-height: 50%;
 }
 
-/* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
-   what shows: a grab bar over a line that says whose move it is. */
 .mobile-sheet-head {
   flex: none;
-  height: @mobile-sheet-peek;
+  height: @mobile-sheet-head;
   padding: 6px 14px 8px;
   touch-action: none;
   border-bottom: 1px solid @mobile-line-soft;
@@ -1063,11 +1041,6 @@
   display: flex;
   flex-direction: column;
 
-  // The trailing gap is room for the sheet's peek handle, which setup never raises.
-  &::after {
-    display: none;
-  }
-
   > .mobile-panel-body {
     display: flex;
     flex-direction: column;
@@ -1292,6 +1265,46 @@
 .mobile-pill--accent {
   color: @m-accent;
   background: fade(@m-accent, 13%);
+}
+
+// A 22px pill, with the rest of a 44px tap target drawn around it.
+.mobile-pill--button {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -11px -6px;
+  }
+}
+
+/* A price, in the units it is paid with. Drawn in the label colour rather than the
+   accent: it is a figure to read, not a link to follow. */
+.mobile-pill--price {
+  gap: 8px;
+  color: @m-label;
+}
+
+.mobile-price-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mobile-price-icon.resource_icon {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: none;
+}
+
+.mobile-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .mobile-pill--pr {

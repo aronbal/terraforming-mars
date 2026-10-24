@@ -191,7 +191,7 @@ describe('MobilePlayerHome', () => {
   it('putting the panel down abandons what it was raised for', () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.claimBoardThing('milestone', 'Builder');
-    wrapper.vm.setSnap('peek');
+    wrapper.vm.setSnap('closed');
 
     expect(pickFocus.value).eq('none');
     expect(pickedBoardThing.value).is.undefined;
@@ -213,6 +213,32 @@ describe('MobilePlayerHome', () => {
     wrapper.vm.selectView('log');
     wrapper.vm.selectView('cards');
     expect(wrapper.vm.tagRowOpen).is.true;
+  });
+
+  /* Whether a card needing three science tags is worth drafting turns on the tags. */
+  it('shows the tags while a draft asks which card to keep', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    const wrapper = mount({...draft, annotation: undefined} as PlayerInputModel);
+    expect(wrapper.vm.choosingCards).is.true;
+    expect(wrapper.vm.tagRowVisible).is.true;
+    expect(wrapper.vm.tagRowOpen).is.true;
+  });
+
+  it('keeps the tags off the turn view while the menu is up', () => {
+    const wrapper = mount(actionMenu());
+    expect(wrapper.vm.choosingCards).is.false;
+    expect(wrapper.vm.tagRowVisible).is.false;
+  });
+
+  /* The sheet has no handle to leave behind, so with a question waiting the header's
+     pill is the way back to it from any view. */
+  it('a closed sheet with a question waiting is reopened from the header', () => {
+    const wrapper = mount(option('Confirm', undefined));
+    wrapper.vm.setSnap('closed');
+    expect(wrapper.vm.snap).eq('closed');
+
+    wrapper.findComponent({name: 'MobileHeader'}).vm.$emit('openSheet');
+    expect(wrapper.vm.snap).eq('half');
   });
 
   it('says whose turn it is', () => {
