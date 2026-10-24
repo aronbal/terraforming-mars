@@ -154,23 +154,9 @@ html:has(> body.mobile-shell-active),
   min-height: 24px;
 }
 
-.mobile-tagbar-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  padding: 3px 5px;
-  border-radius: 5px;
-  border: 1px solid @mobile-line-soft;
-  flex: none;
-}
-
 .mobile-tag-list {
   display: flex;
+  min-width: 0;
   gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -183,18 +169,34 @@ html:has(> body.mobile-shell-active),
 .mobile-tag {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: @mobile-sunk;
-  border: 1px solid @mobile-line-soft;
-  font-size: 12px;
+  padding: 3px 8px 3px 3px;
+  border-radius: @m-radius-pill;
+  background: @m-fill;
   flex: none;
 
+  /* The players overview draws each tag as a 40px badge over its count. Here it
+     is a small icon beside the count, one line tall. */
+  .tag-display {
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+  }
+
+  .tag-count {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    background-size: 22px;
+    background-position: -1px;
+    box-shadow: none;
+  }
+
   .tag-count-display {
-    // The tag icons come from the players overview, already sized for a desktop row.
-    transform: scale(0.8);
-    transform-origin: left center;
+    margin: 0;
+    font-size: 14px;
+    text-shadow: none;
+    color: @m-label;
   }
 }
 
@@ -1752,7 +1754,8 @@ html:has(> body.mobile-shell-active),
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+  // The tab bar under it keeps clear of the home indicator.
+  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
   border-radius: @m-radius-sheet @m-radius-sheet 0 0;
   background: @m-raised;
   color: @m-label;
@@ -1814,8 +1817,42 @@ html:has(> body.mobile-shell-active),
   font-weight: 600;
 }
 
-.mobile-bottom-spacer {
-  height: env(safe-area-inset-bottom);
+/* The shell's last row: the selected card's bar, when there is one, over the tabs. */
+.mobile-bottom {
+  position: relative;
+  z-index: 3;
+}
+
+.mobile-tabbar {
+  display: flex;
+  padding: 4px calc(8px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(8px + env(safe-area-inset-left));
+  background: @m-glass;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 0.5px solid @m-sep;
+  font-family: @m-font;
+  -webkit-font-smoothing: antialiased;
+}
+
+:where(#mobile-shell) .mobile-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 49px;
+  padding: 4px 0;
+  color: @m-label-3;
+  transition: color @m-duration @m-ease;
+}
+
+:where(#mobile-shell) .mobile-tab--on {
+  color: @m-accent;
+}
+
+.mobile-tab-label {
+  font-size: @m-label-size;
+  font-weight: 600;
 }
 
 //

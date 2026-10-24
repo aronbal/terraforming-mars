@@ -9,16 +9,24 @@ describe('MobileTagRow', () => {
   it('mounts without errors', () => {
     const wrapper = shallowMount(MobileTagRow, {
       ...globalConfig,
-      props: {player: fakePublicPlayerModel(), open: true},
+      props: {player: fakePublicPlayerModel()},
     });
     expect(wrapper.exists()).is.true;
+  });
+
+  it('draws nothing before the first tag', () => {
+    const wrapper = shallowMount(MobileTagRow, {
+      ...globalConfig,
+      props: {player: fakePublicPlayerModel({tags: emptyTags()})},
+    });
+    expect(wrapper.find('[data-test="tag-row-list"]').exists()).is.false;
   });
 
   it('lists only the tags the player owns, in board order', () => {
     const tags = {...emptyTags(), [Tag.SCIENCE]: 2, [Tag.BUILDING]: 3};
     const wrapper = shallowMount(MobileTagRow, {
       ...globalConfig,
-      props: {player: fakePublicPlayerModel({tags}), open: true},
+      props: {player: fakePublicPlayerModel({tags})},
     });
     expect(wrapper.vm.ownedTags).deep.eq([
       {name: Tag.BUILDING, count: 3},

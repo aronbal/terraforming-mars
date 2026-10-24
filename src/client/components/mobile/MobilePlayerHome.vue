@@ -3,17 +3,13 @@
     <MobileHeader
       :game="game"
       :player="thisPlayer"
-      :view="view"
       :yourTurn="actionWaiting"
       :turnLabel="turnLabel"
       :showTagRow="tagRowVisible"
-      :tagRowOpen="tagRowOpen"
       :canOpenSheet="sheetInUse && snap === 'closed'"
-      @update:view="selectView($event)"
       @openSheet="raiseSheet()"
       @openPlayers="overlay = 'players'"
-      @openMenu="overlay = 'menu'"
-      @toggleTagRow="toggleTagRow()"/>
+      @openMenu="overlay = 'menu'"/>
 
     <main class="mobile-stage">
       <section
@@ -131,15 +127,17 @@
         @update:snap="setSnap($event)"/>
     </main>
 
-    <MobileSelectionBar
-      v-if="selection !== undefined"
-      :card="selection.card"
-      :offer="selection.offer"
-      :megacredits="thisPlayer.megacredits"
-      @cancel="selected = undefined"
-      @confirm="confirmSelection()"
-      @inspect="magnified = selection.card"/>
-    <div v-else class="mobile-bottom-spacer"></div>
+    <div class="mobile-bottom">
+      <MobileSelectionBar
+        v-if="selection !== undefined"
+        :card="selection.card"
+        :offer="selection.offer"
+        :megacredits="thisPlayer.megacredits"
+        @cancel="selected = undefined"
+        @confirm="confirmSelection()"
+        @inspect="magnified = selection.card"/>
+      <MobileTabBar :view="view" @update:view="selectView($event)"/>
+    </div>
 
     <!-- Play or Use from the bottom bar: the card large, its payment, and the one
          button that pays and plays it. -->
@@ -187,6 +185,7 @@ import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
 import MobilePlaySheet from '@/client/components/mobile/MobilePlaySheet.vue';
 import MobileSelectionBar from '@/client/components/mobile/MobileSelectionBar.vue';
+import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
@@ -215,8 +214,6 @@ type Overlay = 'players' | 'menu';
 type DataModel = {
   view: MobileView;
   snap: SheetSnap;
-  /** Set when the player opens or closes the tag row by hand, until the next view change. */
-  tagRowOverride: boolean | undefined;
   preferences: Preferences;
   /** The card tapped on the turn page or in the Cards view, which the bottom bar is about. */
   selected: CardName | undefined;
@@ -263,6 +260,7 @@ export default defineComponent({
     MobileOverlay,
     MobilePlaySheet,
     MobileSelectionBar,
+    MobileTabBar,
     MobileTurnPage,
     MoonBoard,
     PlanetaryTracks,
@@ -273,7 +271,6 @@ export default defineComponent({
     return {
       view: 'turn',
       snap: 'closed',
-      tagRowOverride: undefined,
       preferences: {...getPreferences()},
       selected: undefined,
       magnified: undefined,
@@ -297,25 +294,14 @@ export default defineComponent({
     tapTargets(): boolean {
       return this.preferences.mobile_tap_targets;
     },
-    /* The tags are what card requirements are judged against, so by default they
-       show wherever cards are being weighed: on the Cards view, and while a draft or
-       a purchase asks which cards to take. */
+    /* The tags are what card requirements are judged against -- whether a card
+       needing three science tags is worth drafting turns on them -- so they sit in
+       the header on every view, unless the player turns them off. */
     tagRowVisible(): boolean {
-      const mode = this.preferences.tag_row;
-      return mode === 'always' || (mode === 'auto' && (this.view === 'cards' || this.choosingCards));
+      return this.preferences.tag_row !== 'never';
     },
-    /** Open wherever card requirements are judged, unless overridden. */
-    tagRowOpen(): boolean {
-      if (this.tagRowOverride !== undefined) {
-        return this.tagRowOverride;
-      }
-      return this.preferences.tag_row === 'always' || this.view === 'cards' || this.choosingCards;
-    },
-    /*
-     * Whether the sheet is asking which cards to keep or buy: a draft, the research
-     * phase, a card's own pick. Whether a card needing three science tags is worth
-     * taking turns on the tags already in play, so they belong beside the question.
-     */
+    /* Whether the sheet is asking which cards to keep or buy: a draft, the research
+       phase, a card's own pick. */
     choosingCards(): boolean {
       const waitingFor = this.playerView.waitingFor;
       return this.sheetInUse && !isActionMenu(waitingFor) && asksForCards(waitingFor);
@@ -453,7 +439,6 @@ export default defineComponent({
         this.setSnap('closed');
       }
       this.view = view;
-      this.tagRowOverride = undefined;
     },
     setSnap(snap: SheetSnap): void {
       this.snap = this.sheetInUse || snap === 'closed' ? snap : 'closed';
@@ -531,9 +516,6 @@ export default defineComponent({
       if (this.selection === undefined) {
         this.selected = undefined;
       }
-    },
-    toggleTagRow(): void {
-      this.tagRowOverride = !this.tagRowOpen;
     },
     scrollBoardPaneTo(top: number): void {
       const pane = this.$refs.boardPane as HTMLElement | undefined;

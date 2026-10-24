@@ -18,11 +18,9 @@ describe('MobileHeader', () => {
           venusScaleLevel: 12,
         }),
         player: fakePublicPlayerModel({megacredits: 12, megacreditProduction: 3, terraformRating: 28}),
-        view: 'turn',
         yourTurn: true,
         turnLabel: 'Your turn',
-        showTagRow: false,
-        tagRowOpen: false,
+        showTagRow: true,
       },
     });
   }
@@ -53,10 +51,11 @@ describe('MobileHeader', () => {
     expect(resources[0].production).eq(3);
   });
 
-  it('switches the view from the segmented control', async () => {
+  /* The views are in the tab bar at the bottom; the tags took their place. */
+  it('shows the tags where the views used to be', () => {
     const wrapper = mount(false);
-    await wrapper.find('[data-test="view-log"]').trigger('click');
-    expect(wrapper.emitted('update:view')).deep.eq([['log']]);
+    expect(wrapper.findComponent({name: 'MobileTagRow'}).exists()).is.true;
+    expect(wrapper.find('[data-test="view-log"]').exists()).is.false;
   });
 
   it('opens the players and the menu', async () => {

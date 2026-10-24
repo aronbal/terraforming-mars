@@ -58,19 +58,8 @@
       </div>
     </div>
 
-    <MobileTagRow v-if="showTagRow" :player="player" :open="tagRowOpen" @toggle="$emit('toggleTagRow')"/>
-
-    <div class="mobile-segmented" role="tablist" :aria-label="$t('View')">
-      <button
-        v-for="option in viewOptions"
-        :key="option.view"
-        class="mobile-segmented-option"
-        :class="{'mobile-segmented-option--on': view === option.view}"
-        role="tab"
-        :aria-selected="view === option.view"
-        :data-test="'view-' + option.view"
-        @click="$emit('update:view', option.view)">{{ $t(option.label) }}</button>
-    </div>
+    <!-- The views moved to the tab bar at the bottom; the tags have their place. -->
+    <MobileTagRow v-if="showTagRow" :player="player"/>
   </header>
 </template>
 
@@ -81,13 +70,12 @@ import * as constants from '@/common/constants';
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
 import MobileTagRow from '@/client/components/mobile/MobileTagRow.vue';
 import {GameModel} from '@/common/models/GameModel';
-import {MobileView} from '@/client/components/mobile/MobileView';
 import {PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Resource} from '@/common/Resource';
 
 /*
  * The shell's header: whose turn it is, how far Mars has come, what the player has,
- * and which view they are on.
+ * and which tags they hold.
  *
  * Each global parameter is a ring of the steps it has left to go, with its value
  * beside it, so how close the game is to ending is read at a glance rather than
@@ -111,13 +99,6 @@ type ResourceReadout = {
   production: number;
 };
 
-const VIEW_OPTIONS: ReadonlyArray<{view: MobileView, label: string}> = [
-  {view: 'turn', label: 'Turn'},
-  {view: 'board', label: 'Board'},
-  {view: 'cards', label: 'Cards'},
-  {view: 'log', label: 'Log'},
-];
-
 // The ring's circumference, for a radius of 14 in its 32-unit box.
 const RING_LENGTH = 2 * Math.PI * 14;
 
@@ -130,10 +111,6 @@ export default defineComponent({
     },
     player: {
       type: Object as PropType<PublicPlayerModel>,
-      required: true,
-    },
-    view: {
-      type: String as PropType<MobileView>,
       required: true,
     },
     /** Whether the server is waiting for this player to act. */
@@ -150,25 +127,18 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    tagRowOpen: {
-      type: Boolean,
-      required: true,
-    },
     /** Whether a question is waiting in the sheet while the sheet is put away. */
     canOpenSheet: {
       type: Boolean,
       default: false,
     },
   },
-  emits: ['update:view', 'openPlayers', 'openMenu', 'toggleTagRow', 'openSheet'],
+  emits: ['openPlayers', 'openMenu', 'openSheet'],
   components: {
     MobileIcon,
     MobileTagRow,
   },
   computed: {
-    viewOptions(): typeof VIEW_OPTIONS {
-      return VIEW_OPTIONS;
-    },
     ringLength(): number {
       return RING_LENGTH;
     },
