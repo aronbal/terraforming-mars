@@ -159,6 +159,9 @@ export default defineComponent({
       } else if (mobileLayout.value) {
         // The mobile shell asks in its placement bar, clear of the board.
         offerPlacement({
+          spaceId: tile.getAttribute('data_space_id') as SpaceId,
+          tileType: this.playerinput.tileType,
+          color: this.playerView.thisPlayer.color,
           confirm: () => {
             clearPlacement();
             this.confirmPlacement();

@@ -599,6 +599,12 @@ Four places where the implementation departs from the plan above, and why.
   about. It offers the tap through `spaceSelection.offerPlacement`, and the bar
   under the map turns from "Choose a space · Actions" into "Place here? ✕ ✓".
   Tapping another blinking space simply moves the choice.
+  While the bar asks, the tapped space shows the tile it would get, faded and
+  pulsing, with the player's cube on it (`BoardSpace` reads the pending
+  placement). The server says which tile through `SelectSpaceModel.tileType`,
+  which `SelectSpace.placing()` sets for cities, greeneries, oceans and the
+  special tiles placed through `PlaceTile`; where it is not set, a bright hex
+  marks the space instead.
 
 - **The shell learns about a placement from `SelectSpace` itself**, through
   `src/client/utils/spaceSelection.ts`. The top-level `waitingFor` does not show

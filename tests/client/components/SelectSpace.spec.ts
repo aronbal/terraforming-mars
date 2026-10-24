@@ -6,6 +6,7 @@ import {FakeLocalStorage} from './FakeLocalStorage';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {PreferencesManager} from '@/client/utils/PreferencesManager';
 import {refreshMobileLayoutPreference, resetMobileLayoutForTest} from '@/client/utils/useMobileLayout';
+import {TileType} from '@/common/TileType';
 import {pendingPlacement, resetSpaceSelectionForTest} from '@/client/utils/spaceSelection';
 import {SelectSpaceResponse} from '@/common/inputs/InputResponse';
 
@@ -51,8 +52,8 @@ describe('SelectSpace', () => {
     const wrapper = shallowMount(SelectSpace, {
       ...globalConfig,
       props: {
-        playerView: {} as PlayerViewModel,
-        playerinput: {title: 'Select a space', buttonLabel: 'Save', type: 'space', spaces: ['05']},
+        playerView: {thisPlayer: {color: 'red'}} as PlayerViewModel,
+        playerinput: {title: 'Select a space', buttonLabel: 'Save', type: 'space', spaces: ['05'], tileType: TileType.CITY},
         onsave: (out: SelectSpaceResponse) => saved.push(out),
         showsave: true,
         showtitle: true,
@@ -62,7 +63,8 @@ describe('SelectSpace', () => {
     tile.setAttribute('data_space_id', '05');
 
     wrapper.vm.onTileSelected(tile);
-    expect(pendingPlacement.value).is.not.undefined;
+    // What the board needs to show the tile there before it is placed.
+    expect(pendingPlacement.value).deep.include({spaceId: '05', tileType: TileType.CITY, color: 'red'});
 
     pendingPlacement.value?.confirm();
     expect(pendingPlacement.value).is.undefined;

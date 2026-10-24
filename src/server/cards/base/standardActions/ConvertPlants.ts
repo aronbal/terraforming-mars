@@ -1,4 +1,5 @@
 import {StandardActionCard} from '../../StandardActionCard';
+import {TileType} from '../../../../common/TileType';
 import {CardName} from '../../../../common/cards/CardName';
 import {CardRenderer} from '../../render/CardRenderer';
 import {IPlayer} from '../../../IPlayer';
@@ -46,6 +47,7 @@ export class ConvertPlants extends StandardActionCard {
     return new SelectSpace(
       message('Convert ${0} plants into greenery', (b) => b.number(player.plantsNeededForGreenery)),
       player.game.board.getAvailableSpacesForGreenery(player))
+      .placing(TileType.GREENERY)
       .andThen((space) => {
         this.actionUsed(player);
         player.game.addGreenery(player, space);

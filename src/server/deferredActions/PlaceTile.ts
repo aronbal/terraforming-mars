@@ -30,6 +30,7 @@ export class PlaceTile extends DeferredAction<Space> {
     const title = this.options?.title;
 
     return new SelectSpace(title, availableSpaces)
+      .placing(this.options.tile.tileType)
       .andThen((space: Space) => {
         const tile: Tile = {...this.options.tile};
         if (this.options.on === 'upgradeable-ocean' || this.options.on === 'upgradeable-ocean-new-holland') {

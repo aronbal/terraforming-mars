@@ -952,6 +952,7 @@ export class Game implements IGame, Logger {
     if (this.canAddOcean()) {
       orOptions.options.push(
         new SelectSpace('Add an ocean', this.board.getAvailableSpacesForOcean(player))
+          .placing(TileType.OCEAN)
           .annotate(GlobalParameter.OCEANS)
           .andThen((space) => {
             this.addOcean(player, space);

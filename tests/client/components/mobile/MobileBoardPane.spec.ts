@@ -61,7 +61,7 @@ describe('MobileBoardPane', () => {
       beginSpaceSelection();
       let confirmed = 0;
       let cancelled = 0;
-      offerPlacement({confirm: () => confirmed++, cancel: () => cancelled++});
+      offerPlacement({spaceId: '03', tileType: undefined, color: 'red', confirm: () => confirmed++, cancel: () => cancelled++});
       const wrapper = mount();
       await wrapper.vm.$nextTick();
 

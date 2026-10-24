@@ -680,3 +680,20 @@ each(@token_types, {
 .underground-excavator--pink {
   background-color: @player_pink;
 }
+
+// The tile about to be placed, shown faded on its space while the player confirms it.
+.board-space-ghost {
+  pointer-events: none;
+  opacity: 0.75;
+  animation: board-space-ghost-pulse 1.2s ease-in-out infinite alternate;
+}
+
+// No tile type to draw: a bright hex marks the space instead.
+.board-space-ghost--marker {
+  background: fade(#fff, 45%);
+}
+
+@keyframes board-space-ghost-pulse {
+  from { opacity: 0.55; }
+  to { opacity: 0.9; }
+}

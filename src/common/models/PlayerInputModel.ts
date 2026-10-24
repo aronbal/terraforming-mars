@@ -11,6 +11,7 @@ import {GlobalEventName} from '../turmoil/globalEvents/GlobalEventName';
 import {Warning} from '../cards/Warning';
 import {Units} from '../Units';
 import {ClaimedToken} from '../underworld/UnderworldPlayerData';
+import {TileType} from '../TileType';
 
 export type BaseInputModel = {
   title: string | Message;
@@ -103,6 +104,8 @@ export type SelectPlayerModel = BaseInputModel & {
 export type SelectSpaceModel = BaseInputModel & {
   type: 'space';
   spaces: ReadonlyArray<SpaceId>;
+  /** The tile the chosen space will get, when the question is a placement. */
+  tileType?: TileType;
 }
 
 export type SelectAmountModel = BaseInputModel & {

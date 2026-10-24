@@ -26,6 +26,18 @@
       <div v-if="space.excavator !== undefined" class="underground-excavator" :class="'underground-excavator--' + space.excavator"></div>
       <div v-if="space.spaceType === SpaceType.DEFLECTION_ZONE" class="board-space-type-deflection-zone"></div>
     </template>
+    <!-- The tile the player is about to place here, faded, while they confirm it. -->
+    <template v-if="ghost !== undefined">
+      <BoardSpaceTile
+        v-if="ghost.tileType !== undefined"
+        class="board-space-ghost"
+        data-test="ghost-tile"
+        :space="{...space, tileType: ghost.tileType}"
+        :aresExtension="aresExtension"
+        tileView="show"/>
+      <div v-else class="board-space board-space-ghost board-space-ghost--marker" data-test="ghost-tile"></div>
+      <div v-if="ghost.tileType !== TileType.OCEAN" class="board-cube board-space-ghost" :class="'board-cube--' + ghost.color"></div>
+    </template>
     <div class="board-log-highlight" :data_log_highlight_id="space.id"></div>
     </div>
 </template>
@@ -42,6 +54,8 @@ import {getPreferences} from '../utils/PreferencesManager';
 import {ClaimedToken} from '@/common/underworld/UnderworldPlayerData';
 import {getSpaceName} from '@/common/boards/spaces';
 import {SpaceType} from '@/common/boards/SpaceType';
+import {TileType} from '@/common/TileType';
+import {PendingPlacement, pendingPlacement} from '@/client/utils/spaceSelection';
 export default defineComponent({
   name: 'BoardSpace',
   props: {
@@ -92,6 +106,14 @@ export default defineComponent({
       return {token: this.space.undergroundResource, shelter: false, active: false};
     },
 
+    /** The placement waiting on the player's confirmation, when it is on this space. */
+    ghost(): PendingPlacement | undefined {
+      const pending = pendingPlacement.value;
+      return pending?.spaceId === this.space.id ? pending : undefined;
+    },
+    TileType(): typeof TileType {
+      return TileType;
+    },
     getSpaceName(): typeof getSpaceName {
       return getSpaceName;
     },
