@@ -8,11 +8,20 @@ export function option(title: string, annotation?: string): PlayerInputModel {
 }
 
 export function projectCard(...names: Array<CardName>): PlayerInputModel {
+  return payable('projectCard', names);
+}
+
+/** The standard projects, which the server sends as cards to pay for, like the hand. */
+export function standardProjects(...names: Array<CardName>): PlayerInputModel {
+  return payable('standardProject', names);
+}
+
+function payable(annotation: string, names: Array<CardName>): PlayerInputModel {
   return {
     type: 'projectCard',
     title: 'Play project card',
     buttonLabel: 'Play',
-    annotation: 'projectCard',
+    annotation,
     cards: names.map((name) => ({name, calculatedCost: 9})),
     paymentOptions: {},
     microbes: 0,
@@ -55,4 +64,36 @@ export function namedChoices(annotation: string, title: string, ...names: Array<
 
 export function menu(...options: Array<PlayerInputModel>): OrOptionsModel {
   return {type: 'or', title: 'Take your first action', buttonLabel: 'Take action', options};
+}
+
+/** A trade: the fee, paid one of `fees` ways, and the colony tile, as one `and`. */
+export function trade(colonies: Array<string>, fees: Array<string> = ['Pay 3 energy', 'Pay 9 M€']): PlayerInputModel {
+  return {
+    type: 'and',
+    title: 'Trade with a colony tile',
+    buttonLabel: 'Trade',
+    annotation: 'tradeWithColony',
+    options: [
+      {type: 'or', title: 'Pay trade fee', buttonLabel: 'Pay', options: fees.map((fee) => option(fee))},
+      {type: 'colony', title: 'Select colony tile for trade', buttonLabel: 'trade', coloniesModel: colonies.map((name) => ({name}))},
+    ],
+  } as unknown as PlayerInputModel;
+}
+
+/** A pick among cards, as the draft, the research phase or selling patents asks it. */
+export function cardChoice(names: Array<CardName>, options: {min?: number, max?: number, buttonLabel?: string, annotation?: string, optional?: boolean} = {}): PlayerInputModel {
+  return {
+    type: 'card',
+    title: 'Select a card',
+    buttonLabel: options.buttonLabel ?? 'Select',
+    annotation: options.annotation,
+    optional: options.optional,
+    cards: names.map((name) => ({name})),
+    max: options.max ?? 1,
+    min: options.min ?? 1,
+    showOnlyInLearnerMode: false,
+    selectBlueCardAction: false,
+    showOwner: false,
+    showSelectAll: false,
+  };
 }

@@ -157,6 +157,23 @@ export function readyCards(menu: OrOptionsModel | undefined): ReadonlyArray<Read
   return ready;
 }
 
+/**
+ * The standard projects the turn can pay for, in the server's order.
+ *
+ * They arrive as cards to pay for, exactly like the hand, so the play sheet holds them
+ * up and swipes between them the way it does the ready cards. The ones the player
+ * cannot afford are sent too, greyed out, and are left out here.
+ */
+export function standardProjects(menu: OrOptionsModel | undefined): ReadonlyArray<ReadyCard> {
+  const input = entryFor(menu, 'standardProject')?.input;
+  if (input?.type !== 'projectCard') {
+    return [];
+  }
+  return input.cards
+    .filter((card) => offerFor(input, card.name) === 'play')
+    .map((card) => ({card, offer: 'play' as const}));
+}
+
 /** What the shell knows that the menu itself does not. */
 export type MenuContext = {
   /** The card picked on the turn page or the Cards view, if any. */

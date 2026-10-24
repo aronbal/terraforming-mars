@@ -265,6 +265,27 @@ a follow-up — the page offers a row back to the sheet that holds the question,
 so does the header's `Your turn ›` pill, from any view, while the sheet is put
 away.
 
+**Choosing cards.** A question that is a plain pick among cards — the draft, the
+cards to buy, any card's own "choose a card" — opens in the card chooser
+(`MobileCardChooser.vue`) instead of the sheet, and so does Sell patents. Every
+card is on screen at once, two abreast, so they can be compared against each other
+and against the tags in the header, which the chooser's scrim leaves unblurred. A
+tap chooses a card (for a question that takes one, it moves the choice) and a second
+tap puts it back. The one blue button says what the pick comes to: `Select`,
+`Buy 2 · 6 M€`, `Sell 3 · +3 M€`, or `Skip` when buying none. A question that must
+be answered has no Cancel; the scrim puts the chooser down and the turn page's row
+or the header's pill brings it back. A question with cards nested inside it still
+uses the sheet, at `full`.
+
+**Standard projects** open in the play sheet, all of them side by side with the
+first one the player can pay for picked out; a tap picks another, and its payment
+and `Build · 11 M€` button follow. **Trade** opens the trade sheet
+(`MobileTradeSheet.vue`): the colony tile, the ways to pay the fee as a segmented
+choice, and `Trade`, which answers the fee and the tile together; a swipe moves to
+the next colony, and a colony tapped under the board opens there. **Heat to temp**
+opens a confirmation sheet (`MobileConfirmSheet.vue`) with the action's own words,
+its warnings and its button. **Greenery** goes straight to the map.
+
 **Playing a card.** A tap on a ready card, on the turn page or in the Cards view,
 opens it straight in the play sheet: no bar to confirm on first, since the sheet
 is itself the confirmation and nothing is played by the tap. A sideways swipe on
@@ -313,10 +334,8 @@ and the starting payment is the desktop's auto-fill. The answer is posted the wa
 `WaitingFor` posts one (`playerInputRequest.ts`). Whatever the server asks next —
 a target, a tile — arrives in the action sheet like any other question.
 
-A milestone or award tapped under the board still uses the older flow: the tile
-is held up over a faded board and the panel under it is only the price and the
-button. Tapping the faded board, or the panel's head, abandons the pick. A colony is chosen inside the trade itself, alongside the fee, so there
-is nothing to hold up and the panel keeps the whole screen.
+Milestones, awards and colonies each have a sheet of their own (above), so
+nothing tapped under the board is staged over a faded board any more.
 
 **The payment widget is left as the desktop draws it.** It is drawn for a desktop
 column, where its two sides — what you spend, and what it is worth in M€ — are

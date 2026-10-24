@@ -29,6 +29,9 @@ export const MOBILE_ICONS = {
     path('M10 14h4'),
     path('M10 18h4'),
   ],
+  'check': [
+    path('M20 6 9 17l-5-5'),
+  ],
   'check-check': [
     path('M18 6 7 17l-5-5'),
     path('m22 10-7.5 7.5L13 16'),

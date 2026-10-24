@@ -129,7 +129,7 @@
         class="mobile-block-button"
         :disabled="sellPatents === undefined"
         data-test="sell-patents"
-        @click="openEntry(sellPatents)">
+        @click="sellPatents !== undefined && $emit('openChooser', sellPatents.index)">
         <MobileIcon name="coins" :size="18"/>
         <span v-i18n>Sell patents</span>
       </button>
@@ -223,7 +223,7 @@ export default defineComponent({
       default: false,
     },
   },
-  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView', 'inspect'],
+  emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'openProjects', 'openTrade', 'openChooser', 'confirm', 'showView', 'inspect'],
   components: {
     Card,
     MobileIcon,
@@ -418,12 +418,25 @@ export default defineComponent({
       const value = Number(title.data[0]?.value);
       return Number.isFinite(value) ? value : undefined;
     },
+    /* Each tile opens the sheet for what it stands for: the claim sheet, the play sheet
+       with the standard projects in it, the trade sheet, or a one-button confirmation.
+       Greenery opens its entry, which goes straight to the map. */
     openTile(tile: Tile): void {
       if (!tile.usable) {
         return;
       }
-      if (tile.entry === undefined) {
+      switch (tile.key) {
+      case 'board':
         this.$emit('openMilestones');
+        return;
+      case 'projects':
+        this.$emit('openProjects');
+        return;
+      case 'trade':
+        this.$emit('openTrade');
+        return;
+      case 'heat':
+        this.$emit('confirm', 'convertHeat');
         return;
       }
       this.openEntry(tile.entry);

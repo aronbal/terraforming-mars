@@ -11,9 +11,25 @@
       @keydown.esc="cancel">
       <span class="mobile-play-sheet-grabber" aria-hidden="true"></span>
       <div class="mobile-play-sheet-body">
-        <h2 :id="titleId" class="mobile-play-sheet-title">{{ $t(model.name) }}</h2>
+        <h2 :id="titleId" class="mobile-play-sheet-title">{{ $t(title) }}</h2>
+        <!-- A choice among several, like the standard projects: all of them at once,
+             the one being paid for ringed, and a tap moves to another. -->
+        <div v-if="choiceModels.length > 1" class="mobile-card-grid" data-test="play-sheet-choices">
+          <button
+            v-for="choice in choiceModels"
+            :key="choice.name"
+            type="button"
+            class="mobile-card-grid-item"
+            :class="{'mobile-card-grid-item--chosen': choice.name === card}"
+            :aria-pressed="choice.name === card"
+            data-test="play-sheet-choice"
+            @click="$emit('choose', choice.name)">
+            <Card :card="choice" :cubeColor="playerView.thisPlayer.color"/>
+          </button>
+        </div>
         <!-- A sideways swipe on the card moves to the next card the turn can use. -->
         <div
+          v-else
           class="mobile-play-sheet-card"
           data-test="play-sheet-card"
           @pointerdown="onSwipeStart"
@@ -21,7 +37,7 @@
           @pointercancel="swipeFrom = undefined">
           <Card :key="card" :card="model" :cubeColor="playerView.thisPlayer.color"/>
         </div>
-        <div v-if="count > 1" class="mobile-play-sheet-dots" aria-hidden="true" data-test="play-sheet-dots">
+        <div v-if="count > 1 && choiceModels.length <= 1" class="mobile-play-sheet-dots" aria-hidden="true" data-test="play-sheet-dots">
           <span
             v-for="dot in count"
             :key="dot"
@@ -141,8 +157,13 @@ export default defineComponent({
       type: Number,
       default: 1,
     },
+    /** Cards to show side by side instead, the one being paid for picked out among them. */
+    choices: {
+      type: Array as PropType<ReadonlyArray<CardName>>,
+      default: () => [],
+    },
   },
-  emits: ['close', 'next', 'previous'],
+  emits: ['close', 'next', 'previous', 'choose'],
   data(): DataModel {
     return {
       paymentState: undefined,
@@ -161,6 +182,12 @@ export default defineComponent({
     model(): CardModel | undefined {
       return this.entry?.input.cards.find((each) => each.name === this.card);
     },
+    choiceModels(): ReadonlyArray<CardModel> {
+      const cards = this.entry?.input.cards ?? [];
+      return this.choices
+        .map((name) => cards.find((each) => each.name === name))
+        .filter((each): each is CardModel => each !== undefined);
+    },
     canSubmit(): boolean {
       if (this.entry === undefined || this.submitting) {
         return false;
@@ -170,12 +197,17 @@ export default defineComponent({
       }
       return this.paymentState !== undefined && this.paymentState.problem === undefined;
     },
+    /* A standard project's name carries a suffix that keeps it apart from the card of
+       the same name; the card itself does not print it, and neither does this. */
+    title(): string {
+      return this.card.split(':')[0];
+    },
     submitLabel(): string {
       if (this.entry?.kind === 'action') {
         return this.$t('Use');
       }
       return this.$t({
-        message: 'Play · ${0} M€',
+        message: this.entry?.input.annotation === 'standardProject' ? 'Build · ${0} M€' : 'Play · ${0} M€',
         data: [{type: LogMessageDataType.RAW_STRING, value: String(this.paymentState?.payment.megacredits ?? 0)}],
       });
     },

@@ -370,3 +370,113 @@
     animation: mobile-play-sheet-card-in @m-duration @m-ease;
   }
 }
+
+// The scrim behind the card chooser, unblurred: the tags in the header are read through it.
+.mobile-play-sheet-scrim--clear {
+  background: @m-scrim;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.mobile-card-chooser-title {
+  white-space: normal;
+  font-size: @m-row-title-size;
+  font-weight: 500;
+  color: @m-label-2;
+  text-align: center;
+}
+
+/*
+ * Cards two abreast, each the desktop's own card scaled the way the play sheet scales
+ * one, so they can be compared without a swipe. A chosen card is ringed and ticked.
+ */
+@m-card-grid-scale: 0.66;
+
+.mobile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 10px;
+  justify-items: center;
+  padding-bottom: 8px;
+}
+
+:where(#mobile-shell) .mobile-card-grid-item {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: box-shadow @m-duration @m-ease, opacity @m-duration @m-ease;
+
+  .card-container {
+    transform: scale(@m-card-grid-scale);
+    transform-origin: top left;
+    margin:
+      0
+      calc((@m-card-grid-scale - 1) * var(--card-natural-w, 240px))
+      calc((@m-card-grid-scale - 1) * var(--card-natural-h, 340px))
+      0;
+    cursor: inherit;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.mobile-card-grid-item--chosen {
+  box-shadow: 0 0 0 3px @m-accent;
+}
+
+.mobile-card-chooser-check {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: @m-accent;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/*
+ * The confirmation sheet: no card, so the action's glyph stands in for one, large,
+ * over what the action does.
+ */
+.mobile-confirm-sheet-body {
+  align-items: center;
+  padding-top: 16px;
+  text-align: center;
+}
+
+.mobile-confirm-sheet-glyph {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  color: #fff;
+}
+
+.mobile-confirm-sheet-title {
+  margin: 0;
+  font-size: @m-bar-title-size;
+  font-weight: 600;
+  line-height: 1.3;
+  color: @m-label;
+}
+
+// A colony tile in the trade sheet, as wide as the sheet allows, as on the board.
+.mobile-trade-sheet-tile {
+  touch-action: pan-y;
+
+  .mobile-fit {
+    animation: mobile-play-sheet-card-in @m-duration @m-ease;
+  }
+}
