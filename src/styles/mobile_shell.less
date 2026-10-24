@@ -63,16 +63,16 @@
 @mobile-stage-height: 600px;
 
 /*
- * The page behind the shell is painted the shell's own ground.
+ * The page behind the shell is painted the tab bar's colour.
  *
- * In an iOS home-screen app the fixed shell can stop short of the bottom of the
- * screen, by the height of the status bar, and the desktop's grey page showed
- * through the gap as a bar under every view. `standaloneHeight.ts` stretches the
- * shell back down; this keeps any gap that is left the shell's own colour.
+ * In an iOS home-screen app the viewport can stop short of the bottom of the
+ * screen, by the height of the status bar, and nothing but the page's background
+ * can be drawn in the band under it. Painted the tab bar's glass as it looks over
+ * the ground, the band reads as the bottom of the tab bar. See `standaloneHeight.ts`.
  */
 html:has(> body.mobile-shell-active),
 .mobile-shell-active {
-  background: @mobile-ground;
+  background: mix(@m-card, @m-bg, 82%);
 }
 
 .mobile-shell-active {
@@ -1812,6 +1812,11 @@ html:has(> body.mobile-shell-active),
   border-top: 0.5px solid @m-sep;
   font-family: @m-font;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The band under a short home-screen viewport already clears the home indicator. */
+.mobile-shell--short .mobile-tabbar {
+  padding-bottom: max(8px, calc(env(safe-area-inset-bottom) - var(--mobile-screen-gap)));
 }
 
 /* Each tab is an icon over its name; the open one sits on a soft pill rather than

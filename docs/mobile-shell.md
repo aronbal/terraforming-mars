@@ -514,11 +514,14 @@ Respect the safe areas: `viewport-fit=cover` plus
 `env(safe-area-inset-bottom)` padding on the tab bar and
 `env(safe-area-inset-top)` on the header.
 
-On an iOS home screen the fixed shell stops the status bar's height short of the
-bottom of the screen (48px on an iPhone 11), which left an empty band under the
-tab bar. `utils/standaloneHeight.ts` gives the shell the screen's own height when
-`navigator.standalone` is set and the viewport is shorter than the screen, and
-does nothing in a browser tab or once the viewport is right.
+On an iOS home screen the viewport can stop the status bar's height short of the
+bottom of the screen (48px on an iPhone 11). Nothing on the page can be drawn in
+that band: a shell stretched to the screen's height is cut off at the viewport,
+tab labels included. So the shell keeps to the viewport; the page background
+behind it is the tab bar's colour, so the band reads as the bottom of the tab bar,
+and `utils/standaloneHeight.ts` measures the band so the tab bar drops the room it
+would otherwise keep for the home indicator (`.mobile-shell--short`). In a
+browser tab, or once the viewport is right, nothing changes.
 
 ## Phasing
 
