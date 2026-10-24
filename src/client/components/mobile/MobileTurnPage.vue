@@ -1,7 +1,25 @@
 <template>
   <div class="mobile-turn" data-test="turn-page">
+    <!-- The game is over: the way to the final score, where the moves used to be. -->
+    <section v-if="gameOver" class="mobile-section mobile-gutter">
+      <div class="mobile-list">
+        <a class="mobile-row mobile-row--button" :href="'the-end?id=' + playerView.id" data-test="turn-results">
+          <span class="mobile-glyph mobile-glyph--accent">
+            <MobileIcon name="trophy" :size="16"/>
+          </span>
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title" v-i18n>Game over</span>
+              <span class="mobile-row-subtitle" v-i18n>See the final score</span>
+            </span>
+            <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+          </span>
+        </a>
+      </div>
+    </section>
+
     <!-- Not this player's move: say whose it is, and leave the rest readable. -->
-    <section v-if="waitingFor === undefined" class="mobile-section mobile-gutter">
+    <section v-else-if="waitingFor === undefined" class="mobile-section mobile-gutter">
       <div class="mobile-list">
         <div class="mobile-row" data-test="turn-waiting">
           <span class="mobile-glyph" :class="activeGlyphClass">
@@ -87,7 +105,7 @@
       </section>
     </template>
 
-    <section class="mobile-tiles mobile-gutter" data-test="turn-tiles">
+    <section v-if="!gameOver" class="mobile-tiles mobile-gutter" data-test="turn-tiles">
       <button
         v-for="tile in tiles"
         :key="tile.key"
@@ -161,6 +179,7 @@ import MobileLogRow from '@/client/components/mobile/MobileLogRow.vue';
 import * as constants from '@/common/constants';
 import {ActionEntry, ReadyCard, entryFor, isActionMenu, otherEntries, readyCards} from '@/client/components/mobile/MobileActionMenu';
 import {ActionAnnotation} from '@/common/input/Annotation';
+import {Phase} from '@/common/Phase';
 import {LogEvent, LogPlayer} from '@/client/components/mobile/MobileLog';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
@@ -267,6 +286,9 @@ export default defineComponent({
     activeGlyphClass(): string {
       const active = this.activePlayer;
       return active === undefined ? 'mobile-glyph--neutral' : 'player_bg_color_' + active.color;
+    },
+    gameOver(): boolean {
+      return this.playerView.game.phase === Phase.END;
     },
     waitingTitle(): string {
       const active = this.activePlayer;

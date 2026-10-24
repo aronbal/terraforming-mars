@@ -654,6 +654,56 @@ html:has(> body.mobile-shell-active),
   .wf-option-save {
     margin: 10px 0 14px;
   }
+
+  /*
+   * The desktop's buttons and number fields, drawn as the sheets draw theirs: the
+   * button that answers is the blue one, and the ones that only adjust -- MAX, + and
+   * − -- are grey, so every question reads the same way whichever input asks it.
+   */
+  // The desktop sets its button colours with !important, so these have to as well.
+  .btn {
+    min-height: @m-tap;
+    padding: 0 20px;
+    border: none;
+    border-radius: @m-radius-button-lg;
+    background: @m-accent !important;
+    box-shadow: none;
+    font-family: @m-font;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff !important;
+    text-transform: none;
+
+    &:disabled {
+      background: @m-fill !important;
+      color: @m-label-3 !important;
+    }
+  }
+
+  .btn-max,
+  .btn-plus,
+  .btn-minus {
+    min-width: @m-tap;
+    margin-left: 0;
+    padding: 0 14px;
+    background: @m-fill !important;
+    font-weight: 500;
+    color: @m-label !important;
+  }
+
+  .nes-input {
+    min-height: @m-tap;
+    width: 72px;
+    padding: 0 10px;
+    border: none;
+    border-radius: @m-radius-button-lg;
+    background: @m-fill;
+    font-family: @m-font;
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    color: @m-label;
+  }
 }
 
 //

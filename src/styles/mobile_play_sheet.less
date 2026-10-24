@@ -480,3 +480,40 @@
     animation: mobile-play-sheet-card-in @m-duration @m-ease;
   }
 }
+
+// A number to choose: the question, the number large between a − and a +, the ends.
+.mobile-amount-sheet-body {
+  align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  text-align: center;
+}
+
+.mobile-amount-sheet-dial {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  .mobile-play-sheet-step {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+
+    &::before {
+      inset: 6px;
+    }
+  }
+}
+
+.mobile-amount-sheet-value {
+  min-width: 72px;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1;
+  color: @m-label;
+  .m-tabular();
+}
+
+.mobile-amount-sheet-ends {
+  align-self: stretch;
+}

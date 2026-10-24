@@ -6,6 +6,7 @@ import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import {CardName} from '@/common/cards/CardName';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {LogEvent} from '@/client/components/mobile/MobileLog';
+import {Phase} from '@/common/Phase';
 import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures';
 
 describe('MobileTurnPage', () => {
@@ -148,6 +149,17 @@ describe('MobileTurnPage', () => {
     expect(wrapper.find('[data-test="turn-waiting"]').exists()).is.true;
     expect(wrapper.find('[data-test="ready-now"]').exists()).is.false;
     expect(wrapper.find('[data-test="tile-heat"]').attributes('disabled')).is.not.undefined;
+  });
+
+  it('points to the final score once the game is over, in place of the moves', () => {
+    const view = fakePlayerViewModel({waitingFor: undefined} as never);
+    const wrapper = shallowMount(MobileTurnPage, {
+      ...globalConfig,
+      props: {playerView: {...view, game: {...view.game, phase: Phase.END}}, recent: [], players: [], now: 0},
+    });
+    expect(wrapper.find('[data-test="turn-results"]').attributes('href')).eq('the-end?id=' + view.id);
+    expect(wrapper.find('[data-test="turn-waiting"]').exists()).is.false;
+    expect(wrapper.find('[data-test="turn-tiles"]').exists()).is.false;
   });
 
   it('offers the way back to a question the sheet is asking', async () => {

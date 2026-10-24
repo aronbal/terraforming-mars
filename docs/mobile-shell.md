@@ -277,6 +277,17 @@ be answered has no Cancel; the scrim puts the chooser down and the turn page's r
 or the header's pill brings it back. A question with cards nested inside it still
 uses the sheet, at `full`.
 
+**Choosing a number.** A question that is only a number — how many steps of heat
+production Insulation gives up, say — opens in the amount sheet
+(`MobileAmountSheet.vue`): the number large between a − and a +, the two ends of
+the range as a segmented choice, and one blue button that says what it sends
+(`Decrease · 3`). It is put down and brought back like the card chooser. Any other
+question still uses the sheet, where the desktop's own buttons are redrawn the same
+way: the one that answers is blue, the ones that only adjust (MAX, +, −) are grey.
+
+**Game over.** The turn page's first row becomes `Game over · See the final score`,
+a link to the results page, and the action tiles go.
+
 **Standard projects** open in the play sheet, all of them side by side with the
 first one the player can pay for picked out; a tap picks another, and its payment
 and `Build · 11 M€` button follow. **Trade** opens the trade sheet
