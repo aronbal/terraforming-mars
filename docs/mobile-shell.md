@@ -100,7 +100,8 @@ Global parameter limits and bonus thresholds, from `src/common/constants.ts`:
 ```
 PlayerHome.vue                          unchanged, desktop
 mobile/MobilePlayerHome.vue             composes the SAME children into views and sheets
-mobile/MobileHeader.vue                 generation, rings, resources, tag row, the view control
+mobile/MobileHeader.vue                 generation, rings, resources, tag row
+mobile/MobileTabBar.vue                 the views, along the bottom edge
 mobile/MobileTurnPage.vue               what the player can do now, read off the turn's menu
 mobile/MobileSelectionBar.vue           the bar a selected card raises: name, price, Play or Use
 mobile/MobileLog.ts                     log lines as rows, and what happened since your last turn
@@ -213,8 +214,13 @@ without switching anywhere.
 in a sheet, and **⋯**, which opens the settings and the links to another game.
 Under them the global parameters are progress rings of the steps each has taken
 (temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
-15 when it is on), each with its value and label, and TR on the right. Then the
-six resources as amount over production, then the segmented control.
+15 when it is on), each with its value and label beside it — no number inside the
+ring, which only repeated the value — and TR on the right. Then the
+six resources as amount over production, then the player's tags as small icons
+with their counts. The views are a tab bar at the bottom of the screen
+(`MobileTabBar.vue`: Turn, Board, Cards, Log, each an icon over its name), where
+the thumb already is; at the top of the header they were the furthest control
+from a hand holding the phone.
 
 **The turn page** reads the turn's menu rather than listing it. This is possible
 because `OrOptions.toModel` carries each option's `ActionAnnotation` out to the
@@ -239,7 +245,11 @@ them, leaving the client nothing to match on but translated titles.
 3. **Tiles** — Heat to temp, Greenery, Standard projects, Milestones & awards,
    plus Trade when colonies are in the game and Delegate (and Party action, when
    the menu offers it) with Turmoil. A tile the menu does not offer is dimmed to
-   45% and says why (`Needs 8 · 5 plants`, `Temperature is maxed`). Greenery reads
+   45%. A conversion that is short says how far, as have over need (`5/8`); a
+   tile that is simply not on offer says nothing, since dimmed is enough. Empty
+   sections — nothing since the last turn, no ready card — are left out rather
+   than saying so, and the question row goes while the sheet holding it is up.
+   Greenery reads
    `plantsNeededForGreenery`, which the player model now carries, so Ecoline's 7
    is right. Milestones & awards opens the Board view at the tiles under the map,
    where they are claimed.
@@ -425,14 +435,12 @@ enough to read. Nothing is played without the bar's button, because a mis-tap
 that plays a card costs a turn. The existing `magnify_cards` preference is
 hover-based and therefore dead on touch.
 
-**Tag row.** A thin strip in the header showing tag counts. By default it shows
-where you judge card requirements: on the Cards view, and while the sheet asks
-which cards to take — a draft, the research phase, a card's own pick — since
-whether a card needing three science tags is worth keeping turns on them; `always`
-keeps it in the header on every view, folded away except on Cards. Tapping it
-overrides that until the next view change. The `tag_row` preference switches
-between `auto`, `always` and `never`. Counts come from the tableau, via
-the existing `PlayerTags` logic — do not recompute them independently.
+**Tag row.** A thin strip in the header showing tag counts, in the place the view
+control used to have, on every view: whether a card needing three science tags is
+worth drafting turns on them. It draws nothing until there is a tag to count. The
+`tag_row` preference is On or Off (`auto` / `never`; a stored `always` reads as
+On). Counts come from the tableau, via the existing `PlayerTags` logic — do not
+recompute them independently.
 
 ## Entry and startup screens
 
@@ -533,11 +541,12 @@ Four places where the implementation departs from the plan above, and why.
   for — but it scales the computed font sizes too, and that turned out to be
   fatal. See below.
 
-- **Tile placement keeps the existing `ConfirmDialog`.** `SelectSpace` already
-  confirms a tap, and honours `hide_tile_confirmation`. Rather than build a
-  second confirmation, the shell restyles that dialog to sit at the bottom of
-  the screen above the sheet, and adds a bar of its own that says a placement is
-  under way and offers a way back to the action list.
+- **Tile placement is confirmed in the shell's own bar.** `SelectSpace` still
+  honours `hide_tile_confirmation`, but on the mobile layout it no longer opens
+  `ConfirmDialog`: that dialog sat over the board, hiding the space it asked
+  about. It offers the tap through `spaceSelection.offerPlacement`, and the bar
+  under the map turns from "Choose a space · Actions" into "Place here? ✕ ✓".
+  Tapping another blinking space simply moves the choice.
 
 - **The shell learns about a placement from `SelectSpace` itself**, through
   `src/client/utils/spaceSelection.ts`. The top-level `waitingFor` does not show

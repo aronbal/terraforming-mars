@@ -154,24 +154,12 @@ html:has(> body.mobile-shell-active),
   min-height: 24px;
 }
 
-.mobile-tagbar-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  padding: 3px 5px;
-  border-radius: 5px;
-  border: 1px solid @mobile-line-soft;
-  flex: none;
-}
-
 .mobile-tag-list {
   display: flex;
-  gap: 4px;
+  min-width: 0;
+  gap: 12px;
+  // Room for the count badges, which hang past the icons' edges.
+  padding: 2px 8px 4px 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -181,20 +169,44 @@ html:has(> body.mobile-shell-active),
 }
 
 .mobile-tag {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: @mobile-sunk;
-  border: 1px solid @mobile-line-soft;
-  font-size: 12px;
   flex: none;
 
+  /* The players overview draws each tag as a 40px badge over its count. Here it is
+     a small icon with the count tucked into its corner, the way an app badge sits. */
+  .tag-display {
+    position: relative;
+    margin: 0;
+  }
+
+  .tag-count {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    background-size: 26px;
+    background-position: -1px;
+    box-shadow: none;
+  }
+
   .tag-count-display {
-    // The tag icons come from the players overview, already sized for a desktop row.
-    transform: scale(0.8);
-    transform-origin: left center;
+    position: absolute;
+    right: -7px;
+    bottom: -4px;
+    z-index: 3;
+    min-width: 15px;
+    height: 15px;
+    margin: 0;
+    padding: 0 3px;
+    box-sizing: border-box;
+    border-radius: @m-radius-pill;
+    background: @m-raised;
+    box-shadow: 0 0 0 1.5px @m-card;
+    color: @m-label;
+    font-family: @m-font;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-shadow: none;
+    .m-tabular();
   }
 }
 
@@ -453,9 +465,11 @@ html:has(> body.mobile-shell-active),
   font-weight: 600;
 }
 
-.mobile-confirm-sub {
-  font-size: 11px;
-  color: @mobile-muted;
+// The bar's buttons are a glyph each, so they are given a whole thumb's width.
+.mobile-confirm-bar .mobile-button--glyph {
+  min-width: @m-tap;
+  min-height: @m-tap;
+  font-size: 17px;
 }
 
 .mobile-button {
@@ -1344,13 +1358,6 @@ html:has(> body.mobile-shell-active),
   transition: stroke-dashoffset @m-duration @m-ease;
 }
 
-.mobile-ring-text {
-  font-family: @m-font;
-  font-size: 10px;
-  font-weight: 700;
-  fill: @m-label;
-}
-
 .mobile-stat {
   display: flex;
   flex-direction: column;
@@ -1757,7 +1764,8 @@ html:has(> body.mobile-shell-active),
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+  // The tab bar under it keeps clear of the home indicator.
+  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
   border-radius: @m-radius-sheet @m-radius-sheet 0 0;
   background: @m-raised;
   color: @m-label;
@@ -1819,8 +1827,77 @@ html:has(> body.mobile-shell-active),
   font-weight: 600;
 }
 
-.mobile-bottom-spacer {
-  height: env(safe-area-inset-bottom);
+/* The shell's last row: the selected card's bar, when there is one, over the tabs. */
+.mobile-bottom {
+  position: relative;
+  z-index: 3;
+}
+
+.mobile-tabbar {
+  display: flex;
+  gap: 4px;
+  /* Lifted clear of the bottom edge: on a phone without a home indicator the tabs
+     would otherwise sit right on it, where the thumb has to reach down to them. */
+  padding: 8px calc(10px + env(safe-area-inset-right)) max(20px, calc(8px + env(safe-area-inset-bottom))) calc(10px + env(safe-area-inset-left));
+  background: @m-glass;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 0.5px solid @m-sep;
+  font-family: @m-font;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Each tab is an icon over its name; the open one sits on a soft pill rather than
+   turning blue, so the bar stays quiet and only says where you are. */
+:where(#mobile-shell) .mobile-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 0 5px;
+  border-radius: 22px;
+  color: @m-label-2;
+  transition: background-color @m-duration @m-ease, color @m-duration @m-ease;
+}
+
+:where(#mobile-shell) .mobile-tab--on {
+  background: @m-fill;
+  color: @m-label;
+
+  .mobile-tab-label {
+    font-weight: 700;
+  }
+}
+
+.mobile-tab-icon {
+  position: relative;
+  display: block;
+}
+
+// A count over the icon's top, the way the badge sits on an app's tab.
+.mobile-tab-badge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 3px);
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  border-radius: @m-radius-pill;
+  background: @m-raised;
+  color: @m-label;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.mobile-tab-label {
+  font-size: @m-small-size;
+  font-weight: 500;
 }
 
 //

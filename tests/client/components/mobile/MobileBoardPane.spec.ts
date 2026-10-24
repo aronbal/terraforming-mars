@@ -3,6 +3,7 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import {fakeGameModel} from '../testHelpers';
+import {beginSpaceSelection, clearPlacement, offerPlacement, resetSpaceSelectionForTest} from '@/client/utils/spaceSelection';
 
 describe('MobileBoardPane', () => {
   function mount() {
@@ -40,5 +41,38 @@ describe('MobileBoardPane', () => {
     expect(wrapper.find('.mobile-board-stage--tap-targets').exists()).is.false;
     await wrapper.setProps({tapTargets: true});
     expect(wrapper.find('.mobile-board-stage--tap-targets').exists()).is.true;
+  });
+
+  /* On a phone the question is asked in the bar under the map, clear of the space. */
+  describe('placement bar', () => {
+    afterEach(() => {
+      resetSpaceSelectionForTest();
+    });
+
+    it('asks to choose a space, with the way back to the actions', async () => {
+      beginSpaceSelection();
+      const wrapper = mount();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.find('[data-test="placement-bar"]').exists()).is.true;
+      expect(wrapper.find('[data-test="placement-confirm"]').exists()).is.false;
+    });
+
+    it('confirms or cancels a tapped space', async () => {
+      beginSpaceSelection();
+      let confirmed = 0;
+      let cancelled = 0;
+      offerPlacement({confirm: () => confirmed++, cancel: () => cancelled++});
+      const wrapper = mount();
+      await wrapper.vm.$nextTick();
+
+      await wrapper.find('[data-test="placement-confirm"]').trigger('click');
+      await wrapper.find('[data-test="placement-cancel"]').trigger('click');
+      expect(confirmed).eq(1);
+      expect(cancelled).eq(1);
+
+      clearPlacement();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.find('[data-test="placement-confirm"]').exists()).is.false;
+    });
   });
 });

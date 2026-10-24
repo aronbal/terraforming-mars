@@ -199,35 +199,44 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('closed');
   });
 
-  it('the tag row opens itself on the cards view', () => {
+  /* The tags sit where the views were, on every view, unless they are turned off. */
+  it('shows the tags on every view unless they are turned off', () => {
     const wrapper = mount();
-    expect(wrapper.vm.tagRowOpen).is.false;
-
-    wrapper.vm.selectView('cards');
-    expect(wrapper.vm.tagRowOpen).is.true;
-
-    wrapper.vm.toggleTagRow();
-    expect(wrapper.vm.tagRowOpen).is.false;
-
-    // The manual override lasts only until the next view change.
+    expect(wrapper.vm.tagRowVisible).is.true;
     wrapper.vm.selectView('log');
-    wrapper.vm.selectView('cards');
-    expect(wrapper.vm.tagRowOpen).is.true;
+    expect(wrapper.vm.tagRowVisible).is.true;
+
+    PreferencesManager.INSTANCE.set('tag_row', 'never');
+    wrapper.vm.refreshPreferences();
+    expect(wrapper.vm.tagRowVisible).is.false;
   });
 
-  /* Whether a card needing three science tags is worth drafting turns on the tags. */
-  it('shows the tags while a draft asks which card to keep', () => {
+  it('counts the ready cards on the Cards tab', () => {
+    expect(mount(actionMenu()).vm.tabBadges.cards).eq('1');
+    expect(mount().vm.tabBadges.cards).is.undefined;
+  });
+
+  it('switches the view from the tab bar', () => {
+    const wrapper = mount();
+    wrapper.findComponent({name: 'MobileTabBar'}).vm.$emit('update:view', 'cards');
+    expect(wrapper.vm.view).eq('cards');
+  });
+
+  it('raises a choice between cards all the way, so every card is on screen', () => {
     const draft = cardList('draft', [CardName.ANTS]);
     const wrapper = mount({...draft, annotation: undefined} as PlayerInputModel);
-    expect(wrapper.vm.choosingCards).is.true;
-    expect(wrapper.vm.tagRowVisible).is.true;
-    expect(wrapper.vm.tagRowOpen).is.true;
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.snap).eq('full');
+
+    const question = mount(option('Pay 3 M€?'));
+    question.vm.raiseSheet();
+    expect(question.vm.snap).eq('half');
   });
 
-  it('keeps the tags off the turn view while the menu is up', () => {
-    const wrapper = mount(actionMenu());
-    expect(wrapper.vm.choosingCards).is.false;
-    expect(wrapper.vm.tagRowVisible).is.false;
+  it('knows a draft from the menu', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    expect(mount({...draft, annotation: undefined} as PlayerInputModel).vm.choosingCards).is.true;
+    expect(mount(actionMenu()).vm.choosingCards).is.false;
   });
 
   /* The sheet has no handle to leave behind, so with a question waiting the header's
