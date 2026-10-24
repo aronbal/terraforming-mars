@@ -217,7 +217,8 @@ Under them the global parameters are progress rings of the steps each has taken
 (temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
 15 when it is on), each with its value and label beside it — no number inside the
 ring, which only repeated the value — and TR on the right. Then the
-six resources as amount over production, then the player's tags as small icons
+six resources, each an icon with the amount beside it and its production as a
+badge on the icon's corner (none when there is no production), then the player's tags as small icons
 with their counts. The views are a tab bar at the bottom of the screen
 (`MobileTabBar.vue`: Turn, Board, Cards, Log, each an icon over its name), where
 the thumb already is; at the top of the header they were the furthest control

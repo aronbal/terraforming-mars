@@ -51,6 +51,13 @@ describe('MobileHeader', () => {
     expect(resources[0].production).eq(3);
   });
 
+  /* Production rides on the icon as a badge, and only where there is some. */
+  it('badges only the resources with production', () => {
+    const wrapper = mount(false);
+    expect(wrapper.find('[data-test="resource-megacredits"] [data-test="resource-production"]').text()).eq('+3');
+    expect(wrapper.find('[data-test="resource-steel"] [data-test="resource-production"]').exists()).is.false;
+  });
+
   /* The views are in the tab bar at the bottom; the tags took their place. */
   it('shows the tags where the views used to be', () => {
     const wrapper = mount(false);

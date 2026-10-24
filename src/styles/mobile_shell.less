@@ -1414,40 +1414,55 @@ html:has(> body.mobile-shell-active),
 
 .mobile-resource {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 5px 0;
-  border-radius: 10px;
-  background: @m-fill;
+  justify-content: center;
+  gap: 11px;
   min-width: 0;
+  padding: 4px 0 6px;
 }
 
-.mobile-resource-amount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.mobile-resource-badged {
+  position: relative;
+  flex: none;
 }
 
-// The desktop's own resource art, at the size the design gives an icon.
+// The desktop's own resource art, at the size the tags are drawn.
 .mobile-resource-icon.resource_icon {
-  width: 16px;
-  height: 16px;
+  display: block;
+  width: 24px;
+  height: 24px;
   margin: 0;
   background-size: contain;
-  flex: none;
 }
 
 .mobile-resource-count {
   .m-tabular();
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
+// Production, as a badge on the icon's corner. None is shown when there is none.
 .mobile-resource-production {
+  position: absolute;
+  right: -8px;
+  bottom: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: @m-radius-pill;
+  background: @m-raised;
+  box-shadow: 0 0 0 1.5px @m-card;
+  color: @m-label;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
   .m-tabular();
-  font-size: @m-small-size;
-  color: @m-label-2;
+}
+
+.mobile-resource-production--negative {
+  color: @m-bad;
 }
 
 .mobile-segmented {
