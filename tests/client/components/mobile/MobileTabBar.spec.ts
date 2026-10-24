@@ -26,4 +26,13 @@ describe('MobileTabBar', () => {
     await wrapper.find('[data-test="view-log"]').trigger('click');
     expect(wrapper.emitted('update:view')).deep.eq([['log']]);
   });
+
+  it('shows a count over a tab with something waiting', () => {
+    const wrapper = shallowMount(MobileTabBar, {
+      ...globalConfig,
+      props: {view: 'turn', badges: {cards: '2'}},
+    });
+    expect(wrapper.find('[data-test="badge-cards"]').text()).eq('2');
+    expect(wrapper.find('[data-test="badge-log"]').exists()).is.false;
+  });
 });

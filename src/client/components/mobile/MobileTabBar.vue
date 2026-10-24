@@ -9,7 +9,10 @@
       :aria-selected="view === tab.view"
       :data-test="'view-' + tab.view"
       @click="$emit('update:view', tab.view)">
-      <MobileIcon :name="tab.icon" :size="22"/>
+      <span class="mobile-tab-icon">
+        <MobileIcon :name="tab.icon" :size="22" :strokeWidth="view === tab.view ? 2.2 : 1.8"/>
+        <span v-if="badges[tab.view] !== undefined" class="mobile-tab-badge mobile-num" :data-test="'badge-' + tab.view">{{ badges[tab.view] }}</span>
+      </span>
       <span class="mobile-tab-label">{{ $t(tab.label) }}</span>
     </button>
   </nav>
@@ -48,6 +51,11 @@ export default defineComponent({
     view: {
       type: String as PropType<MobileView>,
       required: true,
+    },
+    /** A count to show over a tab's icon, for the tabs that have something waiting. */
+    badges: {
+      type: Object as PropType<Partial<Record<MobileView, string>>>,
+      default: () => ({}),
     },
   },
   emits: ['update:view'],

@@ -211,6 +211,11 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.tagRowVisible).is.false;
   });
 
+  it('counts the ready cards on the Cards tab', () => {
+    expect(mount(actionMenu()).vm.tabBadges.cards).eq('1');
+    expect(mount().vm.tabBadges.cards).is.undefined;
+  });
+
   it('switches the view from the tab bar', () => {
     const wrapper = mount();
     wrapper.findComponent({name: 'MobileTabBar'}).vm.$emit('update:view', 'cards');

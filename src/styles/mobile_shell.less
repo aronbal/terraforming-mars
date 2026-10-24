@@ -157,7 +157,9 @@ html:has(> body.mobile-shell-active),
 .mobile-tag-list {
   display: flex;
   min-width: 0;
-  gap: 4px;
+  gap: 12px;
+  // Room for the count badges, which hang past the icons' edges.
+  padding: 2px 8px 4px 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -167,36 +169,44 @@ html:has(> body.mobile-shell-active),
 }
 
 .mobile-tag {
-  display: flex;
-  align-items: center;
-  padding: 3px 8px 3px 3px;
-  border-radius: @m-radius-pill;
-  background: @m-fill;
   flex: none;
 
-  /* The players overview draws each tag as a 40px badge over its count. Here it
-     is a small icon beside the count, one line tall. */
+  /* The players overview draws each tag as a 40px badge over its count. Here it is
+     a small icon with the count tucked into its corner, the way an app badge sits. */
   .tag-display {
-    flex-direction: row;
-    align-items: center;
-    gap: 5px;
+    position: relative;
     margin: 0;
   }
 
   .tag-count {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     margin: 0;
-    background-size: 22px;
+    background-size: 26px;
     background-position: -1px;
     box-shadow: none;
   }
 
   .tag-count-display {
+    position: absolute;
+    right: -7px;
+    bottom: -4px;
+    z-index: 3;
+    min-width: 15px;
+    height: 15px;
     margin: 0;
-    font-size: 14px;
-    text-shadow: none;
+    padding: 0 3px;
+    box-sizing: border-box;
+    border-radius: @m-radius-pill;
+    background: @m-raised;
+    box-shadow: 0 0 0 1.5px @m-card;
     color: @m-label;
+    font-family: @m-font;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-shadow: none;
+    .m-tabular();
   }
 }
 
@@ -1825,7 +1835,10 @@ html:has(> body.mobile-shell-active),
 
 .mobile-tabbar {
   display: flex;
-  padding: 4px calc(8px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(8px + env(safe-area-inset-left));
+  gap: 4px;
+  /* Lifted clear of the bottom edge: on a phone without a home indicator the tabs
+     would otherwise sit right on it, where the thumb has to reach down to them. */
+  padding: 8px calc(10px + env(safe-area-inset-right)) max(20px, calc(8px + env(safe-area-inset-bottom))) calc(10px + env(safe-area-inset-left));
   background: @m-glass;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -1834,25 +1847,57 @@ html:has(> body.mobile-shell-active),
   -webkit-font-smoothing: antialiased;
 }
 
+/* Each tab is an icon over its name; the open one sits on a soft pill rather than
+   turning blue, so the bar stays quiet and only says where you are. */
 :where(#mobile-shell) .mobile-tab {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-height: 49px;
-  padding: 4px 0;
-  color: @m-label-3;
-  transition: color @m-duration @m-ease;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 0 5px;
+  border-radius: 22px;
+  color: @m-label-2;
+  transition: background-color @m-duration @m-ease, color @m-duration @m-ease;
 }
 
 :where(#mobile-shell) .mobile-tab--on {
-  color: @m-accent;
+  background: @m-fill;
+  color: @m-label;
+
+  .mobile-tab-label {
+    font-weight: 700;
+  }
+}
+
+.mobile-tab-icon {
+  position: relative;
+  display: block;
+}
+
+// A count over the icon's top, the way the badge sits on an app's tab.
+.mobile-tab-badge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 3px);
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  border-radius: @m-radius-pill;
+  background: @m-raised;
+  color: @m-label;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
 }
 
 .mobile-tab-label {
-  font-size: @m-label-size;
-  font-weight: 600;
+  font-size: @m-small-size;
+  font-weight: 500;
 }
 
 //

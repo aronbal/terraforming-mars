@@ -136,7 +136,7 @@
         @cancel="selected = undefined"
         @confirm="confirmSelection()"
         @inspect="magnified = selection.card"/>
-      <MobileTabBar :view="view" @update:view="selectView($event)"/>
+      <MobileTabBar :view="view" :badges="tabBadges" @update:view="selectView($event)"/>
     </div>
 
     <!-- Play or Use from the bottom bar: the card large, its payment, and the one
@@ -228,6 +228,9 @@ type DataModel = {
   /** The clock the log's "2 min" is measured against, ticked so it does not go stale. */
   now: number;
 };
+
+// The largest count a tab badge spells out.
+const MAX_BADGE = 9;
 
 // How often the log's relative times are brought up to date.
 const CLOCK_TICK_MS = 30_000;
@@ -396,6 +399,19 @@ export default defineComponent({
     },
     step(): number {
       return this.game.step;
+    },
+    /* What is waiting behind a tab: the cards that can be played or used, and what
+       happened since this player last acted. */
+    tabBadges(): Partial<Record<MobileView, string>> {
+      const badges: Partial<Record<MobileView, string>> = {};
+      if (this.ready.length > 0) {
+        badges.cards = String(this.ready.length);
+      }
+      const recent = this.recentEvents.length;
+      if (recent > 0) {
+        badges.log = recent > MAX_BADGE ? MAX_BADGE + '+' : String(recent);
+      }
+      return badges;
     },
   },
   watch: {
