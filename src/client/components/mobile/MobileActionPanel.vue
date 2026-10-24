@@ -33,7 +33,7 @@ import {defineComponent, PropType} from 'vue';
 
 import WaitingFor from '@/client/components/WaitingFor.vue';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
-import {SheetSnap, SHEET_PEEK_PX, SHEET_SNAPS} from '@/client/components/mobile/MobileView';
+import {SheetSnap, SHEET_SNAPS} from '@/client/components/mobile/MobileView';
 import {pickFocus} from '@/client/utils/mobileFocus';
 
 /** How much of the sheet the `half` and `full` stops leave off screen. */
@@ -96,8 +96,7 @@ export default defineComponent({
     };
   },
   computed: {
-    /* The head is all that shows at the peek stop, so it says whose move it is rather
-       than repeating the tab's own label. */
+    /* The head says whose move it is rather than repeating the tab's own label. */
     title(): string {
       return this.actionWaiting ? this.$t('Your turn') : this.$t('Actions');
     },
@@ -109,7 +108,7 @@ export default defineComponent({
      * when they want to leave.
      */
     hint(): string {
-      return this.snap === 'half' || this.snap === 'full' ? 'Tap to close' : 'Tap to open';
+      return 'Tap to close';
     },
     /*
      * Whether the panel is only the price and the button for something already held
@@ -141,8 +140,6 @@ export default defineComponent({
       switch (snap) {
       case 'closed':
         return height;
-      case 'peek':
-        return Math.max(0, height - SHEET_PEEK_PX);
       case 'half':
         return Math.round(height * HALF_FRACTION);
       default:
@@ -169,7 +166,7 @@ export default defineComponent({
       if (this.dragOffset !== this.dragStartOffset) {
         return;
       }
-      this.$emit('update:snap', this.snap === 'half' || this.snap === 'full' ? 'peek' : 'half');
+      this.$emit('update:snap', this.snap === 'closed' ? 'half' : 'closed');
     },
     onPointerDown(event: PointerEvent): void {
       const head = this.$refs.head as HTMLElement | undefined;

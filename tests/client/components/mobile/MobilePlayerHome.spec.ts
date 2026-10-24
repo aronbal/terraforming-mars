@@ -191,7 +191,7 @@ describe('MobilePlayerHome', () => {
   it('putting the panel down abandons what it was raised for', () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.claimBoardThing('milestone', 'Builder');
-    wrapper.vm.setSnap('peek');
+    wrapper.vm.setSnap('closed');
 
     expect(pickFocus.value).eq('none');
     expect(pickedBoardThing.value).is.undefined;
@@ -199,20 +199,55 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('closed');
   });
 
-  it('the tag row opens itself on the cards view', () => {
+  /* The tags sit where the views were, on every view, unless they are turned off. */
+  it('shows the tags on every view unless they are turned off', () => {
     const wrapper = mount();
-    expect(wrapper.vm.tagRowOpen).is.false;
-
-    wrapper.vm.selectView('cards');
-    expect(wrapper.vm.tagRowOpen).is.true;
-
-    wrapper.vm.toggleTagRow();
-    expect(wrapper.vm.tagRowOpen).is.false;
-
-    // The manual override lasts only until the next view change.
+    expect(wrapper.vm.tagRowVisible).is.true;
     wrapper.vm.selectView('log');
-    wrapper.vm.selectView('cards');
-    expect(wrapper.vm.tagRowOpen).is.true;
+    expect(wrapper.vm.tagRowVisible).is.true;
+
+    PreferencesManager.INSTANCE.set('tag_row', 'never');
+    wrapper.vm.refreshPreferences();
+    expect(wrapper.vm.tagRowVisible).is.false;
+  });
+
+  it('counts the ready cards on the Cards tab', () => {
+    expect(mount(actionMenu()).vm.tabBadges.cards).eq('1');
+    expect(mount().vm.tabBadges.cards).is.undefined;
+  });
+
+  it('switches the view from the tab bar', () => {
+    const wrapper = mount();
+    wrapper.findComponent({name: 'MobileTabBar'}).vm.$emit('update:view', 'cards');
+    expect(wrapper.vm.view).eq('cards');
+  });
+
+  it('raises a choice between cards all the way, so every card is on screen', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    const wrapper = mount({...draft, annotation: undefined} as PlayerInputModel);
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.snap).eq('full');
+
+    const question = mount(option('Pay 3 M€?'));
+    question.vm.raiseSheet();
+    expect(question.vm.snap).eq('half');
+  });
+
+  it('knows a draft from the menu', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    expect(mount({...draft, annotation: undefined} as PlayerInputModel).vm.choosingCards).is.true;
+    expect(mount(actionMenu()).vm.choosingCards).is.false;
+  });
+
+  /* The sheet has no handle to leave behind, so with a question waiting the header's
+     pill is the way back to it from any view. */
+  it('a closed sheet with a question waiting is reopened from the header', () => {
+    const wrapper = mount(option('Confirm', undefined));
+    wrapper.vm.setSnap('closed');
+    expect(wrapper.vm.snap).eq('closed');
+
+    wrapper.findComponent({name: 'MobileHeader'}).vm.$emit('openSheet');
+    expect(wrapper.vm.snap).eq('half');
   });
 
   it('says whose turn it is', () => {

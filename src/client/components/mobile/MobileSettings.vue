@@ -38,11 +38,10 @@
           v-for="mode in tagRowModes"
           :key="mode"
           class="mobile-segment-button"
-          :aria-selected="prefs.tag_row === mode"
+          :aria-selected="tagRowSelected(mode)"
           :data-test="'tag-row-' + mode"
-          @click="setMode('tag_row', mode)">{{ $t(modeLabel(mode)) }}</button>
+          @click="setMode('tag_row', mode)">{{ $t(mode === 'auto' ? 'On' : 'Off') }}</button>
       </div>
-      <span class="mobile-setting-hint" v-i18n>Auto shows the tag row on the Cards view. Always also shows it in the header.</span>
     </div>
 
     <h3 class="mobile-settings-group" v-i18n>Cards</h3>
@@ -93,7 +92,6 @@ import {
   Preference,
   Preferences,
   PreferencesManager,
-  TAG_ROW_MODES,
   TagRowMode,
   applyPreferenceClasses,
   getPreferences,
@@ -199,8 +197,10 @@ export default defineComponent({
     mobileLayoutModes(): ReadonlyArray<MobileLayoutMode> {
       return MOBILE_LAYOUT_MODES;
     },
+    /* The tags have the header's spare line to themselves, so they are simply on or
+       off; a stored `always` reads as on. */
     tagRowModes(): ReadonlyArray<TagRowMode> {
-      return TAG_ROW_MODES;
+      return ['auto', 'never'];
     },
     languages(): ReadonlyArray<{id: string, name: string}> {
       return ALL_LANGUAGES.map((id) => ({id, name: LANGUAGES[id][0]}));
@@ -216,6 +216,9 @@ export default defineComponent({
     },
   },
   methods: {
+    tagRowSelected(mode: TagRowMode): boolean {
+      return mode === 'never' ? this.prefs.tag_row === 'never' : this.prefs.tag_row !== 'never';
+    },
     modeLabel(mode: string): string {
       return MODE_LABELS[mode] ?? mode;
     },

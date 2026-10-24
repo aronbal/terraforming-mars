@@ -31,18 +31,25 @@
       </div>
 
       <div v-if="selectingSpace" class="mobile-confirm-bar" data-test="placement-bar">
-        <div>
+        <template v-if="pending !== undefined">
+          <div class="mobile-confirm-title" v-i18n>Place here?</div>
+          <button
+            class="mobile-button mobile-button--glyph mobile-confirm-back"
+            :aria-label="$t('Cancel')"
+            data-test="placement-cancel"
+            @click="pending.cancel()">&#x2715;</button>
+          <button
+            class="mobile-button mobile-button--glyph mobile-button--go"
+            :aria-label="$t('Place')"
+            data-test="placement-confirm"
+            @click="pending.confirm()">&#x2713;</button>
+        </template>
+        <template v-else>
           <div class="mobile-confirm-title" v-i18n>Choose a space</div>
-          <div class="mobile-confirm-sub" v-i18n>Tap a blinking hex on the map</div>
-        </div>
-        <button class="mobile-button mobile-confirm-back" @click="$emit('showActions')" v-i18n>Actions</button>
+          <button class="mobile-button mobile-confirm-back" @click="$emit('showActions')" v-i18n>Actions</button>
+        </template>
       </div>
     </div>
-
-    <button class="mobile-below-handle" data-test="below-handle" @click="$emit('toggleBelow')">
-      <span v-i18n>Milestones &amp; awards</span>
-      <span class="mobile-below-handle-chevron">{{ belowOpen ? '&#9650;' : '&#9660;' }}</span>
-    </button>
   </div>
 </template>
 
@@ -52,7 +59,7 @@ import {defineComponent, PropType} from 'vue';
 import Board from '@/client/components/Board.vue';
 import {GameModel} from '@/common/models/GameModel';
 import {TileView} from '@/client/components/board/TileView';
-import {selectingSpace} from '@/client/utils/spaceSelection';
+import {PendingPlacement, pendingPlacement, selectingSpace} from '@/client/utils/spaceSelection';
 
 /*
  * The stage: the 620x600 board artwork plus the bleed `mobile_shell.less` leaves on
@@ -120,12 +127,8 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    belowOpen: {
-      type: Boolean,
-      required: true,
-    },
   },
-  emits: ['toggleTileView', 'toggleBelow', 'showActions'],
+  emits: ['toggleTileView', 'showActions'],
   components: {
     Board,
   },
@@ -157,6 +160,10 @@ export default defineComponent({
     },
     selectingSpace(): boolean {
       return selectingSpace.value;
+    },
+    /** The space tapped on the map, while the bar asks whether to place on it. */
+    pending(): PendingPlacement | undefined {
+      return pendingPlacement.value;
     },
     zoomStep(): number {
       return ZOOM_STEP;

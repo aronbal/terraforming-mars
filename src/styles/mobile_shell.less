@@ -34,9 +34,8 @@
 // Apple's minimum recommended touch target, drawn by the tap-target overlay.
 @mobile-tap: 44px;
 
-// A fixed handle, in pixels. Percentages of the sheet height made "peek" tall
-// enough to cover the tile-placement confirmation.
-@mobile-sheet-peek: 46px;
+// The sheet's head: a grab bar over a line that says whose move it is.
+@mobile-sheet-head: 46px;
 
 
 /*
@@ -62,6 +61,18 @@
 @mobile-stage-bleed: 26px;
 @mobile-stage-width: (620px + 2 * @mobile-stage-bleed);
 @mobile-stage-height: 600px;
+
+/*
+ * The page behind the shell is painted the shell's own ground.
+ *
+ * In an iOS home-screen app the fixed shell can stop short of the bottom of the
+ * screen, by about the height of the status bar, and the desktop's grey page showed
+ * through the gap as a bar under every view.
+ */
+html:has(> body.mobile-shell-active),
+.mobile-shell-active {
+  background: @mobile-ground;
+}
 
 .mobile-shell-active {
   // The shell owns the whole viewport; the page behind it must not scroll with it.
@@ -143,24 +154,12 @@
   min-height: 24px;
 }
 
-.mobile-tagbar-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: Prototype, sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  padding: 3px 5px;
-  border-radius: 5px;
-  border: 1px solid @mobile-line-soft;
-  flex: none;
-}
-
 .mobile-tag-list {
   display: flex;
-  gap: 4px;
+  min-width: 0;
+  gap: 12px;
+  // Room for the count badges, which hang past the icons' edges.
+  padding: 2px 8px 4px 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -170,20 +169,44 @@
 }
 
 .mobile-tag {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: @mobile-sunk;
-  border: 1px solid @mobile-line-soft;
-  font-size: 12px;
   flex: none;
 
+  /* The players overview draws each tag as a 40px badge over its count. Here it is
+     a small icon with the count tucked into its corner, the way an app badge sits. */
+  .tag-display {
+    position: relative;
+    margin: 0;
+  }
+
+  .tag-count {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    background-size: 26px;
+    background-position: -1px;
+    box-shadow: none;
+  }
+
   .tag-count-display {
-    // The tag icons come from the players overview, already sized for a desktop row.
-    transform: scale(0.8);
-    transform-origin: left center;
+    position: absolute;
+    right: -7px;
+    bottom: -4px;
+    z-index: 3;
+    min-width: 15px;
+    height: 15px;
+    margin: 0;
+    padding: 0 3px;
+    box-sizing: border-box;
+    border-radius: @m-radius-pill;
+    background: @m-raised;
+    box-shadow: 0 0 0 1.5px @m-card;
+    color: @m-label;
+    font-family: @m-font;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-shadow: none;
+    .m-tabular();
   }
 }
 
@@ -204,21 +227,13 @@
      clipping them would hide resource counts rather than let the player reach them. */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-
-  /* The sheet's peek handle floats over the bottom of the pane. Scrolled to the end,
-     the last row would otherwise sit under it: reachable by eye, not by thumb.
-     `--mobile-pane-gap` is 0 when the player turns the handle off. */
-  &::after {
-    content: "";
-    display: block;
-    height: var(--mobile-pane-gap, 0px);
-  }
 }
 
 .mobile-pane--board {
   // The board scales to fit, so only the column below it ever needs to move.
   overflow-x: hidden;
-  // The board viewport swallows drags, so the column is scrolled by its handle.
+  /* The board viewport swallows drags, so the column scrolls from what is under the
+     board, which always starts on screen. */
   overscroll-behavior: contain;
 }
 
@@ -314,29 +329,6 @@
     font-size: 11px;
     letter-spacing: 0.06em;
   }
-}
-
-// Tapping the header scrolls the column, because dragging the board cannot.
-.mobile-below-handle {
-  width: 100%;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: @mobile-surface;
-  border-top: 1px solid @mobile-line;
-  border-bottom: 1px solid @mobile-line;
-  font-family: Prototype, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: @mobile-muted;
-}
-
-.mobile-below-handle-chevron {
-  margin-left: auto;
-  color: @mobile-dim;
 }
 
 .mobile-below {
@@ -473,9 +465,11 @@
   font-weight: 600;
 }
 
-.mobile-confirm-sub {
-  font-size: 11px;
-  color: @mobile-muted;
+// The bar's buttons are a glyph each, so they are given a whole thumb's width.
+.mobile-confirm-bar .mobile-button--glyph {
+  min-width: @m-tap;
+  min-height: @m-tap;
+  font-size: 17px;
 }
 
 .mobile-button {
@@ -552,11 +546,9 @@
   max-height: 50%;
 }
 
-/* Exactly @mobile-sheet-peek tall, because at the peek stop the head is the whole of
-   what shows: a grab bar over a line that says whose move it is. */
 .mobile-sheet-head {
   flex: none;
-  height: @mobile-sheet-peek;
+  height: @mobile-sheet-head;
   padding: 6px 14px 8px;
   touch-action: none;
   border-bottom: 1px solid @mobile-line-soft;
@@ -1089,11 +1081,6 @@
   display: flex;
   flex-direction: column;
 
-  // The trailing gap is room for the sheet's peek handle, which setup never raises.
-  &::after {
-    display: none;
-  }
-
   > .mobile-panel-body {
     display: flex;
     flex-direction: column;
@@ -1320,6 +1307,46 @@
   background: fade(@m-accent, 13%);
 }
 
+// A 22px pill, with the rest of a 44px tap target drawn around it.
+.mobile-pill--button {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -11px -6px;
+  }
+}
+
+/* A price, in the units it is paid with. Drawn in the label colour rather than the
+   accent: it is a figure to read, not a link to follow. */
+.mobile-pill--price {
+  gap: 8px;
+  color: @m-label;
+}
+
+.mobile-price-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mobile-price-icon.resource_icon {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: none;
+}
+
+.mobile-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .mobile-pill--pr {
   color: @m-pr;
   background: fade(@m-pr, 13%);
@@ -1355,13 +1382,6 @@
   stroke-width: 4;
   stroke-linecap: round;
   transition: stroke-dashoffset @m-duration @m-ease;
-}
-
-.mobile-ring-text {
-  font-family: @m-font;
-  font-size: 10px;
-  font-weight: 700;
-  fill: @m-label;
 }
 
 .mobile-stat {
@@ -1770,7 +1790,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+  // The tab bar under it keeps clear of the home indicator.
+  padding: 12px calc(@m-gutter + env(safe-area-inset-right)) 12px calc(@m-gutter + env(safe-area-inset-left));
   border-radius: @m-radius-sheet @m-radius-sheet 0 0;
   background: @m-raised;
   color: @m-label;
@@ -1832,8 +1853,77 @@
   font-weight: 600;
 }
 
-.mobile-bottom-spacer {
-  height: env(safe-area-inset-bottom);
+/* The shell's last row: the selected card's bar, when there is one, over the tabs. */
+.mobile-bottom {
+  position: relative;
+  z-index: 3;
+}
+
+.mobile-tabbar {
+  display: flex;
+  gap: 4px;
+  /* Lifted clear of the bottom edge: on a phone without a home indicator the tabs
+     would otherwise sit right on it, where the thumb has to reach down to them. */
+  padding: 8px calc(10px + env(safe-area-inset-right)) max(20px, calc(8px + env(safe-area-inset-bottom))) calc(10px + env(safe-area-inset-left));
+  background: @m-glass;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 0.5px solid @m-sep;
+  font-family: @m-font;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Each tab is an icon over its name; the open one sits on a soft pill rather than
+   turning blue, so the bar stays quiet and only says where you are. */
+:where(#mobile-shell) .mobile-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 0 5px;
+  border-radius: 22px;
+  color: @m-label-2;
+  transition: background-color @m-duration @m-ease, color @m-duration @m-ease;
+}
+
+:where(#mobile-shell) .mobile-tab--on {
+  background: @m-fill;
+  color: @m-label;
+
+  .mobile-tab-label {
+    font-weight: 700;
+  }
+}
+
+.mobile-tab-icon {
+  position: relative;
+  display: block;
+}
+
+// A count over the icon's top, the way the badge sits on an app's tab.
+.mobile-tab-badge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 3px);
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  border-radius: @m-radius-pill;
+  background: @m-raised;
+  color: @m-label;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.mobile-tab-label {
+  font-size: @m-small-size;
+  font-weight: 500;
 }
 
 //
