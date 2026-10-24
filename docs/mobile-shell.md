@@ -288,6 +288,17 @@ way: the one that answers is blue, the ones that only adjust (MAX, +, −) are g
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.
 
+**The results page.** On a phone, `the-end` is `MobileGameEnd.vue` instead of the
+desktop's `GameEnd.vue`.
+- The winner is named large at the top (`You won!` when it is the player looking).
+- Each player's total, best first, is a card with a bar of what the score is made
+  of and the parts as numbers.
+- The score by generation is a small SVG chart.
+- Each player's points from cards, milestones and awards are folded rows.
+- At the bottom, `New game`, `See the final board` (the player view with
+  `&noredirect`) and `Main page`.
+- Spectators keep the desktop page.
+
 **Standard projects** open in the play sheet, all of them side by side with the
 first one the player can pay for picked out; a tap picks another, and its payment
 and `Build · 11 M€` button follow. **Trade** opens the trade sheet

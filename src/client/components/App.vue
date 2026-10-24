@@ -37,6 +37,11 @@
         :spectator="spectator"
         :key="'spectator-' + playerkey"
       />
+      <MobileGameEnd
+        v-else-if="screen === 'the-end' && mobileShell && (playerView ?? spectator) !== undefined"
+        :viewModel="(playerView ?? spectator)!"
+        :myColor="playerView?.thisPlayer.color"
+      />
       <GameEnd
         v-else-if="screen === 'the-end'"
         :player-view="playerView"
@@ -71,6 +76,7 @@ const Help = defineAsyncComponent(() => import(/* webpackChunkName: "help" */ '@
 const LoginHome = defineAsyncComponent(() => import(/* webpackChunkName: "login" */ '@/client/components/auth/LoginHome.vue'));
 const LoadGameForm = defineAsyncComponent(() => import(/* webpackChunkName: "load-game" */ '@/client/components/LoadGameForm.vue'));
 const MobilePlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "mobile-player-home" */ '@/client/components/mobile/MobilePlayerHome.vue'));
+const MobileGameEnd = defineAsyncComponent(() => import(/* webpackChunkName: "mobile-game-end" */ '@/client/components/mobile/MobileGameEnd.vue'));
 const PlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "player-home" */ '@/client/components/PlayerHome.vue'));
 const SpectatorHome = defineAsyncComponent(() => import(/* webpackChunkName: "spectator-home" */ '@/client/components/SpectatorHome.vue'));
 const StartScreen = defineAsyncComponent(() => import(/* webpackChunkName: "start-screen" */ '@/client/components/StartScreen.vue'));
@@ -156,6 +162,7 @@ export default defineComponent({
     StartScreen,
     CreateGameForm,
     MobilePlayerHome,
+    MobileGameEnd,
     LoadGameForm,
     ContinueGame,
     GameHome,

@@ -1,0 +1,280 @@
+//
+// The results page on a phone (MobileGameEnd.vue)
+//
+
+.mobile-end {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: calc(24px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
+  background: @m-bg;
+  color: @m-label;
+  font-family: @m-font;
+  font-size: 14px;
+}
+
+.mobile-end-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px @m-gutter 0;
+  text-align: center;
+}
+
+.mobile-end-trophy {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 6px;
+  border-radius: 22px;
+  color: #fff;
+  box-shadow: 0 8px 24px fade(#000, 50%);
+}
+
+.mobile-end-headline {
+  margin: 0;
+  font-family: @m-font;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: @m-label;
+}
+
+.mobile-end-subline {
+  margin: 0;
+  font-size: @m-value-size;
+  color: @m-label-2;
+}
+
+.mobile-end-players {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-end-player,
+.mobile-end-card {
+  padding: 14px;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+.mobile-end-player--me {
+  box-shadow: inset 0 0 0 1.5px fade(@m-accent, 70%);
+}
+
+.mobile-end-player-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-end-place {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: @m-radius-pill;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mobile-end-player-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-end-total {
+  flex: none;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  .m-tabular();
+
+  small {
+    font-size: @m-secondary-size;
+    font-weight: 500;
+    color: @m-label-2;
+  }
+}
+
+.mobile-end-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 12px 0 10px;
+  border-radius: @m-radius-pill;
+  overflow: hidden;
+}
+
+.mobile-end-bar-part {
+  flex: none;
+  min-width: 2px;
+}
+
+.mobile-end-parts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-end-part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: @m-value-size;
+}
+
+.mobile-end-part-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: @m-radius-pill;
+}
+
+.mobile-end-part-label {
+  flex: 1;
+  min-width: 0;
+  color: @m-label-2;
+}
+
+.mobile-end-part-points {
+  font-weight: 600;
+  .m-tabular();
+}
+
+// One colour per source of points, the same in the bar and beside its number.
+.mobile-end-part--tr { background: @m-accent; }
+.mobile-end-part--milestones { background: @m-warn; }
+.mobile-end-part--awards { background: #ffd60a; }
+.mobile-end-part--greenery { background: @m-ok; }
+.mobile-end-part--city { background: #8e8e93; }
+.mobile-end-part--cards { background: @m-pr; }
+.mobile-end-part--moon { background: #64d2ff; }
+.mobile-end-part--tracks { background: #ff6482; }
+.mobile-end-part--escape { background: @m-bad; }
+
+.mobile-end-tiebreak {
+  margin: 10px 0 0;
+  font-size: @m-secondary-size;
+  color: @m-label-3;
+}
+
+.mobile-end-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mobile-end-chart-grid {
+  line {
+    stroke: @m-sep;
+    stroke-width: 0.5;
+  }
+
+  text {
+    font-size: 9px;
+    fill: @m-label-2;
+  }
+}
+
+.mobile-end-chart-line {
+  polyline {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  text {
+    font-size: 10px;
+    font-weight: 700;
+    fill: currentColor;
+  }
+}
+
+each(@players, {
+  @c: ~"player_@{value}";
+  .mobile-end-ink--@{value} {
+    color: lighten(@@c, 12%);
+  }
+});
+
+.mobile-end-details {
+  > summary {
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  &[open] .mobile-row-chevron {
+    transform: rotate(90deg);
+  }
+
+  // The last player's row ends the list, as a last row does.
+  &:last-child:not([open]) .mobile-row-body {
+    border-bottom: 0;
+  }
+}
+
+.mobile-end-lines {
+  margin: 0;
+  padding: 0 14px 10px 58px;
+  list-style: none;
+}
+
+.mobile-end-line {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 0.5px solid @m-sep;
+  font-size: @m-value-size;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.mobile-end-line-points {
+  flex: none;
+  min-width: 20px;
+  font-weight: 600;
+  text-align: right;
+  .m-tabular();
+}
+
+.mobile-end-line-points--minus {
+  color: @m-bad;
+}
+
+.mobile-end-line-text {
+  color: @m-label;
+}
+
+.mobile-end-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  a.mobile-play-sheet-button {
+    text-decoration: none;
+  }
+}
