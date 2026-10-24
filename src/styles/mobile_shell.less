@@ -453,9 +453,11 @@ html:has(> body.mobile-shell-active),
   font-weight: 600;
 }
 
-.mobile-confirm-sub {
-  font-size: 11px;
-  color: @mobile-muted;
+// The bar's buttons are a glyph each, so they are given a whole thumb's width.
+.mobile-confirm-bar .mobile-button--glyph {
+  min-width: @m-tap;
+  min-height: @m-tap;
+  font-size: 17px;
 }
 
 .mobile-button {
@@ -1342,13 +1344,6 @@ html:has(> body.mobile-shell-active),
   stroke-width: 4;
   stroke-linecap: round;
   transition: stroke-dashoffset @m-duration @m-ease;
-}
-
-.mobile-ring-text {
-  font-family: @m-font;
-  font-size: 10px;
-  font-weight: 700;
-  fill: @m-label;
 }
 
 .mobile-stat {

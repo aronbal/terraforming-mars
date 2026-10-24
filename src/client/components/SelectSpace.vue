@@ -27,7 +27,8 @@ import {SelectSpaceResponse} from '@/common/inputs/InputResponse';
 import ConfirmDialog from '@/client/components/common/ConfirmDialog.vue';
 import GoToMap from '@/client/components/waitingFor/GoToMap.vue';
 import {SpaceId} from '@/common/Types';
-import {beginSpaceSelection, endSpaceSelection} from '@/client/utils/spaceSelection';
+import {beginSpaceSelection, clearPlacement, endSpaceSelection, offerPlacement} from '@/client/utils/spaceSelection';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
 
 
 type Refs = {
@@ -155,6 +156,18 @@ export default defineComponent({
       const hideTileConfirmation = getPreferences().hide_tile_confirmation;
       if (hideTileConfirmation) {
         this.confirmPlacement();
+      } else if (mobileLayout.value) {
+        // The mobile shell asks in its placement bar, clear of the board.
+        offerPlacement({
+          confirm: () => {
+            clearPlacement();
+            this.confirmPlacement();
+          },
+          cancel: () => {
+            clearPlacement();
+            this.cancelPlacement();
+          },
+        });
       } else {
         this.typedRefs.confirmation.show();
       }
@@ -186,6 +199,7 @@ export default defineComponent({
     }
   },
   unmounted() {
+    clearPlacement();
     endSpaceSelection();
   },
 });

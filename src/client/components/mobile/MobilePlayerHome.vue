@@ -10,7 +10,7 @@
       :tagRowOpen="tagRowOpen"
       :canOpenSheet="sheetInUse && snap === 'closed'"
       @update:view="selectView($event)"
-      @openSheet="setSnap('half')"
+      @openSheet="raiseSheet()"
       @openPlayers="overlay = 'players'"
       @openMenu="overlay = 'menu'"
       @toggleTagRow="toggleTagRow()"/>
@@ -27,9 +27,10 @@
           :recent="recentEvents"
           :players="logPlayers"
           :now="now"
+          :sheetOpen="snap !== 'closed'"
           @select="select($event)"
           @openEntry="openEntry($event)"
-          @openSheet="setSnap('half')"
+          @openSheet="raiseSheet()"
           @openMilestones="openMilestones()"
           @showView="selectView($event)"/>
       </section>
@@ -45,7 +46,7 @@
           :tileView="tileView"
           :tapTargets="tapTargets"
           @toggleTileView="cycleTileView()"
-          @showActions="setSnap('half')"/>
+          @showActions="raiseSheet()"/>
 
         <div class="mobile-below" ref="below">
           <!-- No fit block: milestone and award tiles wrap on their own, and forcing
@@ -423,7 +424,11 @@ export default defineComponent({
       if (this.settingUp) {
         this.view = 'turn';
       }
-      this.setSnap(this.sheetInUse ? 'half' : 'closed');
+      if (this.sheetInUse) {
+        this.raiseSheet();
+      } else {
+        this.setSnap('closed');
+      }
     },
     selectingSpace(selecting: boolean) {
       if (selecting) {
@@ -431,8 +436,10 @@ export default defineComponent({
         this.view = 'board';
         this.scrollBoardPaneTo(0);
         this.setSnap('closed');
+      } else if (this.sheetInUse) {
+        this.raiseSheet();
       } else {
-        this.setSnap(this.sheetInUse ? 'half' : 'closed');
+        this.setSnap('closed');
       }
     },
     // Something happened in the game, so the log has something new to say.
@@ -456,6 +463,11 @@ export default defineComponent({
         this.forgetPick();
         this.snap = 'closed';
       }
+    },
+    /* A choice between cards needs every card on screen; anything else leaves the
+       board readable above it. */
+    raiseSheet(): void {
+      this.setSnap(this.choosingCards ? 'full' : 'half');
     },
     /** A tap on a ready card selects it; a second tap on the same card lets go. */
     select(name: CardName): void {

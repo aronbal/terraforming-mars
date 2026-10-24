@@ -18,8 +18,9 @@
     </section>
 
     <!-- The server is asking something other than what to do next: a draft, a
-         follow-up. It lives in the sheet; this is the way back to it. -->
-    <section v-else-if="menu === undefined" class="mobile-section mobile-gutter">
+         follow-up. It lives in the sheet; this is the way back to it, so it goes
+         while the sheet is up. -->
+    <section v-else-if="menu === undefined && !sheetOpen" class="mobile-section mobile-gutter">
       <div class="mobile-list">
         <button class="mobile-row mobile-row--button" data-test="turn-question" @click="$emit('openSheet')">
           <span class="mobile-glyph mobile-glyph--accent">
@@ -28,7 +29,6 @@
           <span class="mobile-row-body">
             <span class="mobile-row-text">
               <span class="mobile-row-title">{{ $t(waitingFor.title) }}</span>
-              <span class="mobile-row-subtitle" v-i18n>Your turn</span>
             </span>
             <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
           </span>
@@ -36,7 +36,8 @@
       </div>
     </section>
 
-    <section class="mobile-section mobile-gutter" data-test="since-last-turn">
+    <!-- Sections with nothing in them are left out rather than saying so. -->
+    <section v-if="recentEvents.length > 0" class="mobile-section mobile-gutter" data-test="since-last-turn">
       <div class="mobile-section-head">
         <h2 class="mobile-eyebrow" v-i18n>Since your last turn</h2>
         <button class="mobile-plain-button" data-test="goto-log" @click="$emit('showView', 'log')" v-i18n>Log</button>
@@ -48,17 +49,16 @@
           :event="event"
           :players="players"
           :now="now"/>
-        <div v-if="recentEvents.length === 0" class="mobile-row mobile-row--empty" v-i18n>Nothing has happened since your last turn</div>
       </div>
     </section>
 
-    <template v-if="menu !== undefined">
+    <template v-if="menu !== undefined && ready.length > 0">
       <section class="mobile-section" data-test="ready-now">
         <div class="mobile-section-head mobile-gutter">
           <h2 class="mobile-eyebrow mobile-eyebrow--accent">{{ $t('Ready now') }} · {{ ready.length }}</h2>
           <button class="mobile-plain-button" data-test="goto-cards" @click="$emit('showView', 'cards')" v-i18n>All cards</button>
         </div>
-        <div v-if="ready.length > 0" class="mobile-ready-row mobile-card-scaler">
+        <div class="mobile-ready-row mobile-card-scaler">
           <button
             v-for="item in ready"
             :key="item.card.name"
@@ -85,7 +85,6 @@
             </span>
           </button>
         </div>
-        <p v-else class="mobile-section-note mobile-gutter" v-i18n>No card can be played or used right now</p>
       </section>
     </template>
 
@@ -102,7 +101,7 @@
         </span>
         <span class="mobile-tile-text">
           <span class="mobile-tile-title">{{ $t(tile.title) }}</span>
-          <span class="mobile-tile-subtitle">{{ tile.subtitle }}</span>
+          <span v-if="tile.subtitle !== ''" class="mobile-tile-subtitle">{{ tile.subtitle }}</span>
         </span>
       </button>
     </section>
@@ -226,6 +225,11 @@ export default defineComponent({
       type: Number,
       required: true,
     },
+    /** Whether the sheet is up, holding the question this page would point to. */
+    sheetOpen: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ['select', 'openEntry', 'openSheet', 'openMilestones', 'showView'],
   components: {
@@ -289,7 +293,7 @@ export default defineComponent({
           icon: 'handshake',
           tone: 'accent',
           title: 'Trade',
-          subtitle: entry !== undefined ? this.$t('With a colony') : this.$t('Not available'),
+          subtitle: entry !== undefined ? this.$t('With a colony') : '',
           usable: entry !== undefined,
           entry,
         });
@@ -301,7 +305,7 @@ export default defineComponent({
           icon: 'landmark',
           tone: 'pr',
           title: 'Delegate',
-          subtitle: entry !== undefined ? this.$t('Send a delegate') : this.$t('Not available'),
+          subtitle: entry !== undefined ? this.$t('Send a delegate') : '',
           usable: entry !== undefined,
           entry,
         });
@@ -343,19 +347,21 @@ export default defineComponent({
     unitName(unit: SpendableResource): string {
       return PAYMENT_UNIT_DESCRIPTIONS[unit];
     },
+    /*
+     * How far a conversion is from being possible, as what the player has over what
+     * it takes. A tile that is simply not on offer says nothing: dimmed is enough.
+     */
+    progress(have: number, need: number): string {
+      return have + '/' + need;
+    },
     heatTile(): Tile {
       const entry = this.entry('convertHeat');
       const heat = this.player.heat;
       const need = constants.HEAT_FOR_TEMPERATURE;
       let subtitle = this.say('${0} of ${1} heat', need, heat);
       if (entry === undefined) {
-        if (this.playerView.game.temperature >= constants.MAX_TEMPERATURE) {
-          subtitle = this.$t('Temperature is maxed');
-        } else if (heat < need) {
-          subtitle = this.say('Needs ${0} · ${1} heat', need, heat);
-        } else {
-          subtitle = this.$t('Not available');
-        }
+        const maxed = this.playerView.game.temperature >= constants.MAX_TEMPERATURE;
+        subtitle = !maxed && heat < need ? this.progress(heat, need) : '';
       }
       return {key: 'heat', icon: 'thermometer', tone: 'warn', title: 'Heat to temp', subtitle, usable: entry !== undefined, entry};
     },
@@ -365,9 +371,7 @@ export default defineComponent({
       const need = this.player.plantsNeededForGreenery;
       let subtitle = this.say('${0} of ${1} plants', need, plants);
       if (entry === undefined) {
-        subtitle = plants < need ?
-          this.say('Needs ${0} · ${1} plants', need, plants) :
-          this.$t('Not available');
+        subtitle = plants < need ? this.progress(plants, need) : '';
       }
       return {key: 'greenery', icon: 'leaf', tone: 'ok', title: 'Greenery', subtitle, usable: entry !== undefined, entry};
     },
@@ -383,7 +387,7 @@ export default defineComponent({
         icon: 'hammer',
         tone: 'accent',
         title: 'Standard projects',
-        subtitle: affordable > 0 ? this.say(affordable === 1 ? '${0} option' : '${0} options', affordable) : this.$t('None affordable'),
+        subtitle: affordable > 0 ? this.say(affordable === 1 ? '${0} option' : '${0} options', affordable) : '',
         usable: affordable > 0,
         entry,
       };
@@ -396,7 +400,7 @@ export default defineComponent({
       const milestones = this.entry('milestone');
       const awards = this.entry('award');
       const claimable = milestones?.count ?? 0;
-      let subtitle = this.$t('None available');
+      let subtitle = '';
       if (claimable > 0) {
         subtitle = this.say(claimable === 1 ? '${0} milestone to claim' : '${0} milestones to claim', claimable);
       } else if (awards !== undefined) {

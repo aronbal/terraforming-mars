@@ -36,7 +36,6 @@
             :stroke-dasharray="ringLength"
             :stroke-dashoffset="ringLength * (1 - parameter.passed / parameter.total)"
             transform="rotate(-90 16 16)"/>
-          <text class="mobile-ring-text" x="16" y="19.5" text-anchor="middle">{{ parameter.passed }}/{{ parameter.total }}</text>
         </svg>
         <div class="mobile-stat">
           <span class="mobile-stat-value">{{ parameter.value }}</span>
@@ -92,7 +91,8 @@ import {Resource} from '@/common/Resource';
  *
  * Each global parameter is a ring of the steps it has left to go, with its value
  * beside it, so how close the game is to ending is read at a glance rather than
- * worked out from current-over-maximum.
+ * worked out from current-over-maximum. The ring carries no number of its own: the
+ * value beside it already says it.
  */
 
 type GlobalParameter = {

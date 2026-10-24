@@ -224,6 +224,17 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.tagRowOpen).is.true;
   });
 
+  it('raises a choice between cards all the way, so every card is on screen', () => {
+    const draft = cardList('draft', [CardName.ANTS]);
+    const wrapper = mount({...draft, annotation: undefined} as PlayerInputModel);
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.snap).eq('full');
+
+    const question = mount(option('Pay 3 M€?'));
+    question.vm.raiseSheet();
+    expect(question.vm.snap).eq('half');
+  });
+
   it('keeps the tags off the turn view while the menu is up', () => {
     const wrapper = mount(actionMenu());
     expect(wrapper.vm.choosingCards).is.false;

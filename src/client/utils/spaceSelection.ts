@@ -1,4 +1,4 @@
-import {computed, ComputedRef, ref} from 'vue';
+import {computed, ComputedRef, ref, shallowRef} from 'vue';
 
 /*
  * Whether the player is being asked to pick a board space.
@@ -22,4 +22,27 @@ export function endSpaceSelection(): void {
 
 export function resetSpaceSelectionForTest(): void {
   openSelections.value = 0;
+  pendingPlacement.value = undefined;
+}
+
+/** A space tapped on the board, waiting for the player to place on it or think again. */
+export type PendingPlacement = {
+  confirm: () => void;
+  cancel: () => void;
+};
+
+/*
+ * The tap the mobile shell's placement bar is asking about.
+ *
+ * On a phone a dialog over the board hides the very space it asks about, so
+ * `SelectSpace` hands the question to the bar under the map instead.
+ */
+export const pendingPlacement = shallowRef<PendingPlacement | undefined>(undefined);
+
+export function offerPlacement(placement: PendingPlacement): void {
+  pendingPlacement.value = placement;
+}
+
+export function clearPlacement(): void {
+  pendingPlacement.value = undefined;
 }

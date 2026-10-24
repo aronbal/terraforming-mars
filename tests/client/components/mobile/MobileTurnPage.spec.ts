@@ -77,7 +77,7 @@ describe('MobileTurnPage', () => {
     const wrapper = mount(fullMenu());
     const tiles = wrapper.vm.tiles;
     expect(tiles.find((tile) => tile.key === 'heat')).deep.include({usable: true, subtitle: '8 of 12 heat'});
-    expect(tiles.find((tile) => tile.key === 'greenery')).deep.include({usable: false, subtitle: 'Needs 8 · 5 plants'});
+    expect(tiles.find((tile) => tile.key === 'greenery')).deep.include({usable: false, subtitle: '5/8'});
     expect(wrapper.find('[data-test="tile-greenery"]').attributes('disabled')).is.not.undefined;
   });
 
@@ -138,5 +138,21 @@ describe('MobileTurnPage', () => {
     const wrapper = mount(option('Pay 3 M€?'));
     await wrapper.find('[data-test="turn-question"]').trigger('click');
     expect(wrapper.emitted('openSheet')).has.length(1);
+
+    // With the sheet up, the question is already in front of the player.
+    await wrapper.setProps({sheetOpen: true});
+    expect(wrapper.find('[data-test="turn-question"]').exists()).is.false;
+  });
+
+  it('leaves out sections with nothing in them', () => {
+    const wrapper = mount(menu(option('Pass for this generation', 'pass')));
+    expect(wrapper.find('[data-test="since-last-turn"]').exists()).is.false;
+    expect(wrapper.find('[data-test="ready-now"]').exists()).is.false;
+  });
+
+  it('says nothing under a tile that is simply not on offer', () => {
+    const wrapper = mount(menu(option('Pass for this generation', 'pass')));
+    expect(wrapper.vm.tiles.find((tile) => tile.key === 'projects')?.subtitle).eq('');
+    expect(wrapper.find('[data-test="tile-projects"] .mobile-tile-subtitle').exists()).is.false;
   });
 });
