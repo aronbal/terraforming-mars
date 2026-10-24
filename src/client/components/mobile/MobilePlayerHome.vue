@@ -144,6 +144,19 @@
       @previous="turnCard(-1)"
       @close="playing = undefined"/>
 
+    <!-- A milestone or award, held up with the one button that claims or funds it. -->
+    <MobileClaimSheet
+      v-if="claiming !== undefined"
+      :key="claiming.kind + claiming.name"
+      :playerView="playerView"
+      :kind="claiming.kind"
+      :name="claiming.name"
+      :position="claimingIndex"
+      :count="claimables.length"
+      @next="turnClaim(1)"
+      @previous="turnClaim(-1)"
+      @close="claiming = undefined"/>
+
     <MobileLogCards
       v-if="magnifiedLine !== undefined"
       :event="magnifiedLine"
@@ -173,6 +186,7 @@ import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue'
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
 import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileLogCards from '@/client/components/mobile/MobileLogCards.vue';
@@ -206,6 +220,8 @@ import {selectingSpace} from '@/client/utils/spaceSelection';
 
 type Overlay = 'players' | 'menu';
 
+type Claimable = {kind: 'milestone' | 'award', name: string};
+
 type DataModel = {
   view: MobileView;
   snap: SheetSnap;
@@ -214,6 +230,8 @@ type DataModel = {
   magnifiedLine: LogEvent | undefined;
   /** The card being paid for and played, or used, in the play sheet. */
   playing: ReadyCard | undefined;
+  /** The milestone or award in the claim sheet. */
+  claiming: Claimable | undefined;
   overlay: Overlay | undefined;
   /** The log lines fetched so far, by generation, oldest line first. */
   logs: Record<number, ReadonlyArray<LogMessage>>;
@@ -250,6 +268,7 @@ export default defineComponent({
     MobileBoardPane,
     MobileCardsPane,
     MobileFitBlock,
+    MobileClaimSheet,
     MobileFocusStage,
     MobileHeader,
     MobileLogCards,
@@ -271,6 +290,7 @@ export default defineComponent({
       preferences: {...getPreferences()},
       magnifiedLine: undefined,
       playing: undefined,
+      claiming: undefined,
       overlay: undefined,
       logs: {},
       logLoading: false,
@@ -353,6 +373,17 @@ export default defineComponent({
       const waitingFor = this.playerView.waitingFor;
       return readyCards(isActionMenu(waitingFor) ? waitingFor : undefined);
     },
+    /** Every milestone the turn lets this player claim, then every award it lets them fund. */
+    claimables(): ReadonlyArray<Claimable> {
+      return [
+        ...this.claimableMilestones.map((name) => ({kind: 'milestone' as const, name})),
+        ...this.fundableAwards.map((name) => ({kind: 'award' as const, name})),
+      ];
+    },
+    claimingIndex(): number {
+      const claiming = this.claiming;
+      return Math.max(0, this.claimables.findIndex((each) => each.kind === claiming?.kind && each.name === claiming?.name));
+    },
     /** Where the card in the play sheet sits among the ready cards. */
     playingIndex(): number {
       const name = this.playing?.card.name;
@@ -417,6 +448,7 @@ export default defineComponent({
     waitingFor() {
       this.forgetPick();
       this.playing = undefined;
+      this.claiming = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -498,8 +530,16 @@ export default defineComponent({
       const tall = input !== undefined && (input.type === 'card' || input.type === 'projectCard' || input.type === 'or');
       this.openPick('panel', tall ? 'full' : 'half');
     },
-    /* Milestones and awards are printed on the board, so that is where they are claimed. */
+    /* The turn page's tile: straight into the claim sheet at the first milestone or
+       award on offer, with the rest a swipe away. With none on offer, the board shows
+       where they stand. */
     openMilestones(): void {
+      const first = this.claimables[0];
+      if (first !== undefined) {
+        this.forgetPick();
+        this.claiming = first;
+        return;
+      }
       this.selectView('board');
       this.$nextTick(() => {
         const below = this.$refs.below as HTMLElement | undefined;
@@ -507,16 +547,27 @@ export default defineComponent({
       });
     },
     claimBoardThing(kind: BoardThing, name: string): void {
+      /* A milestone or an award opens in the claim sheet, the way a card opens in the
+         play sheet. */
+      if (kind !== 'colony') {
+        this.forgetPick();
+        this.claiming = {kind, name};
+        return;
+      }
+      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
+         is nothing to hold up over the board and the panel needs the whole screen. */
       clearPickedCard();
       clearPickedEntry();
       pickBoardThing(kind, name);
-      /* A colony tile is chosen inside the trade itself, alongside the fee, so there
-         is nothing to hold up over the board and the panel needs the whole screen. */
-      if (kind === 'colony') {
-        this.openPick('panel', 'full');
-      } else {
-        this.openPick('staged', 'half');
+      this.openPick('panel', 'full');
+    },
+    /** Swiping in the claim sheet: the next or previous one on offer, round and round. */
+    turnClaim(step: number): void {
+      const count = this.claimables.length;
+      if (this.claiming === undefined || count < 2) {
+        return;
       }
+      this.claiming = this.claimables[(this.claimingIndex + step + count) % count];
     },
     openPick(mode: 'staged' | 'panel', snap: SheetSnap): void {
       setPickFocus(mode);

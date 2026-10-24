@@ -11,7 +11,7 @@ import {pickedCard, resetPickedCardForTest} from '@/client/utils/cardSelection';
 import {pickedBoardThing, resetBoardPickForTest} from '@/client/utils/boardSelection';
 import {pickFocus, pickedEntry, resetPickFocusForTest} from '@/client/utils/mobileFocus';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
-import {cardList, menu, option, projectCard} from './menuFixtures';
+import {cardList, menu, namedChoices, option, projectCard} from './menuFixtures';
 
 describe('MobilePlayerHome', () => {
   let localStorage: FakeLocalStorage;
@@ -156,27 +156,55 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('half');
   });
 
-  it('Milestones & awards goes to the board, where they are claimed', () => {
+  /* The menu with a milestone to claim and two awards to fund. */
+  function claimMenu(): PlayerInputModel {
+    return menu(
+      option('Pass for this generation', 'pass'),
+      namedChoices('milestone', 'Claim a milestone', 'Builder'),
+      namedChoices('award', 'Fund an award', 'Landlord', 'Banker'));
+  }
+
+  it('Milestones & awards opens the first one on offer, in the claim sheet', () => {
+    const wrapper = mount(claimMenu());
+    wrapper.vm.openMilestones();
+    expect(wrapper.vm.claiming).deep.eq({kind: 'milestone', name: 'Builder'});
+  });
+
+  it('Milestones & awards shows the board when there is nothing to claim', () => {
     const wrapper = mount(actionMenu());
     wrapper.vm.openMilestones();
+    expect(wrapper.vm.claiming).is.undefined;
     expect(wrapper.vm.view).eq('board');
   });
 
-  it('a tile tapped under the board is the same move as a card', () => {
-    const wrapper = mount(actionMenu());
-    wrapper.vm.claimBoardThing('milestone', 'Builder');
+  it('a tile tapped under the board opens in the claim sheet, as a card does', () => {
+    const wrapper = mount(claimMenu());
+    wrapper.vm.claimBoardThing('award', 'Banker');
+    expect(wrapper.vm.claiming).deep.eq({kind: 'award', name: 'Banker'});
+    expect(pickFocus.value).eq('none');
+  });
 
-    expect(pickedBoardThing.value).deep.eq({kind: 'milestone', name: 'Builder'});
-    expect(pickFocus.value).eq('staged');
+  it('a swipe in the claim sheet goes through milestones, then awards, round and round', () => {
+    const wrapper = mount(claimMenu());
+    wrapper.vm.claimBoardThing('award', 'Banker');
+    wrapper.vm.turnClaim(1);
+    expect(wrapper.vm.claiming).deep.eq({kind: 'milestone', name: 'Builder'});
+    wrapper.vm.turnClaim(-1);
+    expect(wrapper.vm.claiming).deep.eq({kind: 'award', name: 'Banker'});
+  });
+
+  it('a colony tile still opens its trade in the panel', () => {
+    const wrapper = mount(actionMenu());
+    wrapper.vm.claimBoardThing('colony', 'Luna');
+    expect(pickedBoardThing.value).deep.eq({kind: 'colony', name: 'Luna'});
+    expect(pickFocus.value).eq('panel');
   });
 
   /* Only one thing is being acted on at a time, and the menu entry that opens is
      chosen by what was picked last. */
-  it('a tile under the board and an entry never stay picked at once', () => {
+  it('a colony tile and an entry never stay picked at once', () => {
     const wrapper = mount(actionMenu());
-    wrapper.vm.claimBoardThing('award', 'Landlord');
-    expect(pickedBoardThing.value?.name).eq('Landlord');
-
+    wrapper.vm.claimBoardThing('colony', 'Luna');
     wrapper.vm.openEntry(0);
     expect(pickedBoardThing.value).is.undefined;
     expect(pickedEntry.value).eq(0);
@@ -184,11 +212,11 @@ describe('MobilePlayerHome', () => {
 
   it('putting the panel down abandons what it was raised for', () => {
     const wrapper = mount(actionMenu());
-    wrapper.vm.claimBoardThing('milestone', 'Builder');
+    wrapper.vm.openEntry(0);
     wrapper.vm.setSnap('closed');
 
     expect(pickFocus.value).eq('none');
-    expect(pickedBoardThing.value).is.undefined;
+    expect(pickedEntry.value).is.undefined;
     // Nothing is left to show over the menu, so the sheet goes away entirely.
     expect(wrapper.vm.snap).eq('closed');
   });

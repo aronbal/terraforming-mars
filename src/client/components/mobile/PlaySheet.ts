@@ -127,3 +127,20 @@ export function pricePreview(input: SelectProjectCardToPlayModel, card: CardMode
   // A free card is still a price: nothing to pay is worth saying.
   return parts.length > 0 ? parts : [{unit: 'megacredits', amount: 0}];
 }
+
+// How far, in CSS pixels, a finger must travel sideways for a swipe to turn the card.
+const SWIPE_DISTANCE = 50;
+
+/**
+ * Which way a swipe from `from` to `to` turns the sheet: left for the next thing,
+ * right for the one before. Undefined for a tap, or for a scroll that is more up and
+ * down than sideways.
+ */
+export function swipeDirection(from: {x: number, y: number}, to: {x: number, y: number}): 'next' | 'previous' | undefined {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < 1.5 * Math.abs(dy)) {
+    return undefined;
+  }
+  return dx < 0 ? 'next' : 'previous';
+}

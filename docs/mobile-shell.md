@@ -271,6 +271,13 @@ is itself the confirmation and nothing is played by the tap. A sideways swipe on
 the card in the sheet turns to the next or previous ready card, round and round,
 with a dot per card under it.
 
+**Claiming a milestone, funding an award.** The same sheet, for what is printed on
+the board (`MobileClaimSheet.vue`): the tile held up to read, and one button —
+`Claim`, or `Fund · 14 M€` with the price the server put in the entry's title. A
+swipe moves through every milestone on offer, then every award. A tap on a tile
+under the board opens it there, and the turn page's Milestones & awards tile opens
+the first one on offer straight away; with none on offer it shows the board.
+
 **The sheet** is no longer a destination. It carries only what was opened from the
 turn page — a card with its price, a tile's entry — and the questions the server
 asks between moves, which come up to `half` by themselves. Over a bare menu it is

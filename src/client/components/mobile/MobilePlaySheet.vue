@@ -80,7 +80,7 @@ import {defineComponent, PropType} from 'vue';
 import Card from '@/client/components/card/Card.vue';
 import WarningsComponent from '@/client/components/WarningsComponent.vue';
 import MobilePlaySheetPayment from '@/client/components/mobile/MobilePlaySheetPayment.vue';
-import {findPlaySheetEntry, PlaySheetEntry, PlaySheetPaymentState, playSheetResponse} from '@/client/components/mobile/PlaySheet';
+import {findPlaySheetEntry, PlaySheetEntry, PlaySheetPaymentState, playSheetResponse, swipeDirection} from '@/client/components/mobile/PlaySheet';
 import {CardOffer} from '@/client/utils/cardSelection';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {CardName} from '@/common/cards/CardName';
@@ -97,9 +97,6 @@ type DataModel = {
   /** Where a swipe on the card began, while one is under way. */
   swipeFrom: {x: number, y: number} | undefined;
 };
-
-// How far, in CSS pixels, a finger must travel sideways for a swipe to turn the card.
-const SWIPE_DISTANCE = 50;
 
 let unique = 0;
 
@@ -248,20 +245,16 @@ export default defineComponent({
     onSwipeStart(event: PointerEvent): void {
       this.swipeFrom = {x: event.clientX, y: event.clientY};
     },
-    /* Mostly sideways and far enough: left for the next card, right for the one before.
-       Anything else was a tap or a scroll, and is left alone. */
     onSwipeEnd(event: PointerEvent): void {
       const from = this.swipeFrom;
       this.swipeFrom = undefined;
       if (from === undefined || this.count < 2) {
         return;
       }
-      const dx = event.clientX - from.x;
-      const dy = event.clientY - from.y;
-      if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) < 1.5 * Math.abs(dy)) {
-        return;
+      const direction = swipeDirection(from, {x: event.clientX, y: event.clientY});
+      if (direction !== undefined) {
+        this.$emit(direction);
       }
-      this.$emit(dx < 0 ? 'next' : 'previous');
     },
   },
 });

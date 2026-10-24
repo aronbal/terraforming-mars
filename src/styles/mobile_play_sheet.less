@@ -353,3 +353,20 @@
 .mobile-play-sheet-dot--on {
   background: @m-label;
 }
+
+/*
+ * A milestone or award tile in the claim sheet, at a size to read what it asks for
+ * and what it is worth. Scaled as a whole, never re-laid-out, as the board is.
+ */
+.mobile-claim-sheet-tile {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+  touch-action: pan-y;
+
+  .milestones,
+  .awards {
+    zoom: 1.5;
+    animation: mobile-play-sheet-card-in @m-duration @m-ease;
+  }
+}
