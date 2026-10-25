@@ -179,6 +179,7 @@ export function fakePlayerViewModel(overrides?: RecursivePartial<PlayerViewModel
   const thisPlayer = fakePublicPlayerModel();
   return {
     autopass: false,
+    isGameMaster: false,
     cardsInHand: [],
     dealtCorporationCards: [],
     dealtPreludeCards: [],

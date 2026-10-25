@@ -249,6 +249,12 @@ export class GameLoader implements IGameLoader {
     return game;
   }
 
+  public async restorePreviousSave(gameId: GameId): Promise<IGame | undefined> {
+    const saveIds = await Database.getInstance().getSaveIds(gameId);
+    const previous = saveIds.sort((a, b) => a - b).at(-2);
+    return previous === undefined ? undefined : this.restoreGameAt(gameId, previous);
+  }
+
   public mark(gameId: GameId) {
     this.cache.mark(gameId);
   }

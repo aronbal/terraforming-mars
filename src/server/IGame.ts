@@ -140,6 +140,11 @@ export interface IGame extends Logger {
   save(): void;
   serialize(): SerializedGame;
   isSoloMode() :boolean;
+  /**
+   * The player who set the game up, and may take it back a save: the first person in
+   * the player list it was created with.
+   */
+  gameMaster(): IPlayer | undefined;
   // Retrieve a player by its id
   getPlayerById(id: PlayerId): IPlayer;
   defer<T>(action: DeferredAction<T>, priority?: Priority): AndThen<T>;

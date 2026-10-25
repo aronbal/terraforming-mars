@@ -32,6 +32,11 @@ export class FakeGameLoader implements IGameLoader {
   restoreGameAt(_gameId: string, _saveId: number): Promise<Game> {
     throw new Error('Method not implemented.');
   }
+  /** What `restorePreviousSave` resolves to, one game per call. */
+  public previousSaves: Array<IGame | undefined> = [];
+  public restorePreviousSave(_gameId: GameId): Promise<IGame | undefined> {
+    return Promise.resolve(this.previousSaves.shift());
+  }
   public mark() {
   }
   public completeGame(_game: Game): Promise<void> {

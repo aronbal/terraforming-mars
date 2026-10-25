@@ -1,6 +1,38 @@
 <template>
   <div class="mobile-more" data-test="mobile-more">
     <template v-if="view === 'menu'">
+      <!-- An installed app shows no address bar, so this is the only way to the link. -->
+      <template v-if="playerView !== undefined">
+        <h3 class="mobile-eyebrow" v-i18n>This game</h3>
+        <div class="mobile-list">
+          <div class="mobile-row" data-test="more-game-link">
+            <span class="mobile-row-body">
+              <span class="mobile-row-text">
+                <span class="mobile-row-title" v-i18n>Your link to this game</span>
+                <span ref="url" class="mobile-row-subtitle mobile-more-url" data-test="more-game-url">{{ gameUrl }}</span>
+              </span>
+              <button class="mobile-plain-button" data-test="more-copy-link" @click="copyLink">{{ $t(copied ? 'Copied' : 'Copy') }}</button>
+            </span>
+          </div>
+          <button
+            v-if="canGoBack"
+            class="mobile-row mobile-row--button"
+            data-test="more-rollback"
+            :disabled="saving"
+            @click="goBack">
+            <span class="mobile-row-body">
+              <span class="mobile-row-text">
+                <span class="mobile-row-title" v-i18n>Go back one save</span>
+                <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Further back than Undo: to the save before the last one. Only you, as the one who set up the game, can.</span>
+              </span>
+            </span>
+          </button>
+        </div>
+        <p class="mobile-section-note" v-i18n>
+          It opens this game as you, in any browser. Share it only with someone who may play for you.
+        </p>
+      </template>
+
       <div class="mobile-list">
         <button class="mobile-row mobile-row--button" data-test="more-settings" @click="view = 'settings'">
           <span class="mobile-row-body">
@@ -84,6 +116,8 @@ type DataModel = {
   view: 'menu' | 'settings';
   /** While a change to the game's own settings is on its way to the server. */
   saving: boolean;
+  /** Once the game's link is on the clipboard. */
+  copied: boolean;
 };
 
 export default defineComponent({
@@ -103,9 +137,17 @@ export default defineComponent({
     return {
       view: 'menu',
       saving: false,
+      copied: false,
     };
   },
   computed: {
+    /* For the game master, while the game runs. */
+    canGoBack(): boolean {
+      return this.playerView !== undefined && this.playerView.isGameMaster && this.playerView.game.phase !== 'end';
+    },
+    gameUrl(): string {
+      return window.location.origin + '/' + paths.PLAYER + '?id=' + this.playerView?.id;
+    },
     gameLinks(): ReadonlyArray<GameLink> {
       return [
         {label: 'New game', path: '/' + paths.NEW_GAME, test: 'more-new-game'},
@@ -115,6 +157,29 @@ export default defineComponent({
     },
   },
   methods: {
+    /* Where the clipboard is refused, the link is selected instead, for the phone's own Copy. */
+    async copyLink(): Promise<void> {
+      try {
+        await navigator.clipboard.writeText(this.gameUrl);
+        this.copied = true;
+      } catch (err) {
+        console.warn('Cannot copy the game link', err);
+        window.getSelection()?.selectAllChildren(this.$refs.url as HTMLElement);
+      }
+    },
+    /* The save gone back from is deleted, so this asks first. */
+    async goBack(): Promise<void> {
+      const playerView = this.playerView;
+      if (playerView === undefined || !window.confirm(this.$t('Go back one save? The latest save is deleted, and every move made since is taken back.'))) {
+        return;
+      }
+      this.saving = true;
+      try {
+        await requestPlayerView(this, playerView, paths.API_GAME_ROLLBACK + '?id=' + playerView.id, {method: 'POST'});
+      } finally {
+        this.saving = false;
+      }
+    },
     /* Undo is the game's, not this device's: it is set on the server, which answers
        with the game as it now stands, and everyone sees in the log who changed it. */
     async setUndo(event: Event): Promise<void> {

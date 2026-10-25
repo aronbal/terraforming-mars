@@ -550,6 +550,10 @@ export class Game implements IGame, Logger {
     return this.players.length === 1;
   }
 
+  public gameMaster(): IPlayer | undefined {
+    return this.players.find((player) => player.bot === undefined);
+  }
+
   // Function to retrieve a player by it's id
   public getPlayerById(id: PlayerId): IPlayer {
     const player = this.players.find((p) => p.id === id);

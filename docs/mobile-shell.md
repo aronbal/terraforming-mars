@@ -335,6 +335,19 @@ can be turned on or off afterwards.
   - `GameLoader.restoreGameAt` deletes the saves actually stored after the target,
     and refuses a target that is no longer stored.
 
+**This game, under ⋯.** The menu starts with the game itself when there is one.
+- **Your link to this game** shows the player's own `player?id=` address, with a
+  button that copies it. An app added to the home screen has no address bar, so this
+  is the way to the link. Where the clipboard is refused, the link is selected instead.
+- **Go back one save** is shown to the game master only: the first person in the
+  player list the game was created with (`Game.gameMaster`, sent as
+  `PlayerViewModel.isGameMaster`). After a confirm it posts to `api/game/rollback`,
+  which refuses anyone else, restores the save before the latest
+  (`GameLoader.restorePreviousSave`, deleting the latest), keeps the undo setting,
+  logs who went back, and lets the computers move if it is their turn. The log line
+  is saved with the next save rather than at once, so going back twice goes back two
+  saves.
+
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.
 

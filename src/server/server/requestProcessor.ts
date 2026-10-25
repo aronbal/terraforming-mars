@@ -21,6 +21,7 @@ import {ApiSpectator} from '../routes/ApiSpectator';
 import {ApiStats} from '../routes/ApiStats';
 import {ApiWaitingFor} from '../routes/ApiWaitingFor';
 import {Autopass} from '../routes/Autopass';
+import {ApiGameRollback} from '../routes/ApiGameRollback';
 import {ApiGameUndo} from '../routes/ApiGameUndo';
 import {DiscordAuth} from '../routes/DiscordAuth';
 import {GameHandler} from '../routes/Game';
@@ -95,6 +96,7 @@ const handlers: Map<string, IHandler> = new Map(
     [paths.API_GAME, ApiGame.INSTANCE],
     [paths.API_GAME_HISTORY, ApiGameHistory.INSTANCE],
     [paths.API_GAME_LOGS, ApiGameLogs.INSTANCE],
+    [paths.API_GAME_ROLLBACK, ApiGameRollback.INSTANCE],
     [paths.API_GAME_UNDO, ApiGameUndo.INSTANCE],
     [paths.API_GAMES, ApiGames.INSTANCE],
     [paths.API_HEAP_SNAPSHOT, ApiHeapSnapshot.INSTANCE],
