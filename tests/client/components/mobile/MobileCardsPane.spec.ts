@@ -1,5 +1,6 @@
 import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
+import {CardModel} from '@/common/models/CardModel';
 import {globalConfig} from '../getLocalVue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import {fakePlayerViewModel} from '../testHelpers';
@@ -38,7 +39,7 @@ describe('MobileCardsPane', () => {
   });
 
   it('puts the cards the turn can play first', () => {
-    expect(mount().vm.hand.map((card) => card.name)).deep.eq([CardName.ANTS, CardName.BIRDS]);
+    expect(mount().vm.hand.map((card: CardModel) => card.name)).deep.eq([CardName.ANTS, CardName.BIRDS]);
   });
 
   it('a tap on a playable card selects it', async () => {

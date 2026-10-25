@@ -1,5 +1,6 @@
 import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
+import {ReadyCard} from '@/client/components/mobile/MobileActionMenu';
 import {globalConfig} from '../getLocalVue';
 import MobilePlayerHome from '@/client/components/mobile/MobilePlayerHome.vue';
 import {fakePlayerViewModel} from '../testHelpers';
@@ -235,7 +236,7 @@ describe('MobilePlayerHome', () => {
 
     // A card tapped afterwards swipes among the ready cards again.
     wrapper.vm.select(CardName.ANTS);
-    expect(wrapper.vm.playList.map((item) => item.card.name)).deep.eq([CardName.ANTS]);
+    expect(wrapper.vm.playList.map((item: ReadyCard) => item.card.name)).deep.eq([CardName.ANTS]);
   });
 
   it('the turn page\'s heat tile opens the confirmation sheet', async () => {
@@ -401,7 +402,7 @@ describe('MobilePlayerHome', () => {
       1: [{message: '${0} played ${1}', data: [{type: 2, value: 'red'}, {type: 3, value: CardName.ANTS}], timestamp: 0}],
       2: [],
     } as never;
-    expect(wrapper.vm.logGenerations.map((group) => group.generation)).deep.eq([2, 1]);
+    expect(wrapper.vm.logGenerations.map((group: {generation: number}) => group.generation)).deep.eq([2, 1]);
     expect(wrapper.vm.logGenerations[1].events[0].title).eq('Played Ants');
   });
 });

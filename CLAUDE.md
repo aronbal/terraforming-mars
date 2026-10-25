@@ -29,6 +29,12 @@ npx mocha --import=tsx --require tests/testing/setup.ts "tests/cards/base/Algae.
 cross-env NODE_ENV=development mochapack --require tests/client/components/setup.ts "tests/client/components/Board.spec.ts"
 ```
 
+Mocha runs tests through `tsx`, which does not type-check them. Run `npm run build:test`
+before pushing: it must report no errors. In client tests `wrapper.vm` is `any` (see
+`tests/vue-shims.d.ts`), so give callback parameters on it a type, e.g.
+`vm.tiles.find((tile: {key: string}) => ...)`, and read props as `wrapper.vm.<prop>`
+rather than `wrapper.props('<prop>')`.
+
 ### Dev Servers
 
 ```bash

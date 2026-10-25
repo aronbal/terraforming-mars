@@ -42,8 +42,8 @@ describe('SelectSpace', () => {
   });
 
   it('is told the tile by the placement actions', () => {
-    expect(new PlaceCityTile(player).execute()?.toModel(player)).deep.include({tileType: TileType.CITY});
-    expect(new PlaceGreeneryTile(player).execute()?.toModel(player)).deep.include({tileType: TileType.GREENERY});
-    expect(new PlaceOceanTile(player).execute()?.toModel(player)).deep.include({tileType: TileType.OCEAN});
+    expect(new PlaceCityTile(player).execute()?.toModel()).deep.include({tileType: TileType.CITY});
+    expect(new PlaceGreeneryTile(player).execute()?.toModel()).deep.include({tileType: TileType.GREENERY});
+    expect(new PlaceOceanTile(player).execute()?.toModel()).deep.include({tileType: TileType.OCEAN});
   });
 });
