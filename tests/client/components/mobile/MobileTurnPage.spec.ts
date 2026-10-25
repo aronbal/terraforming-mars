@@ -77,24 +77,24 @@ describe('MobileTurnPage', () => {
   it('says why a tile cannot be used, and dims it', () => {
     const wrapper = mount(fullMenu());
     const tiles = wrapper.vm.tiles;
-    expect(tiles.find((tile) => tile.key === 'heat')).deep.include({usable: true, subtitle: '8 of 12 heat'});
-    expect(tiles.find((tile) => tile.key === 'greenery')).deep.include({usable: false, subtitle: '5/8'});
+    expect(tiles.find((tile: {key: string}) => tile.key === 'heat')).deep.include({usable: true, subtitle: '8 of 12 heat'});
+    expect(tiles.find((tile: {key: string}) => tile.key === 'greenery')).deep.include({usable: false, subtitle: '5/8'});
     expect(wrapper.find('[data-test="tile-greenery"]').attributes('disabled')).is.not.undefined;
   });
 
   it('counts the standard projects the player can afford', () => {
-    expect(mount(fullMenu()).vm.tiles.find((tile) => tile.key === 'projects')?.subtitle).eq('1 option');
+    expect(mount(fullMenu()).vm.tiles.find((tile: {key: string}) => tile.key === 'projects')?.subtitle).eq('1 option');
   });
 
   // The server sends the standard projects as cards to pay for.
   it('counts them the same when they come as project cards', () => {
     const projects = {...projectCard(CardName.POWER_PLANT_STANDARD_PROJECT, CardName.ASTEROID_STANDARD_PROJECT), annotation: 'standardProject'};
-    const tile = mount(menu(projects)).vm.tiles.find((each) => each.key === 'projects');
+    const tile = mount(menu(projects)).vm.tiles.find((each: {key: string}) => each.key === 'projects');
     expect(tile).deep.include({usable: true, subtitle: '2 options'});
   });
 
   it('reads the award price out of the entry', () => {
-    expect(mount(fullMenu()).vm.tiles.find((tile) => tile.key === 'board')?.subtitle).eq('Award from 8 M€');
+    expect(mount(fullMenu()).vm.tiles.find((tile: {key: string}) => tile.key === 'board')?.subtitle).eq('Award from 8 M€');
   });
 
   it('a tile opens the sheet for what it stands for', async () => {
@@ -134,7 +134,7 @@ describe('MobileTurnPage', () => {
 
   it('shows the three newest things that happened since the last turn', () => {
     const wrapper = mount(fullMenu(), {}, [event(1), event(2), event(3), event(4)]);
-    expect(wrapper.vm.recentEvents.map((each) => each.key)).deep.eq(['e1', 'e2', 'e3']);
+    expect(wrapper.vm.recentEvents.map((each: LogEvent) => each.key)).deep.eq(['e1', 'e2', 'e3']);
   });
 
   it('passes on a tap on a row that names cards', () => {
@@ -180,7 +180,7 @@ describe('MobileTurnPage', () => {
 
   it('says nothing under a tile that is simply not on offer', () => {
     const wrapper = mount(menu(option('Pass for this generation', 'pass')));
-    expect(wrapper.vm.tiles.find((tile) => tile.key === 'projects')?.subtitle).eq('');
+    expect(wrapper.vm.tiles.find((tile: {key: string}) => tile.key === 'projects')?.subtitle).eq('');
     expect(wrapper.find('[data-test="tile-projects"] .mobile-tile-subtitle').exists()).is.false;
   });
 });

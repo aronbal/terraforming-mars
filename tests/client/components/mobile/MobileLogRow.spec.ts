@@ -34,7 +34,7 @@ describe('MobileLogRow', () => {
     expect(row.element.tagName).eq('BUTTON');
     expect(row.classes()).contains('mobile-row--button');
     await row.trigger('click');
-    expect(wrapper.emitted('inspect')).deep.eq([[wrapper.props('event')]]);
+    expect(wrapper.emitted('inspect')).deep.eq([[wrapper.vm.event]]);
   });
 
   it('stays a plain row when the line names no card', async () => {

@@ -43,7 +43,7 @@ export class LoadGame extends Handler {
           // anyone from rolling back a large number of steps.
           const rollbackCount = gameReq.rollbackCount;
           if (rollbackCount > 0) {
-            Database.getInstance().deleteGameNbrSaves(gameId, rollbackCount);
+            await Database.getInstance().deleteGameNbrSaves(gameId, rollbackCount);
           }
           const game = await ctx.gameLoader.getGame(gameId, /* bypassCache */ true);
           if (game === undefined) {

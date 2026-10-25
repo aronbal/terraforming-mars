@@ -31,7 +31,7 @@ describe('MobileHeader', () => {
 
   it('counts each global parameter in the steps it moves by', () => {
     const parameters = mount(false).vm.globalParameters;
-    expect(parameters.map((p) => p.key)).deep.eq(['temperature', 'oxygen', 'oceans']);
+    expect(parameters.map((p: {key: string}) => p.key)).deep.eq(['temperature', 'oxygen', 'oceans']);
     // -30 to +8 in steps of two degrees: 19 steps, 7 of them taken at -16.
     expect(parameters[0]).deep.include({value: '-16°', goal: '+8°', passed: 7, total: 19});
     expect(parameters[1]).deep.include({value: '9', goal: '14%', passed: 9, total: 14});
@@ -44,16 +44,16 @@ describe('MobileHeader', () => {
     expect(wrapper.find('[data-test="global-value-oxygen"]').text()).eq('9/14%');
     expect(wrapper.find('[data-test="global-done"]').exists()).is.false;
 
-    await wrapper.setProps({game: {...wrapper.props('game'), oceans: 9}});
+    await wrapper.setProps({game: {...wrapper.vm.game, oceans: 9}});
     expect(wrapper.find('[data-test="global-oceans"]').classes()).contains('mobile-global--done');
     expect(wrapper.find('[data-test="global-oceans"] [data-test="global-done"]').exists()).is.true;
     expect(wrapper.find('[data-test="global-oxygen"]').classes()).does.not.contain('mobile-global--done');
   });
 
   it('shows Venus only when the expansion is on', () => {
-    const venus = mount(true).vm.globalParameters.find((p) => p.key === 'venus');
+    const venus = mount(true).vm.globalParameters.find((p: {key: string}) => p.key === 'venus');
     expect(venus).deep.include({value: '12', goal: '30%', passed: 6, total: 15});
-    expect(mount(false).vm.globalParameters.map((p) => p.key)).does.not.contain('venus');
+    expect(mount(false).vm.globalParameters.map((p: {key: string}) => p.key)).does.not.contain('venus');
   });
 
   it('shows production alongside each resource', () => {
