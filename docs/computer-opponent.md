@@ -11,10 +11,10 @@ are played by people, so mixed games (two humans and a bot, say) work too.
 
 | Level | Name | Plays like |
 | --- | --- | --- |
-| `easy` | Beginner | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
-| `medium` | Engineer | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
-| `hard` | Veteran | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
-| `insane` | Director | Everything Veteran does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Veteran — see the ladder below. |
+| `easy` | Easy | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
+| `medium` | Medium | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
+| `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
+| `insane` | Insane | Everything Hard does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Hard — see the ladder below. |
 
 ## How it works
 
@@ -105,7 +105,7 @@ insane  vs hard     insane wins 32/60 ( 53%)
 
 **Read this honestly: there are three distinct tiers, not four.** `easy` is far
 weaker than everything, `hard` beats `medium` reliably, and `insane` is a coin
-flip against `hard`. Director differs from Veteran only in opponent awareness —
+flip against `hard`. Insane differs from Hard only in opponent awareness —
 placement denial and timing the final generation — and against another bot that
 plays just as well, denial mostly cancels out.
 

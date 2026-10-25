@@ -585,6 +585,7 @@ import * as constants from '@/common/constants';
 
 import {defineComponent, nextTick} from 'vue';
 import {Color, PLAYER_COLORS} from '@/common/Color';
+import {onlyHumanPlayer} from '@/client/components/create/afterCreate';
 import {BOT_DIFFICULTIES, BOT_DIFFICULTY_DESCRIPTIONS, BOT_DIFFICULTY_LABELS, BotDifficulty, DEFAULT_BOT_DIFFICULTY} from '@/common/bot/BotDifficulty';
 import {BoardName} from '@/common/boards/BoardName';
 import {RandomBoardOption} from '@/common/boards/RandomBoardOption';
@@ -1308,8 +1309,10 @@ export default defineComponent({
       }
       createGameSettingsStorage.saveSettings(newGameConfig);
       const onSuccess = (json: any) => {
-        if (json.players.length === 1) {
-          window.location.href = 'player?id=' + json.players[0].id;
+        // Alone, or alone against computers: no links to hand out, so straight in.
+        const only = json.players.length === 1 ? json.players[0].id : onlyHumanPlayer(json, newGameConfig.players);
+        if (only !== undefined) {
+          window.location.href = 'player?id=' + only;
           return;
         } else {
           window.history.replaceState(json, `${constants.APP_NAME} - Game`, 'game?id=' + json.id);
