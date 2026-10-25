@@ -16,13 +16,11 @@
                               :showsave="showsave && showChildSaveButton(option)"
                               :showtitle="false" />
       </div>
-      <!-- On a phone the options are a full-width stack, so a button under the whole
-           menu is a screen of scrolling away from the option it acts on. -->
-      <div v-if="selectedIdx === idx && showOwnSaveButton && saveBesideOption" class="wf-action wf-option-save">
-        <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
-      </div>
     </div>
-    <div v-if="showOwnSaveButton && !saveBesideOption">
+    <!-- On a phone the button is pinned to the bottom of the sheet, under every option:
+         between two options it was in the way of the second, and pinned it is never a
+         screen of scrolling away from the one chosen. -->
+    <div v-if="showOwnSaveButton" :class="{'wf-option-save-bar': pinSave}">
       <div class="wf-action wf-option-save">
         <AppButton :title="$t(selectedOption.buttonLabel)" type="submit" size="normal" @click="saveData" />
       </div>
@@ -109,7 +107,7 @@ export default defineComponent({
       const selected = this.selectedOption;
       return this.showsave && selected !== undefined && !this.showChildSaveButton(selected);
     },
-    saveBesideOption(): boolean {
+    pinSave(): boolean {
       return mobileLayout.value;
     },
     /**

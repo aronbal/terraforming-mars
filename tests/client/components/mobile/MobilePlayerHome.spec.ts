@@ -308,12 +308,23 @@ describe('MobilePlayerHome', () => {
 
   it('puts a number to choose in the amount sheet, not the sheet', async () => {
     const wrapper = mount({type: 'amount', title: 'Select amount', buttonLabel: 'Decrease', min: 1, max: 10, maxByDefault: false} as PlayerInputModel);
-    wrapper.vm.askingAmount = false;
+    wrapper.vm.asking = undefined;
     wrapper.vm.raiseSheet();
     await wrapper.vm.$nextTick();
-    expect(wrapper.vm.askingAmount).is.true;
+    expect(wrapper.vm.asking).eq('amount');
     expect(wrapper.vm.snap).eq('closed');
     expect(wrapper.findComponent({name: 'MobileAmountSheet'}).exists()).is.true;
+  });
+
+  it('puts a choice between plain options in the choice sheet, not the sheet', async () => {
+    const choice = {type: 'or', title: 'Remove plants', buttonLabel: 'Confirm', options: [option('From Green'), option('From Yellow')]} as PlayerInputModel;
+    const wrapper = mount(choice);
+    wrapper.vm.asking = undefined;
+    wrapper.vm.raiseSheet();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.asking).eq('choice');
+    expect(wrapper.vm.snap).eq('closed');
+    expect(wrapper.findComponent({name: 'MobileChoiceSheet'}).exists()).is.true;
   });
 
   it('raises a question with cards inside it all the way, so every card is on screen', () => {

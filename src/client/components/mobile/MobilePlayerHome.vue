@@ -6,7 +6,7 @@
       :yourTurn="actionWaiting"
       :turnLabel="turnLabel"
       :showTagRow="tagRowVisible"
-      :canOpenSheet="sheetInUse && snap === 'closed' && choosing === undefined && !askingAmount"
+      :canOpenSheet="sheetInUse && snap === 'closed' && choosing === undefined && asking === undefined"
       @openSheet="raiseSheet()"
       @openPlayers="overlay = 'players'"
       @openMenu="overlay = 'menu'"/>
@@ -22,7 +22,7 @@
           :recent="recentEvents"
           :players="logPlayers"
           :now="now"
-          :sheetOpen="snap !== 'closed' || choosing !== undefined || askingAmount"
+          :sheetOpen="snap !== 'closed' || choosing !== undefined || asking !== undefined"
           @select="select($event)"
           @openEntry="openEntry($event)"
           @openSheet="raiseSheet()"
@@ -193,9 +193,15 @@
 
     <!-- A number to choose: how much production to give up, how many to spend. -->
     <MobileAmountSheet
-      v-if="askingAmount"
+      v-if="asking === 'amount'"
       :playerView="playerView"
-      @close="askingAmount = false"/>
+      @close="asking = undefined"/>
+
+    <!-- A choice between plain options: whose plants to remove, whether to pay. -->
+    <MobileChoiceSheet
+      v-if="asking === 'choice'"
+      :playerView="playerView"
+      @close="asking = undefined"/>
 
     <MobileLogCards
       v-if="magnifiedLine !== undefined"
@@ -227,6 +233,7 @@ import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileAmountSheet from '@/client/components/mobile/MobileAmountSheet.vue';
+import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
 import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue';
 import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
 import MobileConfirmSheet from '@/client/components/mobile/MobileConfirmSheet.vue';
@@ -257,6 +264,7 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
+import {choiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {ActionAnnotation} from '@/common/input/Annotation';
 import {ColonyName} from '@/common/colonies/ColonyName';
 import {clearPickedCard} from '@/client/utils/cardSelection';
@@ -288,8 +296,8 @@ type DataModel = {
   confirming: ActionAnnotation | undefined;
   /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
   choosing: {entry: number | undefined} | undefined;
-  /** Whether the sheet a number is chosen in is up. */
-  askingAmount: boolean;
+  /** The sheet of its own a plain question is answered in, while it is up. */
+  asking: 'amount' | 'choice' | undefined;
   /** The milestone or award in the claim sheet. */
   claiming: Claimable | undefined;
   overlay: Overlay | undefined;
@@ -329,6 +337,7 @@ export default defineComponent({
     MobileCardsPane,
     MobileFitBlock,
     MobileAmountSheet,
+    MobileChoiceSheet,
     MobileCardChooser,
     MobileClaimSheet,
     MobileConfirmSheet,
@@ -358,7 +367,7 @@ export default defineComponent({
       trading: undefined,
       confirming: undefined,
       choosing: undefined,
-      askingAmount: false,
+      asking: undefined,
       claiming: undefined,
       overlay: undefined,
       logs: {},
@@ -533,7 +542,7 @@ export default defineComponent({
       this.trading = undefined;
       this.confirming = undefined;
       this.choosing = undefined;
-      this.askingAmount = false;
+      this.asking = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -585,13 +594,21 @@ export default defineComponent({
         this.choosing = {entry: undefined};
         return;
       }
-      // So does a number.
+      // So do a number and a choice between plain options.
       if (amountInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
-        this.askingAmount = true;
+        this.asking = 'amount';
         return;
       }
-      this.setSnap(this.choosingCards ? 'full' : 'half');
+      if (choiceInput(this.playerView.waitingFor) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'choice';
+        return;
+      }
+      /* A choice between options has its button pinned to the sheet's bottom edge,
+         which at `half` is off the screen. */
+      const choice = this.playerView.waitingFor?.type === 'or';
+      this.setSnap(this.choosingCards || choice ? 'full' : 'half');
     },
     /*
      * A tap on a card the turn can use opens it in the play sheet straight away: the

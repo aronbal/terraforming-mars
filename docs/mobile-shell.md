@@ -286,6 +286,25 @@ the range as a segmented choice, and one blue button that says what it sends
 question still uses the sheet, where the desktop's own buttons are redrawn the same
 way: the one that answers is blue, the ones that only adjust (MAX, +, −) are grey.
 
+**Choosing between options.** A question that is a choice between plain options
+and nothing else opens in the choice sheet (`MobileChoiceSheet.vue`), for example
+whose plants to remove, or whether to pay.
+- The options are full-width rows, and a tap only ticks one.
+- The server's default is ticked to start with.
+- One blue button at the bottom sends the ticked option, under its own label
+  (`Remove plants`, `Skip`).
+- An option about an award or a milestone, such as Asimov's `Fund ${0} award
+  [scores]`, reads as the name, its kind and each player's score with a dot in
+  their colour.
+  - The ticked one also shows the rule from the client's milestone/award manifest
+    and what it pays.
+  - `ChoiceSheet.boardRuleIn` matches the name, and reads the scores out of the
+    option's text.
+
+A choice with an input inside an option still uses the sheet, raised to `full`.
+There, `OrOptions` pins its button to the sheet's bottom edge, under every option,
+instead of right under the chosen one, where it was in the way of the next.
+
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.
 
