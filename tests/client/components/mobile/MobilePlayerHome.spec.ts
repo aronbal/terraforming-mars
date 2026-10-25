@@ -327,6 +327,39 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.findComponent({name: 'MobilePaymentSheet'}).exists()).is.true;
   });
 
+  it('heads each confirmed action with its own glyph', () => {
+    const wrapper = mount();
+    const glyphs = (['convertHeat', 'pass', 'endTurn', 'undo'] as const).map((annotation) => {
+      wrapper.vm.confirming = annotation;
+      return wrapper.vm.confirmGlyph.icon;
+    });
+    expect(glyphs).deep.eq(['thermometer', 'skip-forward', 'check-check', 'undo-2']);
+  });
+
+  it('puts a player to choose in the choice sheet, not the sheet', async () => {
+    const wrapper = mount({type: 'player', title: 'Select player', buttonLabel: 'Decrease', players: ['green', 'yellow']} as PlayerInputModel);
+    wrapper.vm.asking = undefined;
+    wrapper.vm.raiseSheet();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.asking).eq('choice');
+    expect(wrapper.findComponent({name: 'MobileChoiceSheet'}).exists()).is.true;
+  });
+
+  it('takes an option that is a question of its own on to the sheet that asks it', async () => {
+    const amount = {type: 'amount', title: 'How many', buttonLabel: 'OK', min: 0, max: 3, maxByDefault: false} as PlayerInputModel;
+    const wrapper = mount({type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), amount, option('Skip')]} as PlayerInputModel);
+    wrapper.vm.openNested({kind: 'amount', index: 1});
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.asking).eq('amount');
+    expect(wrapper.vm.askingEntry).eq(1);
+    expect(wrapper.findComponent({name: 'MobileAmountSheet'}).props('entry')).eq(1);
+
+    wrapper.vm.openNested({kind: 'card', index: 0});
+    expect(wrapper.vm.asking).is.undefined;
+    expect(wrapper.vm.askingEntry).is.undefined;
+    expect(wrapper.vm.choosing).deep.eq({entry: 0});
+  });
+
   it('puts a choice between plain options in the choice sheet, not the sheet', async () => {
     const choice = {type: 'or', title: 'Remove plants', buttonLabel: 'Confirm', options: [option('From Green'), option('From Yellow')]} as PlayerInputModel;
     const wrapper = mount(choice);
@@ -339,7 +372,8 @@ describe('MobilePlayerHome', () => {
   });
 
   it('raises a question with cards inside it all the way, so every card is on screen', () => {
-    const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), option('Skip')]} as PlayerInputModel;
+    const space = {type: 'space', title: 'Where', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel;
+    const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), space]} as PlayerInputModel;
     const wrapper = mount(nested);
     wrapper.vm.raiseSheet();
     expect(wrapper.vm.snap).eq('full');

@@ -76,6 +76,18 @@ describe('MobileAmountSheet', () => {
     expect(render(amount({optional: true})).find('[data-test=amount-sheet-cancel]').exists()).is.true;
   });
 
+  it('answers an option of a choice as that option', async () => {
+    const choice = {type: 'or', title: 'Select one option', buttonLabel: 'OK', options: [option('Skip'), amount()]} as PlayerInputModel;
+    const wrapper = mount(MobileAmountSheet, {
+      ...globalConfig,
+      props: {playerView: fakePlayerViewModel({waitingFor: choice} as never), entry: 1},
+    });
+    expect(wrapper.find('[data-test=amount-sheet-cancel]').exists()).is.true;
+    await wrapper.find('[data-test=amount-sheet-submit]').trigger('click');
+    await flushPromises();
+    expect(posted[0]).deep.include({type: 'or', index: 1, response: {type: 'amount', amount: 1}});
+  });
+
   it('closes when the question is not a number', () => {
     expect(render(menu(option('Pass for this generation', 'pass'))).emitted('close')).has.length(1);
   });

@@ -6,6 +6,7 @@ import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue'
 import {CardName} from '@/common/cards/CardName';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {cardChoice, menu, option} from './menuFixtures';
+import {chooserInput} from '@/client/components/mobile/CardChooser';
 
 describe('MobileCardChooser', () => {
   let posted: Array<unknown>;
@@ -138,6 +139,13 @@ describe('MobileCardChooser', () => {
     expect(wrapper.find('[data-test=card-chooser-cancel]').exists()).is.false;
     await wrapper.find('[data-test=card-chooser-scrim]').trigger('click');
     expect(wrapper.emitted('close')).has.length(1);
+  });
+
+  it('answers a pick among cards that is an option of a choice as that option', async () => {
+    const choice = {type: 'or', title: 'Select one option', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS, CardName.BIRDS]), option('Do not discard a card')]} as PlayerInputModel;
+    expect(chooserInput(choice, 0)).is.not.undefined;
+    expect(chooserInput(choice, 1)).is.undefined;
+    expect(render(choice, 0).emitted('close')).is.undefined;
   });
 
   it('closes when there is no pick among cards to answer', () => {

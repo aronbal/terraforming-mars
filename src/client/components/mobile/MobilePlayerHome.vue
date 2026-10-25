@@ -174,13 +174,13 @@
       @previous="turnTrade(-1)"
       @close="trading = undefined"/>
 
-    <!-- An action with nothing to choose -- converting heat -- and its one button. -->
+    <!-- An action with nothing to choose -- converting heat, passing -- and its one button. -->
     <MobileConfirmSheet
       v-if="confirming !== undefined"
       :playerView="playerView"
       :annotation="confirming"
-      icon="thermometer"
-      tone="warn"
+      :icon="confirmGlyph.icon"
+      :tone="confirmGlyph.tone"
       @close="confirming = undefined"/>
 
     <!-- A pick among cards: the draft, the cards to buy, the patents to sell. -->
@@ -195,20 +195,23 @@
     <MobileAmountSheet
       v-if="asking === 'amount'"
       :playerView="playerView"
-      @close="asking = undefined"/>
+      :entry="askingEntry"
+      @close="closeAsking()"/>
 
     <!-- A price to pay: the cards just bought, a fee. -->
     <MobilePaymentSheet
       v-if="asking === 'payment' && paymentQuestion !== undefined"
       :playerView="playerView"
       :playerinput="paymentQuestion"
-      @close="asking = undefined"/>
+      :entry="askingEntry"
+      @close="closeAsking()"/>
 
-    <!-- A choice between plain options: whose plants to remove, whether to pay. -->
+    <!-- A choice: whose plants to remove, whether to pay, which player loses production. -->
     <MobileChoiceSheet
       v-if="asking === 'choice'"
       :playerView="playerView"
-      @close="asking = undefined"/>
+      @next="openNested($event)"
+      @close="closeAsking()"/>
 
     <MobileLogCards
       v-if="magnifiedLine !== undefined"
@@ -272,10 +275,11 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
-import {choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {NestedStep, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {paymentInput} from '@/client/components/mobile/PaymentSheet';
 import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
 import {ActionAnnotation} from '@/common/input/Annotation';
+import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {ColonyName} from '@/common/colonies/ColonyName';
 import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick} from '@/client/utils/boardSelection';
@@ -308,6 +312,8 @@ type DataModel = {
   choosing: {entry: number | undefined} | undefined;
   /** The sheet of its own a plain question is answered in, while it is up. */
   asking: 'amount' | 'choice' | 'payment' | undefined;
+  /** The option of the choice that sheet answers, when it was chosen in the choice sheet. */
+  askingEntry: number | undefined;
   /** The milestone or award in the claim sheet. */
   claiming: Claimable | undefined;
   overlay: Overlay | undefined;
@@ -379,6 +385,7 @@ export default defineComponent({
       confirming: undefined,
       choosing: undefined,
       asking: undefined,
+      askingEntry: undefined,
       claiming: undefined,
       overlay: undefined,
       logs: {},
@@ -388,9 +395,22 @@ export default defineComponent({
     };
   },
   computed: {
-    /* The price the server is asking to be paid, when that is the whole question. */
+    /* The glyph the confirm sheet heads the action with. */
+    confirmGlyph(): {icon: MobileIconName, tone: string} {
+      switch (this.confirming) {
+      case 'pass':
+        return {icon: 'skip-forward', tone: 'warn'};
+      case 'endTurn':
+        return {icon: 'check-check', tone: 'ok'};
+      case 'undo':
+        return {icon: 'undo-2', tone: 'accent'};
+      default:
+        return {icon: 'thermometer', tone: 'warn'};
+      }
+    },
+    /* The price the server is asking to be paid: the question, or the option chosen of it. */
     paymentQuestion(): SelectPaymentModel | undefined {
-      return paymentInput(this.playerView.waitingFor);
+      return paymentInput(this.playerView.waitingFor, this.askingEntry);
     },
     game(): GameModel {
       return this.playerView.game;
@@ -558,6 +578,7 @@ export default defineComponent({
       this.confirming = undefined;
       this.choosing = undefined;
       this.asking = undefined;
+      this.askingEntry = undefined;
       if (this.settingUp) {
         this.view = 'turn';
       }
@@ -600,6 +621,21 @@ export default defineComponent({
         this.snap = 'closed';
       }
     },
+    closeAsking(): void {
+      this.asking = undefined;
+      this.askingEntry = undefined;
+    },
+    /* An option chosen in the choice sheet that is a question of its own goes on to the
+       sheet that asks it, which sends the answer as that option's. */
+    openNested(step: NestedStep): void {
+      this.closeAsking();
+      if (step.kind === 'card') {
+        this.choosing = {entry: step.index};
+        return;
+      }
+      this.asking = step.kind;
+      this.askingEntry = step.index;
+    },
     /* A choice between cards needs every card on screen; anything else leaves the
        board readable above it. */
     raiseSheet(): void {
@@ -620,7 +656,7 @@ export default defineComponent({
         this.asking = 'amount';
         return;
       }
-      if (choiceInput(this.playerView.waitingFor) !== undefined) {
+      if (choiceInput(this.playerView.waitingFor) !== undefined || playerChoiceInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
         this.asking = 'choice';
         return;

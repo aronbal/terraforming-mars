@@ -3,10 +3,11 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
-import {boardRuleIn, choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {boardRuleIn, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {CardName} from '@/common/cards/CardName';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
-import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
-import {menu, option} from './menuFixtures';
+import {OrOptionsModel, PlayerInputModel, SelectPlayerModel} from '@/common/models/PlayerInputModel';
+import {cardChoice, menu, option} from './menuFixtures';
 
 describe('MobileChoiceSheet', () => {
   let posted: Array<unknown>;
@@ -46,11 +47,66 @@ describe('MobileChoiceSheet', () => {
     });
   }
 
-  it('takes only a choice between plain options, and never the turn\'s menu', () => {
+  function discardOrSkip(): OrOptionsModel {
+    return {...plants(), options: [{...cardChoice([CardName.ANTS]), title: 'Select a card to discard', buttonLabel: 'Discard'}, option('Do not discard a card')]} as OrOptionsModel;
+  }
+
+  it('takes a choice between options it or another sheet can answer, and never the turn\'s menu', () => {
     expect(choiceInput(plants())).is.not.undefined;
     expect(choiceInput(menu(option('Pass for this generation', 'pass'), option('Sell patents', 'sellPatents')))).is.undefined;
-    const nested = {...plants(), options: [option('Skip'), {type: 'amount', title: 'How many', buttonLabel: 'OK', min: 0, max: 3, maxByDefault: false}]} as OrOptionsModel;
-    expect(choiceInput(nested)).is.undefined;
+    const amount = {...plants(), options: [option('Skip'), {type: 'amount', title: 'How many', buttonLabel: 'OK', min: 0, max: 3, maxByDefault: false}]} as OrOptionsModel;
+    expect(choiceInput(amount)).is.not.undefined;
+    expect(choiceInput(discardOrSkip())).is.not.undefined;
+    const space = {...plants(), options: [option('Skip'), {type: 'space', title: 'Where', buttonLabel: 'OK', spaces: []}]} as unknown as OrOptionsModel;
+    expect(choiceInput(space)).is.undefined;
+  });
+
+  it('hands an option that is a question of its own on to its sheet', async () => {
+    const wrapper = render(discardOrSkip());
+    const rows = wrapper.findAll('[data-test=choice-sheet-option]');
+    expect(rows[0].text()).eq('Select a card to discard');
+    expect(wrapper.find('[data-test=choice-sheet-submit]').text()).eq('Continue');
+    await wrapper.find('[data-test=choice-sheet-submit]').trigger('click');
+    expect(wrapper.emitted('next')).deep.eq([[{kind: 'card', index: 0}]]);
+    expect(posted).is.empty;
+
+    await rows[1].trigger('click');
+    expect(wrapper.find('[data-test=choice-sheet-submit]').text()).eq('Confirm');
+    await wrapper.find('[data-test=choice-sheet-submit]').trigger('click');
+    await flushPromises();
+    expect(posted[0]).deep.include({type: 'or', index: 1, response: {type: 'option'}});
+  });
+
+  describe('a player to choose', () => {
+    function whichPlayer(): SelectPlayerModel {
+      return {type: 'player', title: 'Select player to decrease heat production 1 step', buttonLabel: 'Decrease', players: ['green', 'yellow']};
+    }
+
+    function renderPlayers() {
+      const players = [fakePublicPlayerModel({color: 'green', name: 'Green'}), fakePublicPlayerModel({color: 'yellow', name: 'Yellow'})];
+      return mount(MobileChoiceSheet, {
+        ...globalConfig,
+        props: {playerView: fakePlayerViewModel({waitingFor: whichPlayer(), players} as never)},
+      });
+    }
+
+    it('is a row per player, by colour and name', () => {
+      expect(playerChoiceInput(whichPlayer())).is.not.undefined;
+      const rows = renderPlayers().findAll('[data-test=choice-sheet-player]');
+      expect(rows.map((row) => row.text())).deep.eq(['Green', 'Yellow']);
+      expect(rows[1].find('.mobile-choice-standing-dot').classes()).contains('player_bg_color_yellow');
+    });
+
+    it('sends the chosen player from the question\'s own button', async () => {
+      const wrapper = renderPlayers();
+      await wrapper.findAll('[data-test=choice-sheet-player]')[1].trigger('click');
+      const submit = wrapper.find('[data-test=choice-sheet-submit]');
+      expect(submit.text()).eq('Decrease');
+      await submit.trigger('click');
+      await flushPromises();
+      expect(posted[0]).deep.include({type: 'player', player: 'yellow'});
+      expect(wrapper.emitted('close')).has.length(1);
+    });
   });
 
   it('starts on the server\'s default, and a tap only moves the choice', async () => {

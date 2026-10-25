@@ -1,9 +1,21 @@
 import {PlayerInputModel, SelectPaymentModel} from '@/common/models/PlayerInputModel';
+import {InputResponse} from '@/common/inputs/InputResponse';
+import {Payment} from '@/common/inputs/Payment';
 import {SpendableResource} from '@/common/inputs/Spendable';
 
-/** The payment the player is being asked for, when that is the whole of the question. */
-export function paymentInput(waitingFor: PlayerInputModel | undefined): SelectPaymentModel | undefined {
-  return waitingFor?.type === 'payment' ? waitingFor : undefined;
+/**
+ * The price the player is being asked to pay: option `entry` of the choice they are
+ * waiting on, or with no entry, the question itself when that is a price.
+ */
+export function paymentInput(waitingFor: PlayerInputModel | undefined, entry?: number): SelectPaymentModel | undefined {
+  const input = entry === undefined ? waitingFor : (waitingFor?.type === 'or' ? waitingFor.options[entry] : undefined);
+  return input?.type === 'payment' ? input : undefined;
+}
+
+/** The answer that pays with `payment`, as option `entry` of the choice when there is one. */
+export function paymentResponse(entry: number | undefined, payment: Payment): InputResponse {
+  const response: InputResponse = {type: 'payment', payment: {...payment}};
+  return entry === undefined ? response : {type: 'or', index: entry, response};
 }
 
 /** The units a payment may be made with, in the order the desktop lists them. M€ is always last. */

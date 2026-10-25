@@ -63,7 +63,7 @@
           data-test="payment-sheet-submit"
           @click="submit">{{ message('Pay · ${0} M€', payment.megacredits) }}</button>
         <button
-          v-if="playerinput.optional === true"
+          v-if="playerinput.optional === true || entry !== undefined"
           type="button"
           class="mobile-play-sheet-button"
           data-test="payment-sheet-cancel"
@@ -78,10 +78,9 @@ import {defineComponent, PropType} from 'vue';
 
 import {Ledger, PAYMENT_UNIT_DESCRIPTIONS, paymentProblem, paymentUnitIconClass, remainingMegacredits, totalSpent} from '@/client/components/PaymentLedger';
 import {computeDefaultPayment} from '@/client/components/PaymentDefaults';
-import {selectPaymentOrder} from '@/client/components/mobile/PaymentSheet';
+import {paymentResponse, selectPaymentOrder} from '@/client/components/mobile/PaymentSheet';
 import {PaymentWidgetMixin} from '@/client/mixins/PaymentWidgetMixin';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
-import {Payment} from '@/common/inputs/Payment';
 import {SpendableResource} from '@/common/inputs/Spendable';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
@@ -115,6 +114,11 @@ export default defineComponent({
     playerinput: {
       type: Object as PropType<SelectPaymentModel>,
       required: true,
+    },
+    /** The option of the choice the price is asked for, or undefined for the question itself. */
+    entry: {
+      type: Number,
+      default: undefined,
     },
   },
   emits: ['close'],
@@ -211,8 +215,7 @@ export default defineComponent({
       }
       this.submitting = true;
       try {
-        const payment: Payment = {...this.payment};
-        if (await postPlayerInput(this, this.playerView, {type: 'payment', payment})) {
+        if (await postPlayerInput(this, this.playerView, paymentResponse(this.entry, this.payment))) {
           this.$emit('close');
         }
       } finally {

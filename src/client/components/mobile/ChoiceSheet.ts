@@ -5,12 +5,27 @@ import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {Message} from '@/common/logs/Message';
 import {AwardName} from '@/common/ma/AwardName';
 import {MilestoneName} from '@/common/ma/MilestoneName';
-import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
+import {OrOptionsModel, PlayerInputModel, SelectPlayerModel} from '@/common/models/PlayerInputModel';
+
+/** An option the choice sheet hands on to a sheet of its own once it is chosen. */
+export type NestedKind = 'card' | 'amount' | 'payment';
+
+/** Where a chosen option goes next: the sheet that answers it, for option `index` of the choice. */
+export type NestedStep = {kind: NestedKind, index: number};
+
+const NESTED_KINDS: ReadonlyArray<string> = ['card', 'amount', 'payment'];
+
+/** The sheet that answers `option` once it is chosen, or undefined for a plain option. */
+export function nestedKind(option: PlayerInputModel): NestedKind | undefined {
+  return NESTED_KINDS.includes(option.type) ? option.type as NestedKind : undefined;
+}
 
 /**
- * The question, when it is a choice between plain options and nothing else -- whose
- * plants to remove, whether to pay for something -- which the choice sheet answers.
- * The turn's menu is a choice too, but it is answered from the turn page.
+ * The question, when it is a choice between options the shell can answer -- whose
+ * plants to remove, whether to pay for something, a card to discard or nothing --
+ * which the choice sheet answers. A plain option is sent from the sheet itself; a pick
+ * among cards, a number or a price goes on to the sheet that asks it. The turn's menu
+ * is a choice too, but it is answered from the turn page.
  */
 export function choiceInput(waitingFor: PlayerInputModel | undefined): OrOptionsModel | undefined {
   // Read into a plain boolean: as a type guard it would narrow away every `or`.
@@ -18,10 +33,15 @@ export function choiceInput(waitingFor: PlayerInputModel | undefined): OrOptions
   if (waitingFor?.type !== 'or' || menu) {
     return undefined;
   }
-  if (waitingFor.options.length < 2 || waitingFor.options.some((option) => option.type !== 'option')) {
+  if (waitingFor.options.length < 2 || waitingFor.options.some((option) => option.type !== 'option' && nestedKind(option) === undefined)) {
     return undefined;
   }
   return waitingFor;
+}
+
+/** The question, when it is which player something is done to, which the choice sheet answers too. */
+export function playerChoiceInput(waitingFor: PlayerInputModel | undefined): SelectPlayerModel | undefined {
+  return waitingFor?.type === 'player' ? waitingFor : undefined;
 }
 
 /** Where a player stands in the award or milestone an option is about. */

@@ -53,7 +53,7 @@
           data-test="amount-sheet-submit"
           @click="submit">{{ $t(input.buttonLabel) }} · {{ amount }}</button>
         <button
-          v-if="input.optional === true"
+          v-if="input.optional === true || entry !== undefined"
           type="button"
           class="mobile-play-sheet-button"
           data-test="amount-sheet-cancel"
@@ -66,7 +66,7 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
-import {amountInput} from '@/client/components/mobile/AmountSheet';
+import {amountInput, amountResponse} from '@/client/components/mobile/AmountSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {SelectAmountModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
@@ -91,10 +91,15 @@ export default defineComponent({
       type: Object as PropType<PlayerViewModel>,
       required: true,
     },
+    /** The option of the choice the number is asked for, or undefined for the question itself. */
+    entry: {
+      type: Number,
+      default: undefined,
+    },
   },
   emits: ['close'],
   data(): DataModel {
-    const input = amountInput(this.playerView.waitingFor);
+    const input = amountInput(this.playerView.waitingFor, this.entry);
     return {
       amount: input === undefined ? 0 : (input.maxByDefault ? input.max : input.min),
       submitting: false,
@@ -102,7 +107,7 @@ export default defineComponent({
   },
   computed: {
     input(): SelectAmountModel | undefined {
-      return amountInput(this.playerView.waitingFor);
+      return amountInput(this.playerView.waitingFor, this.entry);
     },
   },
   watch: {
@@ -127,7 +132,7 @@ export default defineComponent({
       }
       this.submitting = true;
       try {
-        if (await postPlayerInput(this, this.playerView, {type: 'amount', amount: this.amount})) {
+        if (await postPlayerInput(this, this.playerView, amountResponse(this.entry, this.amount))) {
           this.$emit('close');
         }
       } finally {

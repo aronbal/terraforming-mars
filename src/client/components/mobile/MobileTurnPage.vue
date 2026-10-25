@@ -155,14 +155,14 @@
         class="mobile-block-button"
         :disabled="pass === undefined"
         data-test="pass"
-        @click="openEntry(pass)">
+        @click="confirmEntry(pass, 'pass')">
         <span v-i18n>Pass</span>
       </button>
-      <button v-if="endTurn !== undefined" class="mobile-block-button" data-test="end-turn" @click="openEntry(endTurn)">
+      <button v-if="endTurn !== undefined" class="mobile-block-button" data-test="end-turn" @click="confirmEntry(endTurn, 'endTurn')">
         <MobileIcon name="check-check" :size="18"/>
         <span v-i18n>End turn</span>
       </button>
-      <button v-if="undo !== undefined" class="mobile-block-button" data-test="undo" @click="openEntry(undo)">
+      <button v-if="undo !== undefined" class="mobile-block-button" data-test="undo" @click="confirmEntry(undo, 'undo')">
         <MobileIcon name="undo-2" :size="18"/>
         <span v-i18n>Undo</span>
       </button>
@@ -462,6 +462,15 @@ export default defineComponent({
         return;
       }
       this.openEntry(tile.entry);
+    },
+    /* An entry with nothing to choose -- pass, end turn, undo -- is confirmed in the
+       confirm sheet; anything else opens like any other entry. */
+    confirmEntry(entry: ActionEntry | undefined, annotation: ActionAnnotation): void {
+      if (entry?.input.type === 'option') {
+        this.$emit('confirm', annotation);
+        return;
+      }
+      this.openEntry(entry);
     },
     openEntry(entry: ActionEntry | undefined): void {
       if (entry !== undefined) {

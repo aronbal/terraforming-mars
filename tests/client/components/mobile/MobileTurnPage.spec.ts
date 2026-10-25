@@ -117,11 +117,12 @@ describe('MobileTurnPage', () => {
     expect(wrapper.emitted('openMilestones')).has.length(1);
   });
 
-  it('passing is a button for its entry, and selling patents opens the card chooser', async () => {
+  it('passing is confirmed in the confirm sheet, and selling patents opens the card chooser', async () => {
     const wrapper = mount(fullMenu());
     await wrapper.find('[data-test="pass"]').trigger('click');
     await wrapper.find('[data-test="sell-patents"]').trigger('click');
-    expect(wrapper.emitted('openEntry')).deep.eq([[5]]);
+    expect(wrapper.emitted('confirm')).deep.eq([['pass']]);
+    expect(wrapper.emitted('openEntry')).is.undefined;
     expect(wrapper.emitted('openChooser')).deep.eq([[6]]);
     expect(wrapper.find('[data-test="end-turn"]').exists()).is.false;
   });
