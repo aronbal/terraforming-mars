@@ -650,9 +650,23 @@ html:has(> body.mobile-shell-active),
     margin-left: 0;
   }
 
-  // OrOptions puts this right under the option it acts on when the shell is mobile.
-  .wf-option-save {
-    margin: 10px 0 14px;
+  // OrOptions pins its button to the bottom of the sheet when the shell is mobile.
+  .wf-option-save-bar {
+    position: sticky;
+    bottom: calc(-18px - env(safe-area-inset-bottom));
+    z-index: 1;
+    margin: 4px -12px calc(-18px - env(safe-area-inset-bottom));
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    background: @mobile-surface;
+    box-shadow: 0 -0.5px 0 @m-sep;
+
+    .wf-option-save {
+      margin: 0;
+    }
+
+    .btn {
+      width: 100%;
+    }
   }
 
   /*
