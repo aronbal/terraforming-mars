@@ -317,6 +317,16 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.findComponent({name: 'MobileAmountSheet'}).exists()).is.true;
   });
 
+  it('puts a price to pay in the payment sheet, not the sheet', async () => {
+    const wrapper = mount({type: 'payment', title: 'Select how to spend 3 M€', buttonLabel: 'Pay', amount: 3, paymentOptions: {heat: true}} as unknown as PlayerInputModel);
+    wrapper.vm.asking = undefined;
+    wrapper.vm.raiseSheet();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.asking).eq('payment');
+    expect(wrapper.vm.snap).eq('closed');
+    expect(wrapper.findComponent({name: 'MobilePaymentSheet'}).exists()).is.true;
+  });
+
   it('puts a choice between plain options in the choice sheet, not the sheet', async () => {
     const choice = {type: 'or', title: 'Remove plants', buttonLabel: 'Confirm', options: [option('From Green'), option('From Yellow')]} as PlayerInputModel;
     const wrapper = mount(choice);

@@ -197,6 +197,13 @@
       :playerView="playerView"
       @close="asking = undefined"/>
 
+    <!-- A price to pay: the cards just bought, a fee. -->
+    <MobilePaymentSheet
+      v-if="asking === 'payment' && paymentQuestion !== undefined"
+      :playerView="playerView"
+      :playerinput="paymentQuestion"
+      @close="asking = undefined"/>
+
     <!-- A choice between plain options: whose plants to remove, whether to pay. -->
     <MobileChoiceSheet
       v-if="asking === 'choice'"
@@ -234,6 +241,7 @@ import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileAmountSheet from '@/client/components/mobile/MobileAmountSheet.vue';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
+import MobilePaymentSheet from '@/client/components/mobile/MobilePaymentSheet.vue';
 import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue';
 import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
 import MobileConfirmSheet from '@/client/components/mobile/MobileConfirmSheet.vue';
@@ -265,6 +273,8 @@ import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} fro
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
 import {choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {paymentInput} from '@/client/components/mobile/PaymentSheet';
+import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
 import {ActionAnnotation} from '@/common/input/Annotation';
 import {ColonyName} from '@/common/colonies/ColonyName';
 import {clearPickedCard} from '@/client/utils/cardSelection';
@@ -297,7 +307,7 @@ type DataModel = {
   /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
   choosing: {entry: number | undefined} | undefined;
   /** The sheet of its own a plain question is answered in, while it is up. */
-  asking: 'amount' | 'choice' | undefined;
+  asking: 'amount' | 'choice' | 'payment' | undefined;
   /** The milestone or award in the claim sheet. */
   claiming: Claimable | undefined;
   overlay: Overlay | undefined;
@@ -338,6 +348,7 @@ export default defineComponent({
     MobileFitBlock,
     MobileAmountSheet,
     MobileChoiceSheet,
+    MobilePaymentSheet,
     MobileCardChooser,
     MobileClaimSheet,
     MobileConfirmSheet,
@@ -377,6 +388,10 @@ export default defineComponent({
     };
   },
   computed: {
+    /* The price the server is asking to be paid, when that is the whole question. */
+    paymentQuestion(): SelectPaymentModel | undefined {
+      return paymentInput(this.playerView.waitingFor);
+    },
     game(): GameModel {
       return this.playerView.game;
     },
@@ -594,7 +609,12 @@ export default defineComponent({
         this.choosing = {entry: undefined};
         return;
       }
-      // So do a number and a choice between plain options.
+      // So do a number, a price and a choice between plain options.
+      if (paymentInput(this.playerView.waitingFor) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'payment';
+        return;
+      }
       if (amountInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
         this.asking = 'amount';

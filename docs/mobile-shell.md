@@ -294,6 +294,15 @@ the range as a segmented choice, and one blue button that says what it sends
 question still uses the sheet, where the desktop's own buttons are redrawn the same
 way: the one that answers is blue, the ones that only adjust (MAX, +, −) are grey.
 
+**Paying a price.** A question that is only a price to pay (the cards just
+bought after drawing, a fee) opens in the payment sheet (`MobilePaymentSheet.vue`).
+It is drawn like the play sheet's payment: a row with − and + for every unit the
+price may be paid with and the player has, the M€ that make up the rest, why the
+payment cannot be sent or what it overpays by, and one blue button that says what it
+pays (`Pay · 3 M€`). The rules are the desktop `SelectPayment`'s: the units come from
+`selectPaymentOrder` (`PaymentSheet.ts`, which `SelectPayment` uses too), and the
+ledger, the first payment and the refusals from `PaymentLedger` and `PaymentDefaults`.
+
 **Choosing between options.** A question that is a choice between plain options
 and nothing else opens in the choice sheet (`MobileChoiceSheet.vue`), for example
 whose plants to remove, or whether to pay.
