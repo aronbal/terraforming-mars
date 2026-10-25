@@ -66,7 +66,7 @@ describe('MobileCardChooser', () => {
   });
 
   it('buys several, saying how many and what they cost', async () => {
-    const wrapper = render(cardChoice([CardName.ANTS, CardName.BIRDS, CardName.COMET], {min: 0, max: 3, buttonLabel: 'Buy'}));
+    const wrapper = render(cardChoice([CardName.ANTS, CardName.BIRDS, CardName.COMET], {min: 0, max: 3, buttonLabel: 'Buy', annotation: 'buyCards'}));
     const submit = () => wrapper.find('[data-test=card-chooser-submit]');
     expect(submit().text()).eq('Skip');
 
@@ -78,6 +78,31 @@ describe('MobileCardChooser', () => {
     await submit().trigger('click');
     await flushPromises();
     expect(posted[0]).deep.include({type: 'card', cards: [CardName.ANTS, CardName.COMET]});
+  });
+
+  it('prices only a purchase the server marks as buying cards', async () => {
+    const wrapper = render(cardChoice([CardName.ANTS, CardName.BIRDS], {min: 0, max: 2, buttonLabel: 'Buy'}));
+    await cardsOf(wrapper)[0].trigger('click');
+    expect(wrapper.find('[data-test=card-chooser-submit]').text()).eq('Buy · 1');
+  });
+
+  /* Board of Directors: one prelude, pay 12 M€ to play it or discard it. */
+  it('offers one card to take or leave as two buttons that say so', async () => {
+    const wrapper = render(cardChoice([CardName.ANTS], {min: 0, max: 1, buttonLabel: 'Buy'}));
+    expect(wrapper.find('[data-test=card-chooser-submit]').exists()).is.false;
+    expect(wrapper.find('[data-test=card-chooser-take]').text()).eq('Buy');
+    expect(wrapper.find('[data-test=card-chooser-leave]').text()).eq('Skip');
+
+    await wrapper.find('[data-test=card-chooser-take]').trigger('click');
+    await flushPromises();
+    expect(posted[0]).deep.include({type: 'card', cards: [CardName.ANTS]});
+  });
+
+  it('leaves the one card with Skip', async () => {
+    const wrapper = render(cardChoice([CardName.ANTS], {min: 0, max: 1, buttonLabel: 'Buy'}));
+    await wrapper.find('[data-test=card-chooser-leave]').trigger('click');
+    await flushPromises();
+    expect(posted[0]).deep.include({type: 'card', cards: []});
   });
 
   it('a second tap puts a card back', async () => {

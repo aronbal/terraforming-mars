@@ -58,7 +58,13 @@ export class ChooseCards extends DeferredAction {
     const min = options.paying ? 0 : options.keepMax;
 
     const button = max === 0 ? 'Ok' : (options.paying ? 'Buy' : 'Select');
-    return new SelectCard(msg, button, cards, {max, min, played: !options.paying})
+    const select = new SelectCard(msg, button, cards, {max, min, played: !options.paying});
+    if (options.paying) {
+      // Cards bought at the card cost each, as the research phase does. The button alone
+      // does not say so: Board of Directors' 'Buy' costs 12 M€ for one prelude.
+      select.annotate('buyCards');
+    }
+    return select
       .andThen((selected) => {
         if (selected.length > max) {
           throw new Error('Selected too many cards');

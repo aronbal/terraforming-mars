@@ -54,7 +54,7 @@ export class SelectCard<T extends ICard> extends BasePlayerInput<ReadonlyArray<T
   }
 
   public toModel(player: IPlayer): SelectCardModel {
-    return {
+    const model: SelectCardModel = {
       title: this.title,
       buttonLabel: this.buttonLabel,
       type: 'card',
@@ -71,6 +71,11 @@ export class SelectCard<T extends ICard> extends BasePlayerInput<ReadonlyArray<T
       showSelectAll: this.config.showSelectAll === true,
       optional: this.optional,
     };
+    // Set only where a client needs to tell the pick apart, such as buying cards.
+    if (this.annotation !== undefined) {
+      model.annotation = this.annotation;
+    }
+    return model;
   }
 
   public process(input: InputResponse) {
