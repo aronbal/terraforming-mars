@@ -293,6 +293,13 @@ whose plants to remove, or whether to pay.
 - The server's default is ticked to start with.
 - One blue button at the bottom sends the ticked option, under its own label
   (`Remove plants`, `Skip`).
+- An option about an award or a milestone, such as Asimov's `Fund ${0} award
+  [scores]`, reads as the name, its kind and each player's score with a dot in
+  their colour.
+  - The ticked one also shows the rule from the client's milestone/award manifest
+    and what it pays.
+  - `ChoiceSheet.boardRuleIn` matches the name, and reads the scores out of the
+    option's text.
 
 A choice with an input inside an option still uses the sheet, raised to `full`.
 There, `OrOptions` pins its button to the sheet's bottom edge, under every option,

@@ -27,7 +27,25 @@
             <span class="mobile-choice-mark" aria-hidden="true">
               <MobileIcon v-if="index === chosen" name="check" :size="14" :strokeWidth="3"/>
             </span>
-            <span class="mobile-choice-text">{{ $t(option.title) }}</span>
+            <!-- An award or a milestone reads as its name and everyone's score, and the
+                 chosen one says what it is won by, so the choice can be made on the rules
+                 rather than on a remembered name. -->
+            <span v-if="rules[index] !== undefined" class="mobile-choice-text" data-test="choice-sheet-rule">
+              <span class="mobile-choice-name">
+                {{ $t(rules[index].name) }}
+                <small class="mobile-choice-kind">{{ $t(rules[index].kind === 'award' ? 'Award' : 'Milestone') }}</small>
+              </span>
+              <span v-if="rules[index].standings.length > 0" class="mobile-choice-standings">
+                <span v-for="standing in rules[index].standings" :key="standing.name" class="mobile-choice-standing">
+                  <i class="mobile-choice-standing-dot" :class="standing.color !== undefined ? 'player_bg_color_' + standing.color : 'mobile-choice-standing-dot--unknown'"></i>{{ standing.score }}
+                </span>
+              </span>
+              <span v-if="index === chosen" class="mobile-choice-rule" data-test="choice-sheet-rule-text">
+                {{ $t(rules[index].description) }}
+                <span class="mobile-choice-reward">{{ $t(rules[index].kind === 'award' ? '1st 5 VP · 2nd 2 VP at the end' : '5 VP') }}</span>
+              </span>
+            </span>
+            <span v-else class="mobile-choice-text">{{ $t(option.title) }}</span>
           </button>
         </div>
         <WarningsComponent v-if="warnings !== undefined" :warnings="warnings"/>
@@ -55,7 +73,7 @@ import {defineComponent, PropType} from 'vue';
 
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
 import WarningsComponent from '@/client/components/WarningsComponent.vue';
-import {choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {BoardRule, boardRuleIn, choiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {Warning} from '@/common/cards/Warning';
 import {OrOptionsModel} from '@/common/models/PlayerInputModel';
@@ -98,6 +116,11 @@ export default defineComponent({
   computed: {
     input(): OrOptionsModel | undefined {
       return choiceInput(this.playerView.waitingFor);
+    },
+    /** The award or milestone each option is about, where it is about one. */
+    rules(): Array<BoardRule | undefined> {
+      const players = this.playerView.players;
+      return (this.input?.options ?? []).map((option) => boardRuleIn(option, players));
     },
     /** The chosen option's own label: `Remove plants`, `Pay`, `Skip`. */
     buttonLabel(): string {

@@ -567,7 +567,68 @@
   }
 }
 
+
+// An award or a milestone in a choice: its name, everyone's score, and its rule.
 .mobile-choice-text {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-choice-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mobile-choice-kind {
+  margin-left: 6px;
+  font-size: @m-small-size;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: @m-label-2;
+}
+
+.mobile-choice-standings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: @m-value-size;
+  font-weight: 600;
+  .m-tabular();
+}
+
+.mobile-choice-standing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mobile-choice-standing-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: @m-radius-pill;
+}
+
+.mobile-choice-standing-dot--unknown {
+  background: @m-label-3;
+}
+
+.mobile-choice-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 0.5px solid @m-sep;
+  font-size: 14px;
+  font-weight: 400;
+  color: @m-label;
+}
+
+.mobile-choice-reward {
+  font-size: @m-secondary-size;
+  color: @m-label-2;
 }

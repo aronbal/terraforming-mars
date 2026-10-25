@@ -3,7 +3,8 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import {fakePlayerViewModel} from '../testHelpers';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
-import {choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {boardRuleIn, choiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {menu, option} from './menuFixtures';
 
@@ -73,5 +74,34 @@ describe('MobileChoiceSheet', () => {
 
   it('closes when the question is not a plain choice', () => {
     expect(render(option('Pay 3 M€?')).emitted('close')).has.length(1);
+  });
+
+  function fund(award: string, scores: string): PlayerInputModel {
+    return {
+      type: 'option',
+      title: {message: 'Fund ${0} award [${1}]', data: [{type: LogMessageDataType.AWARD, value: award}, {type: LogMessageDataType.STRING, value: scores}]},
+      buttonLabel: 'Confirm',
+    } as PlayerInputModel;
+  }
+
+  it('reads an award option as its name, its rule and everyone\'s score', () => {
+    const players = [{name: 'Aron Balschmidt', color: 'red'}, {name: 'Green', color: 'green'}] as const;
+    expect(boardRuleIn(fund('Cultivator', 'Aron Balschmidt: 2 / Green: 0'), players)).deep.eq({
+      kind: 'award',
+      name: 'Cultivator',
+      description: 'Own the most greenery tiles',
+      standings: [{name: 'Aron Balschmidt', color: 'red', score: 2}, {name: 'Green', color: 'green', score: 0}],
+    });
+    expect(boardRuleIn(option('Do nothing'), players)).is.undefined;
+  });
+
+  it('shows the rule of the chosen award only', async () => {
+    const wrapper = render({type: 'or', title: 'Select award to put into play and fund', buttonLabel: 'Confirm',
+      options: [fund('Cultivator', 'Green: 0'), fund('Celebrity', 'Green: 0'), option('Do nothing')]} as OrOptionsModel);
+    expect(wrapper.findAll('[data-test=choice-sheet-rule]')).has.length(2);
+    expect(wrapper.findAll('[data-test=choice-sheet-rule-text]')).has.length(1);
+    expect(wrapper.find('[data-test=choice-sheet-rule-text]').text()).contains('Own the most greenery tiles');
+    await wrapper.findAll('[data-test=choice-sheet-option]')[1].trigger('click');
+    expect(wrapper.find('[data-test=choice-sheet-rule-text]').text()).contains('at least 20 M€');
   });
 });
