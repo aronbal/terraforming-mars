@@ -42,7 +42,7 @@
               </span>
               <span v-if="index === chosen" class="mobile-choice-rule" data-test="choice-sheet-rule-text">
                 {{ $t(rules[index].description) }}
-                <span class="mobile-choice-reward">{{ $t(rules[index].kind === 'award' ? '1st 5 VP · 2nd 2 VP at the end' : '5 VP') }}</span>
+                <span class="mobile-choice-reward">{{ $t(reward(rules[index].kind)) }}</span>
               </span>
             </span>
             <span v-else class="mobile-choice-text">{{ $t(option.title) }}</span>
@@ -147,6 +147,15 @@ export default defineComponent({
     panel?.focus({preventScroll: true});
   },
   methods: {
+    /* What it pays. With two players an award has no second place: the scoring
+       gives 2 VP only to the best of those left once first place is taken out, and
+       with two that leaves no one to compare. */
+    reward(kind: BoardRule['kind']): string {
+      if (kind === 'milestone') {
+        return '5 VP';
+      }
+      return this.playerView.players.length > 2 ? '1st 5 VP · 2nd 2 VP at the end' : '1st 5 VP at the end';
+    },
     async submit(): Promise<void> {
       if (this.submitting || this.input === undefined) {
         return;

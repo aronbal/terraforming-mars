@@ -1,7 +1,7 @@
 import {flushPromises, mount} from '@vue/test-utils';
 import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
-import {fakePlayerViewModel} from '../testHelpers';
+import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
 import {boardRuleIn, choiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
@@ -103,5 +103,16 @@ describe('MobileChoiceSheet', () => {
     expect(wrapper.find('[data-test=choice-sheet-rule-text]').text()).contains('Own the most greenery tiles');
     await wrapper.findAll('[data-test=choice-sheet-option]')[1].trigger('click');
     expect(wrapper.find('[data-test=choice-sheet-rule-text]').text()).contains('at least 20 M€');
+  });
+
+  it('pays a second place only with more than two players', () => {
+    const question = {type: 'or', title: 'Select award to put into play and fund', buttonLabel: 'Confirm',
+      options: [fund('Cultivator', 'Green: 0'), option('Do nothing')]} as OrOptionsModel;
+    const withPlayers = (count: number) => mount(MobileChoiceSheet, {
+      ...globalConfig,
+      props: {playerView: fakePlayerViewModel({waitingFor: question, players: Array.from({length: count}, () => fakePublicPlayerModel())} as never)},
+    }).find('[data-test=choice-sheet-rule-text]').text();
+    expect(withPlayers(2)).contains('1st 5 VP at the end').and.not.contains('2nd');
+    expect(withPlayers(3)).contains('2nd 2 VP');
   });
 });
