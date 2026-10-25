@@ -18,7 +18,6 @@
 <script lang="ts">
 import {defineComponent} from 'vue';
 import {Payment} from '@/common/inputs/Payment';
-import {SpendableResource} from '@/common/inputs/Spendable';
 import {PaymentWidgetMixin} from '@/client/mixins/PaymentWidgetMixin';
 import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
@@ -26,6 +25,7 @@ import {SelectPaymentResponse} from '@/common/inputs/InputResponse';
 import PaymentForm from '@/client/components/PaymentForm.vue';
 import {Ledger} from '@/client/components/PaymentLedger';
 import {Units} from '@/common/Units';
+import {selectPaymentOrder} from '@/client/components/mobile/PaymentSheet';
 
 export default defineComponent({
   name: 'SelectPayment',
@@ -52,16 +52,7 @@ export default defineComponent({
   },
   computed: {
     order(): ReadonlyArray<keyof Payment> {
-      return ([
-        'steel',
-        'titanium',
-        'heat',
-        'seeds',
-        'auroraiData',
-        'kuiperAsteroids',
-        'spireScience',
-        'megacredits',
-      ] as const).filter(this.canUse);
+      return selectPaymentOrder(this.playerinput);
     },
     ledger(): Ledger {
       return this.buildLedger(this.order, this.playerinput.reserveUnits ?? Units.EMPTY);
@@ -74,15 +65,6 @@ export default defineComponent({
     this.cost = this.playerinput.amount;
   },
   methods: {
-    canUse(unit: SpendableResource): boolean {
-      if (unit === 'megacredits') {
-        return true;
-      }
-      if (unit === 'titanium') {
-        return this.playerinput.paymentOptions.titanium === true || this.playerinput.paymentOptions.lunaTradeFederationTitanium === true;
-      }
-      return this.playerinput.paymentOptions[unit] === true;
-    },
     saveData() {
       const paymentForm = this.$refs.paymentForm as {handleSave: () => void} | undefined;
       if (paymentForm !== undefined) {
