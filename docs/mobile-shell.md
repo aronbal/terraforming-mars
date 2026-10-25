@@ -292,8 +292,16 @@ a link to the results page, and the action tiles go.
 **The results page.** On a phone, `the-end` is `MobileGameEnd.vue` instead of the
 desktop's `GameEnd.vue`.
 - The winner is named large at the top (`You won!` when it is the player looking).
-- Each player's total, best first, is a card with a bar of what the score is made
-  of and the parts as numbers.
+- The totals, best first, are a list of rows: place, name, corporation, M€ left
+  (the tie-break) and the total.
+- **By category** compares the sources of points in a two-column grid of tiles,
+  one tile for each category anyone scored in (TR, milestones, awards,
+  greeneries, cities, cards, and the Moon, tracks or Escape Velocity when they
+  apply).
+  - Each tile has one bar per player, all measured against the most anyone
+    scored in any category.
+  - Everyone but the category's leader is dimmed.
+  - The lead (`+6`) is written in the leader's colour, or `=` on a tie.
 - The score by generation is a small SVG chart.
 - Each player's points from cards, milestones and awards are folded rows.
 - At the bottom, `New game`, `See the final board` (the player view with
