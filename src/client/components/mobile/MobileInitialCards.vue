@@ -78,10 +78,14 @@
       <div class="mobile-initial-state">
         <div v-if="corporationChosen" class="mobile-initial-money" data-test="initial-money">
           <span class="mobile-initial-money-label" v-i18n>Start</span>
-          <div class="megacredits">{{ startingMegacredits }}</div>
+          <span class="mobile-initial-money-value" data-test="initial-money-start">
+            <i class="resource_icon resource_icon--megacredits" aria-hidden="true"></i>{{ startingMegacredits }}
+          </span>
           <template v-if="hasPrelude">
             <span class="mobile-initial-money-label" v-i18n>After preludes</span>
-            <div class="megacredits">{{ startingMegacredits + afterPreludes }}</div>
+            <span class="mobile-initial-money-value" data-test="initial-money-after">
+              <i class="resource_icon resource_icon--megacredits" aria-hidden="true"></i>{{ startingMegacredits + afterPreludes }}
+            </span>
           </template>
         </div>
         <div v-if="warning !== undefined" class="mobile-initial-warning" data-test="initial-warning">{{ $t(warning) }}</div>

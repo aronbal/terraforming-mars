@@ -1211,6 +1211,25 @@ html:has(> body.mobile-shell-active),
   color: @mobile-dim;
 }
 
+.mobile-initial-money-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  font-family: @m-font;
+  font-size: 18px;
+  font-weight: 700;
+  color: @m-label;
+  .m-tabular();
+
+  .resource_icon {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    background-size: 20px;
+  }
+}
+
 .mobile-initial-warning {
   font-size: 12px;
   color: @mobile-ochre;
