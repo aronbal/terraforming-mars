@@ -480,6 +480,24 @@ describe('GameLoader', () => {
     expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
   });
 
+  it('restorePreviousSave goes back to the save before the latest', async () => {
+    game.generation = 12;
+    game.save();
+    game.generation = 13;
+    game.save();
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1, 2]);
+
+    const newGame = await instance.restorePreviousSave(game.id);
+    expect(newGame?.generation).eq(12);
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+  });
+
+  it('restorePreviousSave needs an earlier save', async () => {
+    expect(await database.getSaveIds(game.id)).deep.eq([0]);
+    expect(await instance.restorePreviousSave(game.id)).is.undefined;
+    expect(await database.getSaveIds(game.id)).deep.eq([0]);
+  });
+
   it('saveGame', async () => {
     game.generation = 12;
     instance.saveGame(game);

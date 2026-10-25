@@ -96,6 +96,8 @@ export interface PlayerViewModel extends ViewModel {
   dealtCeoCards: ReadonlyArray<CardModel>;
   draftedCards: ReadonlyArray<CardModel>;
   id: PlayerId;
+  /** Whether this player set the game up, and so may take it back a save. */
+  isGameMaster: boolean;
   ceoCardsInHand: ReadonlyArray<CardModel>;
   pickedCorporationCard: ReadonlyArray<CardModel>; // Why Array?
   preludeCardsInHand: ReadonlyArray<CardModel>;

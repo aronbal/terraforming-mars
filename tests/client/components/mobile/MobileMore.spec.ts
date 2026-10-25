@@ -29,6 +29,114 @@ describe('MobileMore', () => {
     expect(paths).deep.eq(['/new-game', '/continue-game', '/games-overview']);
   });
 
+  describe('the link to this game', () => {
+    let copied: Array<string>;
+    let realClipboard: PropertyDescriptor | undefined;
+
+    function stubClipboard(writeText: (text: string) => Promise<void>) {
+      Object.defineProperty(navigator, 'clipboard', {value: {writeText}, configurable: true});
+    }
+
+    beforeEach(() => {
+      copied = [];
+      realClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      stubClipboard(async (text) => {
+        copied.push(text);
+      });
+    });
+
+    afterEach(() => {
+      if (realClipboard === undefined) {
+        delete (navigator as {clipboard?: unknown}).clipboard;
+      } else {
+        Object.defineProperty(navigator, 'clipboard', realClipboard);
+      }
+    });
+
+    function mountWithGame() {
+      const playerView = fakePlayerViewModel();
+      return {wrapper: shallowMount(MobileMore, {...globalConfig, props: {playerView}}), playerView};
+    }
+
+    it('shows the player\'s own link', () => {
+      const {wrapper, playerView} = mountWithGame();
+      expect(wrapper.find('[data-test="more-game-url"]').text()).eq(window.location.origin + '/player?id=' + playerView.id);
+    });
+
+    it('copies it', async () => {
+      const {wrapper, playerView} = mountWithGame();
+      await wrapper.find('[data-test="more-copy-link"]').trigger('click');
+      await flushPromises();
+      expect(copied).deep.eq([window.location.origin + '/player?id=' + playerView.id]);
+      expect(wrapper.find('[data-test="more-copy-link"]').text()).eq('Copied');
+    });
+
+    it('selects it where the clipboard is refused', async () => {
+      stubClipboard(() => Promise.reject(new Error('denied')));
+      const playerView = fakePlayerViewModel();
+      // Selection needs the element in the document.
+      const wrapper = shallowMount(MobileMore, {...globalConfig, props: {playerView}, attachTo: document.body});
+      await wrapper.find('[data-test="more-copy-link"]').trigger('click');
+      await flushPromises();
+      expect(wrapper.find('[data-test="more-copy-link"]').text()).eq('Copy');
+      expect(window.getSelection()?.toString()).eq(wrapper.find('[data-test="more-game-url"]').text());
+      wrapper.unmount();
+    });
+
+    it('is not offered without a game', () => {
+      expect(mount().find('[data-test="more-game-link"]').exists()).is.false;
+    });
+  });
+
+  describe('going back one save', () => {
+    let requested: Array<{url: string, method: string}>;
+    let realFetch: typeof global.fetch;
+    let realConfirm: typeof window.confirm;
+    let confirmed: boolean;
+
+    beforeEach(() => {
+      requested = [];
+      confirmed = true;
+      realFetch = global.fetch;
+      realConfirm = window.confirm;
+      global.fetch = (async (url: string, options: {method: string}) => {
+        requested.push({url, method: options.method});
+        return {ok: true, status: 200, json: async () => fakePlayerViewModel()};
+      }) as unknown as typeof global.fetch;
+      window.confirm = () => confirmed;
+    });
+
+    afterEach(() => {
+      global.fetch = realFetch;
+      window.confirm = realConfirm;
+    });
+
+    function mountAs(isGameMaster: boolean) {
+      const playerView = {...fakePlayerViewModel(), isGameMaster};
+      return {wrapper: shallowMount(MobileMore, {...globalConfig, props: {playerView}}), playerView};
+    }
+
+    it('is offered to the game master only', () => {
+      expect(mountAs(true).wrapper.find('[data-test="more-rollback"]').exists()).is.true;
+      expect(mountAs(false).wrapper.find('[data-test="more-rollback"]').exists()).is.false;
+    });
+
+    it('asks first, then goes back through the server', async () => {
+      const {wrapper, playerView} = mountAs(true);
+      await wrapper.find('[data-test="more-rollback"]').trigger('click');
+      await flushPromises();
+      expect(requested).deep.eq([{url: 'api/game/rollback?id=' + playerView.id, method: 'POST'}]);
+    });
+
+    it('does nothing when the player thinks better of it', async () => {
+      confirmed = false;
+      const {wrapper} = mountAs(true);
+      await wrapper.find('[data-test="more-rollback"]').trigger('click');
+      await flushPromises();
+      expect(requested).is.empty;
+    });
+  });
+
   describe('undo, under Settings', () => {
     let requested: Array<{url: string, method: string}>;
     let realFetch: typeof global.fetch;

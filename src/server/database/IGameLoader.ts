@@ -28,6 +28,11 @@ export interface IGameLoader {
    */
   restoreGameAt(gameId: GameId, saveId: number): Promise<IGame>;
   /**
+   * Reload a game at the save before its latest one, deleting the latest.
+   * Resolves undefined when there is no earlier save.
+   */
+  restorePreviousSave(gameId: GameId): Promise<IGame | undefined>;
+  /**
    * Mark a game to be purged from the cache. It will be
    * purged a a future call to `sweep`.
    *
