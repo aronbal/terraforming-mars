@@ -341,6 +341,8 @@ export interface IPlayer {
   autopass: boolean;
   /** When set, this player is a computer opponent playing at this difficulty. */
   bot?: BotDifficulty;
+  /** The save Undo goes back to: the one made just before this player's last decision but one. */
+  undoSaveId(): number | undefined;
   /** Player is done taking actions this generation. */
   pass(): void;
   takeActionForFinalGreenery(): void;

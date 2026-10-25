@@ -454,6 +454,32 @@ describe('GameLoader', () => {
     expect(await database.getSaveIds(game.id)).deep.eq([0, 1, 2]);
   });
 
+  it('restoreGameAt deletes only the saves stored after the one restored', async () => {
+    game.generation = 12;
+    game.save();
+    game.generation = 13;
+    game.save();
+    // Several saves can land on one id, which leaves lastSaveId ahead of what is stored.
+    game.lastSaveId += 3;
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1, 2]);
+
+    const newGame = await instance.restoreGameAt(game.id, 1);
+    expect(newGame.generation).eq(12);
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+  });
+
+  it('restoreGameAt refuses a save that is not stored', async () => {
+    game.save();
+    let error: unknown;
+    try {
+      await instance.restoreGameAt(game.id, 7);
+    } catch (e) {
+      error = e;
+    }
+    expect(String(error)).contains('it is not stored');
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+  });
+
   it('saveGame', async () => {
     game.generation = 12;
     instance.saveGame(game);

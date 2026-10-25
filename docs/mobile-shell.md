@@ -321,6 +321,16 @@ can be turned on or off afterwards.
 - It takes effect from the next action, because that action is the first one saved
   before it is taken. An action already taken cannot be undone.
 - Going back to a save from before undo was turned on keeps undo on (`PlayerInput.performUndo`).
+- Against computer opponents only, Undo is also offered at the start of a turn. It
+  goes back to before your last action, past the computers' moves, which they then
+  make again.
+  - `Player` remembers the save id of each of your decisions (in memory only), and
+    Undo restores the one before the last.
+  - On Postgres, every save made while answering one request (the computers' moves
+    included) lands on the same id, so that save is exactly the state of the decision.
+  - It never crosses into another generation.
+  - `GameLoader.restoreGameAt` deletes the saves actually stored after the target,
+    and refuses a target that is no longer stored.
 
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.
