@@ -216,7 +216,7 @@
       </MobileFitBlock>
     </MobileOverlay>
     <MobileOverlay v-if="overlay === 'menu'" :title="$t('Menu')" @close="overlay = undefined">
-      <MobileMore @settingsChanged="refreshPreferences()"/>
+      <MobileMore :playerView="playerView" @settingsChanged="refreshPreferences()"/>
     </MobileOverlay>
   </div>
 </template>

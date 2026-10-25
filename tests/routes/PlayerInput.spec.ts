@@ -56,6 +56,32 @@ describe('PlayerInput', () => {
     expect(model.game.gameAge).eq(undo.gameAge);
   });
 
+  it('keeps undo on when going back to a save from before it was turned on', async () => {
+    const player = TestPlayer.BLUE.newPlayer({beginner: true});
+    scaffolding.url = '/player/input?id=' + player.id;
+    const game = Game.newInstance('gameid-foo', [player], player, 'spectatorid');
+    game.setUndoOption(true);
+
+    const undoVersionOfPlayer = TestPlayer.BLUE.newPlayer({beginner: true});
+    const undo = Game.newInstance('gameid-old', [undoVersionOfPlayer], undoVersionOfPlayer, 'spectatorid');
+    expect(undo.gameOptions.undoOption).is.false;
+
+    await scaffolding.ctx.gameLoader.add(game);
+    const options = cast(player.getWaitingFor(), OrOptions);
+    options.options.push(new UndoActionOption());
+    scaffolding.ctx.gameLoader.restoreGameAt = (_gameId: string, _lastSaveId: number) => Promise.resolve(undo);
+
+    const post = scaffolding.post(PlayerInput.INSTANCE, res);
+    const emit = Promise.resolve().then(() => {
+      const orOptionsResponse: OrOptionsResponse = {type: 'or', index: options.options.length - 1, response: {type: 'option'}};
+      req.emitter.emit('data', JSON.stringify(orOptionsResponse));
+      req.emitter.emit('end');
+    });
+    await Promise.all(([emit, post]));
+
+    expect(undo.gameOptions.undoOption).is.true;
+  });
+
   it('reverts to current game instance if undo fails', async () => {
     const player = TestPlayer.BLUE.newPlayer({beginner: true});
     scaffolding.url = '/player/input?id=' + player.id;

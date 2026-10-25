@@ -74,6 +74,9 @@ export class PlayerInput extends Handler {
       if (game === undefined) {
         player.game.log('Unable to perform undo operation. Error retrieving game from database. Please try again.', () => {}, {reservedFor: player});
       } else {
+        // The save gone back to can predate undo being turned on mid-game, and would
+        // switch it off again.
+        game.setUndoOption(player.game.gameOptions.undoOption);
         // pull most recent player instance
         player = game.getPlayerById(player.id);
       }

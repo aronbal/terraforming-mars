@@ -44,6 +44,12 @@ export interface IGame extends Logger {
   readonly id: GameId;
   readonly name: string;
   readonly gameOptions: Readonly<GameOptions>;
+  /**
+   * Turns the undo option on or off in a game already under way. It is saved with the
+   * game's next save, and takes effect from the next action: that action is saved
+   * first, so it is the first one there is something to go back to.
+   */
+  setUndoOption(enabled: boolean): void;
   // Game-level data
   lastSaveId: number;
   readonly rng: SeededRandom;
