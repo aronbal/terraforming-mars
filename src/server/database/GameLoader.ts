@@ -232,8 +232,13 @@ export class GameLoader implements IGameLoader {
       console.error('GameLoader cannot find game ' + gameId);
       throw new Error('Cannot find game');
     }
-    const currentSaveId = current.lastSaveId;
-    const deletes = (currentSaveId - saveId) - 1;
+    // Counted from the saves actually stored rather than from `lastSaveId`, which can
+    // run ahead of them when several saves land on the same id.
+    const saveIds = await Database.getInstance().getSaveIds(gameId);
+    if (!saveIds.includes(saveId)) {
+      throw new Error(`Cannot restore ${gameId} to save ${saveId}: it is not stored`);
+    }
+    const deletes = saveIds.filter((id) => id > saveId).length;
     if (deletes > 0) {
       await Database.getInstance().deleteGameNbrSaves(gameId, deletes);
     }

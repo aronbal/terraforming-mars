@@ -159,6 +159,13 @@ export class Player implements IPlayer {
   /** When set, this player is a computer opponent playing at this difficulty. */
   public bot?: BotDifficulty;
 
+  /**
+   * Where the game was saved just before this player's last two decisions, while undo
+   * is on: Undo goes back to the earlier one. Kept in memory only, so after a restart,
+   * or after going back, there is nothing to go back to until the player acts again.
+   */
+  private undoPoints: Array<{saveId: number, generation: number}> = [];
+
   // Turmoil
   public turmoilPolicyActionUsed: boolean = false;
   public politicalAgendasActionUsedCount: number = 0;
@@ -1467,6 +1474,12 @@ export class Player implements IPlayer {
     game.endLoggedAction();
 
     if (this.actionsTakenThisRound === 0 || game.gameOptions.undoOption) {
+      if (game.gameOptions.undoOption && this.bot === undefined) {
+        // The id this save is stored under. On Postgres every save made while one
+        // request is answered -- the computer opponents' moves included -- lands on
+        // that same id, so it holds the state this decision is taken from.
+        this.undoPoints = [...this.undoPoints.slice(-1), {saveId: game.lastSaveId, generation: game.generation}];
+      }
       game.save();
     }
     // if (saveBeforeTakingAction) game.save();
@@ -1691,12 +1704,31 @@ export class Player implements IPlayer {
       action.options.push(annotate(sellPatents.action(this), 'sellPatents'));
     }
 
-    // Propose undo action only if you have done one action this turn
-    if (this.actionsTakenThisRound > 0 && this.game.gameOptions.undoOption) {
+    // Propose undo action only if you have done one action this turn, or, against
+    // computer opponents only, since your last action in this generation.
+    if (this.game.gameOptions.undoOption && (this.actionsTakenThisRound > 0 || this.canUndoPastOpponents())) {
       action.options.push(annotate(new UndoActionOption(), 'undo'));
     }
 
     return action;
+  }
+
+  /**
+   * Whether Undo may go back past the computer opponents' moves to before this
+   * player's last action. Only against computers, whose moves are theirs to replay,
+   * and only within a generation: going back across production and research would
+   * undo far more than one action.
+   */
+  private canUndoPastOpponents(): boolean {
+    const previous = this.undoPoints.at(-2);
+    if (previous === undefined || previous.generation !== this.game.generation) {
+      return false;
+    }
+    return this.game.players.every((player) => player === this || player.bot !== undefined);
+  }
+
+  public undoSaveId(): number | undefined {
+    return this.undoPoints.at(-2)?.saveId;
   }
 
   private allOtherPlayersHavePassed(): boolean {

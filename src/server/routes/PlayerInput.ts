@@ -68,7 +68,7 @@ export class PlayerInput extends Handler {
      * The first save being decremented is the increment during `takeAction` call
      * The second save being decremented is the action that was taken
      */
-    const lastSaveId = player.game.lastSaveId - 2;
+    const lastSaveId = player.undoSaveId() ?? player.game.lastSaveId - 2;
     try {
       const game = await ctx.gameLoader.restoreGameAt(player.game.id, lastSaveId);
       if (game === undefined) {
@@ -82,6 +82,7 @@ export class PlayerInput extends Handler {
       }
     } catch (err) {
       console.error(err);
+      player.game.log('Unable to perform undo operation. Error retrieving game from database. Please try again.', () => {}, {reservedFor: player});
     }
     responses.writeJson(res, ctx, Server.getPlayerModel(player));
   }
