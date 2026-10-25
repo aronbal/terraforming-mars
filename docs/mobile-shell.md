@@ -278,6 +278,14 @@ be answered has no Cancel; the scrim puts the chooser down and the turn page's r
 or the header's pill brings it back. A question with cards nested inside it still
 uses the sheet, at `full`.
 
+**Taking or leaving one card.** When one card is offered to take or leave
+(Board of Directors' prelude, say), the chooser shows two buttons that say what
+they do: the blue one takes the card (`Buy`) and the grey `Skip` leaves it.
+Before, leaving it was the only button there was until the card was tapped. A
+price is added to `Buy` only for cards bought at the card cost (the research
+phase). The server marks those `buyCards` in `ChooseCards`, because the button's
+label alone does not say so.
+
 **Choosing a number.** A question that is only a number — how many steps of heat
 production Insulation gives up, say — opens in the amount sheet
 (`MobileAmountSheet.vue`): the number large between a − and a +, the two ends of

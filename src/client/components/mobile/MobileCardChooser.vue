@@ -32,13 +32,29 @@
           </button>
         </div>
       </div>
-      <div class="mobile-play-sheet-actions">
+      <!-- One card offered, take it or leave it: two buttons that each say what they
+           do, so leaving it is never the one button there is before a card is tapped. -->
+      <div v-if="yesOrNo" class="mobile-play-sheet-actions">
+        <button
+          type="button"
+          class="mobile-play-sheet-button mobile-play-sheet-button--primary"
+          :disabled="submitting || cards[0].isDisabled === true"
+          data-test="card-chooser-take"
+          @click="submit([cards[0].name])">{{ $t(input.buttonLabel) }}</button>
+        <button
+          type="button"
+          class="mobile-play-sheet-button"
+          :disabled="submitting"
+          data-test="card-chooser-leave"
+          @click="submit([])">{{ $t('Skip') }}</button>
+      </div>
+      <div v-else class="mobile-play-sheet-actions">
         <button
           type="button"
           class="mobile-play-sheet-button mobile-play-sheet-button--primary"
           :disabled="!canSubmit"
           data-test="card-chooser-submit"
-          @click="submit">{{ submitLabel }}</button>
+          @click="submit()">{{ submitLabel }}</button>
         <button
           v-if="cancellable"
           type="button"
@@ -109,6 +125,11 @@ export default defineComponent({
     },
     cards(): ReadonlyArray<CardModel> {
       return this.input?.cards ?? [];
+    },
+    /** One card that may be taken or left: Board of Directors' prelude, say. */
+    yesOrNo(): boolean {
+      const input = this.input;
+      return input !== undefined && input.cards.length === 1 && input.min === 0 && input.max === 1;
     },
     /** A question that takes one card, where a tap moves the choice rather than adding to it. */
     single(): boolean {
@@ -183,13 +204,17 @@ export default defineComponent({
         this.chosen = [...this.chosen, name];
       }
     },
-    async submit(): Promise<void> {
-      if (!this.canSubmit) {
+    /** Sends `cards`, or the cards chosen so far. */
+    async submit(cards?: ReadonlyArray<CardName>): Promise<void> {
+      if (cards === undefined && !this.canSubmit) {
+        return;
+      }
+      if (this.submitting) {
         return;
       }
       this.submitting = true;
       try {
-        if (await postPlayerInput(this, this.playerView, chooserResponse(this.entry, this.chosen))) {
+        if (await postPlayerInput(this, this.playerView, chooserResponse(this.entry, cards ?? this.chosen))) {
           this.$emit('close');
         }
       } finally {

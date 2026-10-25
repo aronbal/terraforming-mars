@@ -27,14 +27,15 @@ export function isCardChoice(waitingFor: PlayerInputModel | undefined): boolean 
  * What choosing `count` cards costs, in M€: what buying them takes, or as a negative
  * number what selling them pays. Undefined for a pick that is not a sale.
  *
- * The research phase's question is the one whose button buys; the server sets that
- * label, and charges each card at the player's card cost once the pick is in.
+ * Cards bought at the card cost, as in the research phase, are marked `buyCards` by
+ * the server, which charges each at the player's card cost once the pick is in. The
+ * button's `Buy` alone is not enough: Board of Directors' `Buy` costs 12 M€.
  */
 export function chooserPrice(input: SelectCardModel, count: number, cardCost: number): number | undefined {
   if (input.annotation === 'sellPatents') {
     return -count;
   }
-  if (input.buttonLabel === 'Buy') {
+  if (input.annotation === 'buyCards') {
     return count * cardCost;
   }
   return undefined;

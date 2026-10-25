@@ -34,6 +34,8 @@ describe('ChooseCards', () => {
     expect(selectCard.config.min).to.eq(0);
     expect(selectCard.config.max).to.eq(1);
     expect(selectCard.config.played).is.false;
+    // Marked as buying cards at the card cost, which the phone's card chooser prices.
+    expect(selectCard.toModel(player).annotation).eq('buyCards');
     expect(selectCard.cards.map((card) => card.name)).deep.eq([
       CardName.AQUIFER_PUMPING,
       CardName.IO_MINING_INDUSTRIES,
