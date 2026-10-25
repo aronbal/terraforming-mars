@@ -4,6 +4,8 @@ import {cast} from '../src/common/utils/utils';
 import {OrOptions} from '../src/server/inputs/OrOptions';
 import {UndoActionOption} from '../src/server/inputs/UndoActionOption';
 import {IGame} from '../src/server/IGame';
+import {Game} from '../src/server/Game';
+import {Phase} from '../src/common/Phase';
 import {TestPlayer} from './TestPlayer';
 
 /*
@@ -60,7 +62,48 @@ describe('Undo across turns', () => {
     game.setUndoOption(false);
     decideTwice();
     expect(offersUndo()).is.false;
-    expect(player.undoSaveId()).is.undefined;
+  });
+
+  it('turning undo on mid-turn offers it at once', () => {
+    opponent.bot = 'easy';
+    game.setUndoOption(false);
+    const before = game.lastSaveId;
+    decideTwice();
+    expect(offersUndo()).is.false;
+
+    game.setUndoOption(true);
+    expect(offersUndo()).is.true;
+    expect(player.undoSaveId()).eq(before);
+
+    game.setUndoOption(false);
+    expect(offersUndo()).is.false;
+  });
+
+  it('turned on after an unsaved action, goes back to the start of the turn', () => {
+    game.setUndoOption(false);
+    player.actionsTakenThisRound = 0;
+    player.takeAction();
+    const turnStart = game.lastSaveId;
+    game.lastSaveId++;
+    player.actionsTakenThisRound = 1;
+    player.takeAction();
+
+    game.setUndoOption(true);
+    expect(offersUndo()).is.true;
+    expect(player.undoSaveId()).eq(turnStart);
+  });
+
+  it('keeps its undo points through a save and load', () => {
+    opponent.bot = 'easy';
+    // Past generation 1, where a load without corporations goes back to research.
+    game.generation = 2;
+    game.phase = Phase.ACTION;
+    const before = game.lastSaveId;
+    decideTwice();
+    const loaded = Game.deserialize(game.serialize());
+    const loadedPlayer = loaded.getPlayerById(player.id);
+    expect(loadedPlayer.undoSaveId()).eq(before);
+    expect(cast(loadedPlayer.getWaitingFor(), OrOptions).options.some((option) => option instanceof UndoActionOption)).is.true;
   });
 
   it('records nothing for a computer opponent', () => {

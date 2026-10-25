@@ -318,14 +318,17 @@ Settings screen (⋯ › Settings) now starts with a **This game** section where
 can be turned on or off afterwards.
 - The switch posts to `api/game/undo`, which sets `game.setUndoOption()` and logs
   who changed it. The change is saved with the game's next save.
-- It takes effect from the next action, because that action is the first one saved
-  before it is taken. An action already taken cannot be undone.
+- The menu the player is being asked gains or loses **Undo** at once
+  (`Player.refreshUndoOption`). Within a turn, an action taken while undo was off
+  goes back to the start of that turn, the last save made.
 - Going back to a save from before undo was turned on keeps undo on (`PlayerInput.performUndo`).
 - Against computer opponents only, Undo is also offered at the start of a turn. It
   goes back to before your last action, past the computers' moves, which they then
   make again.
-  - `Player` remembers the save id of each of your decisions (in memory only), and
-    Undo restores the one before the last.
+  - `Player` remembers the save id of each of your saved decisions, and Undo
+    restores the one before the last. They are recorded whether or not undo is
+    on, so turning it on at the start of your turn can go back at once, and they
+    are saved with the player, so a restart or an undo keeps them.
   - On Postgres, every save made while answering one request (the computers' moves
     included) lands on the same id, so that save is exactly the state of the decision.
   - It never crosses into another generation.

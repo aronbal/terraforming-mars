@@ -31,7 +31,7 @@ import {SelectOption} from './inputs/SelectOption';
 import {SelectSpace} from './inputs/SelectSpace';
 import {TileType} from '../common/TileType';
 import {SelfReplicatingRobots} from './cards/promo/SelfReplicatingRobots';
-import {SerializedPlayer} from './SerializedPlayer';
+import {SerializedPlayer, UndoPoint} from './SerializedPlayer';
 import {StormCraftIncorporated} from './cards/colonies/StormCraftIncorporated';
 import {Tag} from '../common/cards/Tag';
 import {Timer} from '../common/Timer';
@@ -160,11 +160,15 @@ export class Player implements IPlayer {
   public bot?: BotDifficulty;
 
   /**
-   * Where the game was saved just before this player's last two decisions, while undo
-   * is on: Undo goes back to the earlier one. Kept in memory only, so after a restart,
-   * or after going back, there is nothing to go back to until the player acts again.
+   * Where the game was saved just before this player's last two saved decisions.
+   * Recorded whether or not undo is on, so turning it on mid-game can go back at
+   * once, and saved with the game, so a restart or an undo keeps them.
    */
-  private undoPoints: Array<{saveId: number, generation: number}> = [];
+  private undoPoints: Array<UndoPoint> = [];
+  /** Whether the decision this player is taking now was saved, and so is the last undo point. */
+  private decisionSaved = false;
+  /** The action menu, while it is what this player is asked. */
+  private actionMenu: OrOptions | undefined;
 
   // Turmoil
   public turmoilPolicyActionUsed: boolean = false;
@@ -1473,13 +1477,20 @@ export class Player implements IPlayer {
     }
     game.endLoggedAction();
 
-    if (this.actionsTakenThisRound === 0 || game.gameOptions.undoOption) {
-      if (game.gameOptions.undoOption && this.bot === undefined) {
+    const save = this.actionsTakenThisRound === 0 || game.gameOptions.undoOption;
+    if (this.bot === undefined) {
+      if (save) {
         // The id this save is stored under. On Postgres every save made while one
         // request is answered -- the computer opponents' moves included -- lands on
-        // that same id, so it holds the state this decision is taken from.
-        this.undoPoints = [...this.undoPoints.slice(-1), {saveId: game.lastSaveId, generation: game.generation}];
+        // that same id, so it holds the state this decision is taken from. Loading a
+        // game saves it again under the id it was loaded from: the same point.
+        const point = {saveId: game.lastSaveId, generation: game.generation};
+        const earlier = this.undoPoints.filter((p) => p.saveId !== point.saveId);
+        this.undoPoints = [...earlier.slice(-1), point];
       }
+      this.decisionSaved = save;
+    }
+    if (save) {
       game.save();
     }
     // if (saveBeforeTakingAction) game.save();
@@ -1578,7 +1589,9 @@ export class Player implements IPlayer {
       return;
     }
 
-    this.setWaitingFor(this.getActions(), this.runWhenEmpty(() => {
+    this.actionMenu = this.getActions();
+    this.setWaitingFor(this.actionMenu, this.runWhenEmpty(() => {
+      this.actionMenu = undefined;
       this.incrementActionsTaken();
       this.takeAction();
     }));
@@ -1704,13 +1717,30 @@ export class Player implements IPlayer {
       action.options.push(annotate(sellPatents.action(this), 'sellPatents'));
     }
 
-    // Propose undo action only if you have done one action this turn, or, against
-    // computer opponents only, since your last action in this generation.
-    if (this.game.gameOptions.undoOption && (this.actionsTakenThisRound > 0 || this.canUndoPastOpponents())) {
+    if (this.canUndo()) {
       action.options.push(annotate(new UndoActionOption(), 'undo'));
     }
 
     return action;
+  }
+
+  /**
+   * Propose undo action only if you have done one action this turn, or, against
+   * computer opponents only, since your last action in this generation.
+   */
+  private canUndo(): boolean {
+    return this.game.gameOptions.undoOption && (this.actionsTakenThisRound > 0 || this.canUndoPastOpponents());
+  }
+
+  public refreshUndoOption(): void {
+    const menu = this.actionMenu;
+    if (menu === undefined || this.waitingFor !== menu) {
+      return;
+    }
+    menu.options = menu.options.filter((option) => !(option instanceof UndoActionOption));
+    if (this.canUndo()) {
+      menu.options.push(annotate(new UndoActionOption(), 'undo'));
+    }
   }
 
   /**
@@ -1720,15 +1750,20 @@ export class Player implements IPlayer {
    * undo far more than one action.
    */
   private canUndoPastOpponents(): boolean {
-    const previous = this.undoPoints.at(-2);
+    const previous = this.previousUndoPoint();
     if (previous === undefined || previous.generation !== this.game.generation) {
       return false;
     }
     return this.game.players.every((player) => player === this || player.bot !== undefined);
   }
 
+  /** The last undo point before the decision taken now, which may not have been saved. */
+  private previousUndoPoint(): UndoPoint | undefined {
+    return this.undoPoints.at(this.decisionSaved ? -2 : -1);
+  }
+
   public undoSaveId(): number | undefined {
-    return this.undoPoints.at(-2)?.saveId;
+    return this.previousUndoPoint()?.saveId;
   }
 
   private allOtherPlayersHavePassed(): boolean {
@@ -1908,6 +1943,7 @@ export class Player implements IPlayer {
       autoPass: this.autopass,
       globalParameterSteps: this.globalParameterSteps,
       bot: this.bot,
+      undoPoints: this.undoPoints,
     };
 
     if (this.lastCardPlayed !== undefined) {
@@ -1990,6 +2026,7 @@ export class Player implements IPlayer {
     player.draftedCards = cardsFromJSON(d.draftedCards);
     player.autopass = d.autoPass ?? false;
     player.bot = isBotDifficulty(d.bot) ? d.bot : undefined;
+    player.undoPoints = d.undoPoints ?? [];
     player.preservationProgram = d.preservationProgram ?? false;
     // TODO(kberg): remove ?? 0 by 2026-11-01
     player.trThisGeneration = d.trThisGeneration ?? 0;

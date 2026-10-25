@@ -343,6 +343,8 @@ export interface IPlayer {
   bot?: BotDifficulty;
   /** The save Undo goes back to: the one made just before this player's last decision but one. */
   undoSaveId(): number | undefined;
+  /** Adds or removes Undo in the action menu this player is asked, after undo is turned on or off. */
+  refreshUndoOption(): void;
   /** Player is done taking actions this generation. */
   pass(): void;
   takeActionForFinalGreenery(): void;

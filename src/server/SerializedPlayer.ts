@@ -10,6 +10,9 @@ import {UnderworldPlayerData} from '../common/underworld/UnderworldPlayerData';
 import {DeltaProjectPlayerModel} from '../common/models/DeltaProjectPlayerModel';
 import {BotDifficulty} from '../common/bot/BotDifficulty';
 
+/** A save this player's decision can be restored to, and the generation it was in. */
+export type UndoPoint = {saveId: number, generation: number};
+
 interface DeprecatedFields {
 }
 
@@ -22,6 +25,8 @@ export interface SerializedPlayer extends DeprecatedFields{
   autoPass: boolean;
   /** Difficulty when this player is a computer opponent. */
   bot?: BotDifficulty;
+  /** Where the game was saved before this player's last two saved decisions. */
+  undoPoints?: Array<UndoPoint>;
   beginner: boolean;
   canUseHeatAsMegaCredits: boolean;
   canUseTitaniumAsMegacredits: boolean;

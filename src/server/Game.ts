@@ -479,6 +479,7 @@ export class Game implements IGame, Logger {
     // The options are fixed at creation everywhere else; this one is safe to change
     // because it only decides how often the game is saved and what the menu offers.
     (this.gameOptions as GameOptions).undoOption = enabled;
+    this.players.forEach((player) => player.refreshUndoOption());
   }
 
   public serialize(): SerializedGame {
