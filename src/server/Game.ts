@@ -475,6 +475,12 @@ export class Game implements IGame, Logger {
     GameLoader.getInstance().saveGame(this);
   }
 
+  public setUndoOption(enabled: boolean): void {
+    // The options are fixed at creation everywhere else; this one is safe to change
+    // because it only decides how often the game is saved and what the menu offers.
+    (this.gameOptions as GameOptions).undoOption = enabled;
+  }
+
   public serialize(): SerializedGame {
     const result: SerializedGame = {
       activePlayer: this.activePlayer.id,

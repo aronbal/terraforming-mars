@@ -305,6 +305,15 @@ A choice with an input inside an option still uses the sheet, raised to `full`.
 There, `OrOptions` pins its button to the sheet's bottom edge, under every option,
 instead of right under the chosen one, where it was in the way of the next.
 
+**Undo, mid-game.** The undo option is set when a game is created, and the
+Settings screen (⋯ › Settings) now starts with a **This game** section where it
+can be turned on or off afterwards.
+- The switch posts to `api/game/undo`, which sets `game.setUndoOption()` and logs
+  who changed it. The change is saved with the game's next save.
+- It takes effect from the next action, because that action is the first one saved
+  before it is taken. An action already taken cannot be undone.
+- Going back to a save from before undo was turned on keeps undo on (`PlayerInput.performUndo`).
+
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.
 

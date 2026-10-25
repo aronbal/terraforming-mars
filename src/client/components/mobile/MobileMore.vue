@@ -33,16 +33,41 @@
       <div class="mobile-more-head">
         <button class="mobile-plain-button" data-test="more-back" @click="view = 'menu'" v-i18n>Back</button>
       </div>
+      <!-- The game's own settings, which everyone in it shares, ahead of this device's. -->
+      <template v-if="playerView !== undefined && playerView.game.phase !== 'end'">
+        <h3 class="mobile-settings-group" v-i18n>This game</h3>
+        <div class="mobile-list">
+          <label class="mobile-row mobile-more-switch" data-test="more-undo">
+            <span class="mobile-row-body">
+              <span class="mobile-row-text">
+                <span class="mobile-row-title" v-i18n>Undo</span>
+                <span class="mobile-row-subtitle" v-i18n>Take back your last action. Works from your next action on.</span>
+              </span>
+              <span class="form-switch">
+                <input
+                  type="checkbox"
+                  :checked="playerView.game.gameOptions.undoOption"
+                  :disabled="saving"
+                  data-test="more-undo-switch"
+                  @change="setUndo($event)">
+                <i class="form-icon"></i>
+              </span>
+            </span>
+          </label>
+        </div>
+      </template>
       <MobileSettings @changed="$emit('settingsChanged')"/>
     </template>
   </div>
 </template>
 
 <script lang="ts">
-import {defineComponent} from 'vue';
+import {defineComponent, PropType} from 'vue';
 
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
 import {paths} from '@/common/app/paths';
+import {PlayerViewModel} from '@/common/models/PlayerModel';
+import {requestPlayerView} from '@/client/utils/playerInputRequest';
 
 /*
  * Everything that is not the game in front of you: the settings and the way to
@@ -57,10 +82,19 @@ type GameLink = {
 
 type DataModel = {
   view: 'menu' | 'settings';
+  /** While a change to the game's own settings is on its way to the server. */
+  saving: boolean;
 };
 
 export default defineComponent({
   name: 'MobileMore',
+  props: {
+    /** The game being played, whose own settings head the menu. */
+    playerView: {
+      type: Object as PropType<PlayerViewModel | undefined>,
+      default: undefined,
+    },
+  },
   emits: ['settingsChanged'],
   components: {
     MobileSettings,
@@ -68,6 +102,7 @@ export default defineComponent({
   data(): DataModel {
     return {
       view: 'menu',
+      saving: false,
     };
   },
   computed: {
@@ -77,6 +112,26 @@ export default defineComponent({
         {label: 'Continue a game', path: '/' + paths.CONTINUE_GAME, test: 'more-continue'},
         {label: 'All games', path: '/' + paths.GAMES_OVERVIEW, test: 'more-games'},
       ];
+    },
+  },
+  methods: {
+    /* Undo is the game's, not this device's: it is set on the server, which answers
+       with the game as it now stands, and everyone sees in the log who changed it. */
+    async setUndo(event: Event): Promise<void> {
+      const playerView = this.playerView;
+      if (playerView === undefined) {
+        return;
+      }
+      const enabled = (event.target as HTMLInputElement).checked;
+      this.saving = true;
+      try {
+        const url = paths.API_GAME_UNDO + '?id=' + playerView.id + '&undo=' + enabled;
+        if (!await requestPlayerView(this, playerView, url, {method: 'POST'})) {
+          (event.target as HTMLInputElement).checked = !enabled;
+        }
+      } finally {
+        this.saving = false;
+      }
     },
   },
 });
