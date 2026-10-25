@@ -133,11 +133,13 @@ styles/mobile_shell.less                everything the shell paints
 ```
 
 `App.vue` picks the shell for `screen === 'player-home'`. Everything below it —
-`Board`, `Card`, `PlayersOverview`, `LogPanel`, `WaitingFor`, `Milestones`,
-`Awards`, `Colony`, `Turmoil`, `MoonBoard`, `PlanetaryTracks` — is reused as it
-is. `Milestone` and `Award` gained one optional prop each (`claimable`,
-`fundable`) and an event, so the shell can make a tile the button that claims it;
-with nothing passed they behave exactly as the desktop always had them. The panes are held in the DOM with `v-show` rather than `v-if`,
+`Board`, `Card`, `LogPanel`, `WaitingFor`, `Colony`, `MoonBoard`,
+`PlanetaryTracks` — is reused as it is. The players overview, the milestones and
+awards, and Turmoil are drawn by the shell's own components instead
+(`MobilePlayersOverview`, `MobileMilestonesAwards`, `MobileTurmoilPanel`), because
+scaled down to a phone the desktop's were too small to read. `Milestone` and `Award`
+still take the optional `claimable` and `fundable` props the shell once used; with
+nothing passed they behave exactly as the desktop always had them. The panes are held in the DOM with `v-show` rather than `v-if`,
 because `SelectSpace` reaches into the board by `getElementById` and needs it
 mounted even when another view is open.
 
@@ -186,7 +188,18 @@ bottom of the pane. Cancel returns to the action list.
 
 Below the board, in the same scrolling column: **milestones and awards** — they
 are printed on the physical board, so they belong to the board, not to a menu.
-Colonies, Turmoil, the Moon board and Pathfinders tracks go here too.
+They are two lists (`MobileMilestonesAwards.vue`), each headed by how many are left
+and what the next costs, with a row per milestone or award: its rule, everyone's
+score, and who claimed or funded it. The ones the turn offers are marked `Claim` or
+`Fund` and open the claim sheet.
+
+Colonies, Turmoil, the Moon board and Pathfinders tracks go here too. Turmoil is a
+panel of its own (`MobileTurmoilPanel.vue`): the ruling party and the chairman, the
+global events on their way with their text, the lobby and the reserve, and every
+party as the same row the party sheet chooses from (`MobilePartyRow.vue`): its
+colour, whether it rules or is dominant, its delegates with the leader ringed, and
+its bonus and policy. The colony tiles sit on cards of their own, a tradeable one
+ringed in the accent.
 
 The board viewport has `touch-action: none`, so you cannot scroll the column by
 dragging on the board. It never fills the pane (`max-height: 62dvh`), so the top of
@@ -211,7 +224,9 @@ without switching anywhere.
 
 **The header.** `Generation 5`, a `Your turn` pill (or `Waiting`, `Passed`,
 `Game over`), and two icon buttons: **Players**, which opens the players overview
-in a sheet, and **⋯**, which opens the settings and the links to another game.
+in a sheet (`MobilePlayersOverview.vue`: a card per player in turn order with what
+they are doing, VP, TR, hand, actions and influence, their resources and tags, and
+their played cards a tap away), and **⋯**, which opens the settings and the links to another game.
 Under them the global parameters are progress rings of the steps each has taken
 (temperature in two-degree steps, 19 of them; oxygen of 14; oceans of 9; Venus of
 15 when it is on), each with its value and goal beside it, the way oceans always
@@ -303,13 +318,20 @@ pays (`Pay · 3 M€`). The rules are the desktop `SelectPayment`'s: the units c
 `selectPaymentOrder` (`PaymentSheet.ts`, which `SelectPayment` uses too), and the
 ledger, the first payment and the refusals from `PaymentLedger` and `PaymentDefaults`.
 
+**Sending a delegate, building a colony.** A party to send a delegate to opens in
+the party sheet (`MobilePartySheet.vue`), from the turn page's Delegate tile as well
+as when a card asks; a colony to build on opens in the colony sheet
+(`MobileColonySheet.vue`), each colony as its own tile. Both tick a row on a tap and
+send it with the one blue button, and take an `entry` like the amount sheet when they
+answer an option of a choice (`PickSheet.ts`).
+
 **Choosing between options.** A question that is a choice opens in the choice sheet
 (`MobileChoiceSheet.vue`), for example whose plants to remove, or whether to pay.
 - So does a question that is which player something is done to (Birds, Hackers):
   a row per player, with the dot of their colour before their name.
-- An option that is itself a pick among cards, a number or a price (Mars University's
-  card to discard, say) is chosen here with `Continue`, and answered next in the card
-  chooser, the amount sheet or the payment sheet. Those take the option's index as
+- An option that is itself a pick among cards, a number, a price, a party or a colony
+  (Mars University's card to discard, say) is chosen here with `Continue`, and
+  answered next in the card chooser, the amount, payment, party or colony sheet. Those take the option's index as
   `entry` and send their answer as that option's (`{type: 'or', index, response}`),
   the way the card chooser already answered the turn menu's entries. An option of any
   other kind leaves the whole question to the generic sheet.
@@ -541,8 +563,8 @@ itself:
   `.mobile-card-button` — are `inline-block`, which does. A plain block parent
   would not.
 
-- **`MobileFitBlock`** does the same for Turmoil, the colony tiles and the
-  planetary tracks, from its own measurement.
+- **`MobileFitBlock`** does the same for the colony tiles and the planetary
+  tracks, from its own measurement.
 
 - **`MobileFocusStage`** needs no compensation: the holder is the stage's only
   child and is clipped to the room above the panel.

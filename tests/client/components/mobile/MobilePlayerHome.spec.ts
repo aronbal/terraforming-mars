@@ -327,6 +327,29 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.findComponent({name: 'MobilePaymentSheet'}).exists()).is.true;
   });
 
+  it('puts a party to choose in the party sheet, and a colony in the colony sheet', async () => {
+    const party = mount({type: 'party', title: 'Send a delegate', buttonLabel: 'Send delegate', parties: []} as unknown as PlayerInputModel);
+    party.vm.asking = undefined;
+    party.vm.raiseSheet();
+    expect(party.vm.asking).eq('party');
+    const colony = mount({type: 'colony', title: 'Build a colony', buttonLabel: 'Build', coloniesModel: []} as unknown as PlayerInputModel);
+    colony.vm.asking = undefined;
+    colony.vm.raiseSheet();
+    expect(colony.vm.asking).eq('colony');
+    expect(colony.vm.snap).eq('closed');
+  });
+
+  it('the Delegate tile opens the party sheet for its entry, not the panel', () => {
+    const wrapper = mount(menu(
+      option('Pass for this generation', 'pass'),
+      {type: 'party', title: 'Send a delegate in an area (5 M€)', buttonLabel: 'Send delegate', parties: [], annotation: 'sendDelegate'} as unknown as PlayerInputModel));
+    wrapper.vm.openEntry(1);
+    expect(wrapper.vm.asking).eq('party');
+    expect(wrapper.vm.askingEntry).eq(1);
+    expect(pickedEntry.value).is.undefined;
+    expect(wrapper.vm.snap).eq('closed');
+  });
+
   it('heads each confirmed action with its own glyph', () => {
     const wrapper = mount();
     const glyphs = (['convertHeat', 'pass', 'endTurn', 'undo'] as const).map((annotation) => {

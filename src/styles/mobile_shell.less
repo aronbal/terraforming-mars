@@ -342,9 +342,14 @@ html:has(> body.mobile-shell-active),
 }
 
 // Stacked, not the desktop's inline-block row: a colony tile is wider than a phone.
+// Each sits centred on a card of its own, the way the colony sheet draws it.
 .mobile-colony-list .player_home_colony {
-  display: block;
+  display: flex;
+  justify-content: center;
   margin: 0 0 10px;
+  padding: 4px;
+  border-radius: @m-radius-button-lg;
+  background: @m-card;
 }
 
 /*
@@ -369,20 +374,13 @@ html:has(> body.mobile-shell-active),
 }
 
 /*
- * A milestone you may claim and one you may not look identical on a desktop, because
- * there the claiming happens in a menu. Here the tile is the button, so the ones the
- * turn actually offers say so, and the rest are drawn exactly as they were.
+ * A colony you may trade with and one you may not look identical on a desktop,
+ * because there trading happens in a menu. Here the tile is the button, so the ones
+ * the turn actually offers say so, and the rest are drawn exactly as they were.
  */
-.mobile-board-thing--offered,
-.mobile-below .ma-block--offered {
+.mobile-board-thing--offered {
   cursor: pointer;
-  border-radius: 6px;
-  box-shadow: 0 0 0 2px @mobile-ochre;
-}
-
-.mobile-below .ma-block--offered {
-  // The ring sits on the tile's own edge, so hold it clear of its neighbours.
-  margin: 3px 0;
+  box-shadow: inset 0 0 0 2px @m-accent;
 }
 
 /*
@@ -406,38 +404,10 @@ html:has(> body.mobile-shell-active),
   width: max-content;
 }
 
-/*
- * Milestones and awards.
- *
- * Each unclaimed spot is drawn as a 190px pill with its price nudged 70px in from the
- * left, which lines them up along a desktop column. At phone width they wrap into a
- * staircase of overlapping boxes, so here they are plain chips on a row that wraps.
- */
-.mobile-below {
-  .ma-title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .milestone-award-inline {
-    width: auto;
-    margin: 0;
-    padding: 1px 8px;
-    font-size: 13px;
-    line-height: 20px;
-  }
-
-  .milestone-award-price {
-    width: 26px;
-    height: 26px;
-    margin: 0;
-    background-size: 26px;
-    line-height: 26px;
-    font-size: 15px;
-    transform: none;
-  }
+// A colony tile keeps a gap to its right for the desktop's row of tiles; alone on a
+// phone's width it only pushes the tile off centre.
+.mobile-fit .colony-card {
+  margin-right: 0;
 }
 
 //
@@ -2049,6 +2019,144 @@ html:has(> body.mobile-shell-active),
   flex: 1;
   overflow: auto;
   padding: 4px calc(@m-gutter + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(@m-gutter + env(safe-area-inset-left));
+}
+
+//
+// Players: everyone at the table, one card each
+//
+
+.mobile-players {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-player {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 4px;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+// The player holding the phone, told apart by a thin ring in the accent.
+.mobile-player--you {
+  box-shadow: inset 0 0 0 1px fade(@m-accent, 55%);
+}
+
+.mobile-player-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mobile-player-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.mobile-player-names {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-player-name {
+  overflow: hidden;
+  font-size: @m-row-title-size;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-player-corp {
+  overflow: hidden;
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-player-badges {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+// The desktop timer is a row of divs; here it reads as one figure in a pill.
+.mobile-player-timer .player-timer {
+  .m-tabular();
+  display: inline-flex;
+}
+
+.mobile-player-stats {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid @m-sep;
+  border-bottom: 1px solid @m-sep;
+  text-align: center;
+}
+
+.mobile-player-stat-value {
+  .m-tabular();
+  font-size: 17px;
+  font-weight: 600;
+}
+
+// The tags wrap here rather than scroll: there is room, and nothing should hide.
+.mobile-player .mobile-tag-list {
+  flex-wrap: wrap;
+  row-gap: 10px;
+  overflow: visible;
+}
+
+.mobile-player-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: @m-tap;
+  margin: 0 -14px;
+  padding: 0 8px 0 14px;
+  border-top: 1px solid @m-sep;
+  font-size: @m-value-size;
+  font-weight: 500;
+  color: @m-accent;
+  text-align: left;
+
+  &:disabled {
+    color: @m-label-3;
+  }
+
+  &:active:not(:disabled) {
+    background: @m-fill;
+  }
+}
+
+.mobile-more-head .mobile-player-dot {
+  margin-left: 8px;
+}
+
+.mobile-more-head .mobile-player-name {
+  margin-left: 8px;
+}
+
+.mobile-players-cards {
+  --mobile-card-scale: 0.68;
+
+  .mobile-eyebrow {
+    margin: 12px 0 8px;
+  }
+
+  .mobile-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    place-items: start center;
+  }
 }
 
 //
