@@ -101,6 +101,24 @@ describe('MobilePaymentSheet', () => {
     expect(wrapper.find('[data-test="payment-sheet-submit"]').attributes('disabled')).is.not.undefined;
   });
 
+  it('pays for an option of a choice as that option', async () => {
+    const input = payment(3, {heat: true});
+    const choice = {type: 'or', title: 'Select one option', buttonLabel: 'OK', options: [{type: 'option', title: 'Skip', buttonLabel: 'Skip'}, input]};
+    const wrapper = mount(MobilePaymentSheet, {
+      ...globalConfig,
+      props: {
+        playerView: fakePlayerViewModel({thisPlayer: fakePublicPlayerModel({megacredits: 25, heat: 12}), waitingFor: choice} as never),
+        playerinput: input,
+        entry: 1,
+      },
+    });
+    expect(wrapper.find('[data-test="payment-sheet-cancel"]').exists()).is.true;
+    await wrapper.find('[data-test="payment-sheet-submit"]').trigger('click');
+    await flushPromises();
+    expect(posted[0]).deep.include({type: 'or', index: 1});
+    expect((posted[0] as {response: object}).response).deep.include({type: 'payment'});
+  });
+
   it('can be cancelled only when the question is optional', async () => {
     expect(render(payment(3)).find('[data-test="payment-sheet-cancel"]').exists()).is.false;
     const wrapper = render(payment(3, {}, true));

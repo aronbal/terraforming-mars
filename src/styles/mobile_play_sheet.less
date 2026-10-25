@@ -612,6 +612,18 @@
   border-radius: @m-radius-pill;
 }
 
+// A player in a choice: the dot of their colour before their name, on one line.
+.mobile-choice-player {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+
+  .mobile-choice-standing-dot {
+    width: 12px;
+    height: 12px;
+  }
+}
+
 .mobile-choice-standing-dot--unknown {
   background: @m-label-3;
 }

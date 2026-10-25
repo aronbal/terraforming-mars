@@ -4,8 +4,9 @@ import {InputResponse} from '@/common/inputs/InputResponse';
 import {PlayerInputModel, SelectCardModel} from '@/common/models/PlayerInputModel';
 
 /**
- * The pick among cards the card chooser answers: the menu entry at `entry`, or with
- * no entry, the question the player is waiting on -- when either is one.
+ * The pick among cards the card chooser answers: option `entry` of the menu or of the
+ * choice the player is waiting on, or with no entry, the question itself -- when
+ * either is one.
  */
 export function chooserInput(waitingFor: PlayerInputModel | undefined, entry: number | undefined): SelectCardModel | undefined {
   if (waitingFor === undefined) {
@@ -14,7 +15,7 @@ export function chooserInput(waitingFor: PlayerInputModel | undefined, entry: nu
   if (entry === undefined) {
     return waitingFor.type === 'card' && !isActionMenu(waitingFor) ? waitingFor : undefined;
   }
-  const option = isActionMenu(waitingFor) ? waitingFor.options[entry] : undefined;
+  const option = waitingFor.type === 'or' ? waitingFor.options[entry] : undefined;
   return option?.type === 'card' ? option : undefined;
 }
 

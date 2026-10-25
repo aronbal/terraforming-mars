@@ -303,9 +303,16 @@ pays (`Pay · 3 M€`). The rules are the desktop `SelectPayment`'s: the units c
 `selectPaymentOrder` (`PaymentSheet.ts`, which `SelectPayment` uses too), and the
 ledger, the first payment and the refusals from `PaymentLedger` and `PaymentDefaults`.
 
-**Choosing between options.** A question that is a choice between plain options
-and nothing else opens in the choice sheet (`MobileChoiceSheet.vue`), for example
-whose plants to remove, or whether to pay.
+**Choosing between options.** A question that is a choice opens in the choice sheet
+(`MobileChoiceSheet.vue`), for example whose plants to remove, or whether to pay.
+- So does a question that is which player something is done to (Birds, Hackers):
+  a row per player, with the dot of their colour before their name.
+- An option that is itself a pick among cards, a number or a price (Mars University's
+  card to discard, say) is chosen here with `Continue`, and answered next in the card
+  chooser, the amount sheet or the payment sheet. Those take the option's index as
+  `entry` and send their answer as that option's (`{type: 'or', index, response}`),
+  the way the card chooser already answered the turn menu's entries. An option of any
+  other kind leaves the whole question to the generic sheet.
 - The options are full-width rows, and a tap only ticks one.
 - The server's default is ticked to start with.
 - One blue button at the bottom sends the ticked option, under its own label
@@ -386,7 +393,8 @@ and `Build · 11 M€` button follow. **Trade** opens the trade sheet
 choice, and `Trade`, which answers the fee and the tile together; a swipe moves to
 the next colony, and a colony tapped under the board opens there. **Heat to temp**
 opens a confirmation sheet (`MobileConfirmSheet.vue`) with the action's own words,
-its warnings and its button. **Greenery** goes straight to the map.
+its warnings and its button, and so do **Pass**, **End turn** and **Undo**, each
+under its own glyph. **Greenery** goes straight to the map.
 
 **Playing a card.** A tap on a ready card, on the turn page or in the Cards view,
 opens it straight in the play sheet: no bar to confirm on first, since the sheet
