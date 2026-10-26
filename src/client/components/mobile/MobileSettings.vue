@@ -133,8 +133,10 @@ import {
  *
  * This replaces `PreferencesDialog` on a phone rather than embedding it. The dialog is
  * one flat column of fourteen switches, several of which are about parts of the
- * desktop layout the shell never draws -- the sidebar, the hover magnifier -- and
- * offering those here would be offering to change nothing.
+ * desktop layout the shell never draws -- the sidebar, the hover magnifier, the
+ * block that hides the milestones and awards -- and offering those here would be
+ * offering to change nothing. Milestones and awards are part of the game, and the
+ * shell always shows them under the board.
  */
 
 type SwitchSetting = {
@@ -165,7 +167,6 @@ const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
         hint: 'Draws the recommended touch target over every board space.',
       },
       {name: 'hide_tile_confirmation', label: 'Hide tile confirmation'},
-      {name: 'hide_awards_and_milestones', label: 'Hide awards and milestones'},
       {name: 'symbol_overlay', label: 'Add symbols on top of player colors'},
       {name: 'remove_background', label: 'Remove background image'},
     ],

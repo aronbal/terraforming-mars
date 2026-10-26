@@ -67,4 +67,9 @@ describe('MobileSettings', () => {
     await wrapper.find('[data-test="small_cards"]').setValue(true);
     expect(getPreferences().small_cards).is.true;
   });
+
+  // The shell draws its own milestones and awards, which that switch never reached.
+  it('offers no switch that changes nothing on a phone', () => {
+    expect(mount().find('[data-test="hide_awards_and_milestones"]').exists()).is.false;
+  });
 });
