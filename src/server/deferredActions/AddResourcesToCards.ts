@@ -5,6 +5,7 @@ import {CardResource} from '../../common/CardResource';
 import {CardName} from '../../common/cards/CardName';
 import {SelectAmount} from '../inputs/SelectAmount';
 import {AndOptions} from '../inputs/AndOptions';
+import {message} from '../logs/MessageBuilder';
 
 export class AddResourcesToCards extends DeferredAction {
   constructor(
@@ -36,7 +37,9 @@ export class AddResourcesToCards extends DeferredAction {
         });
     });
 
-    return new AndOptions(...options).andThen(() => {
+    // The answer must add up to the count, so the question says what that is.
+    const title = message('Spread ${0} ${1}(s) over your cards', (b) => b.number(this.count).string(this.resourceType));
+    return new AndOptions(...options).setTitle(title).andThen(() => {
       let sum = 0;
       cards.forEach((card) => {
         sum += map.get(card.name) ?? 0;

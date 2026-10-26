@@ -1,5 +1,6 @@
 import {getAward, getMilestone} from '@/client/MilestoneAwardManifest';
 import {isActionMenu} from '@/client/components/mobile/MobileActionMenu';
+import {unitsFor} from '@/client/components/mobile/UnitsSheet';
 import {Color} from '@/common/Color';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {Message} from '@/common/logs/Message';
@@ -8,24 +9,40 @@ import {MilestoneName} from '@/common/ma/MilestoneName';
 import {OrOptionsModel, PlayerInputModel, SelectPlayerModel} from '@/common/models/PlayerInputModel';
 
 /** An option the choice sheet hands on to a sheet of its own once it is chosen. */
-export type NestedKind = 'card' | 'amount' | 'payment' | 'party' | 'colony';
+export type NestedKind = 'card' | 'amount' | 'payment' | 'party' | 'colony' | 'units' | 'pick';
 
 /** Where a chosen option goes next: the sheet that answers it, for option `index` of the choice. */
 export type NestedStep = {kind: NestedKind, index: number};
 
-const NESTED_KINDS: ReadonlyArray<string> = ['card', 'amount', 'payment', 'party', 'colony'];
-
 /** The sheet that answers `option` once it is chosen, or undefined for a plain option. */
 export function nestedKind(option: PlayerInputModel): NestedKind | undefined {
-  return NESTED_KINDS.includes(option.type) ? option.type as NestedKind : undefined;
+  switch (option.type) {
+  case 'card':
+  case 'amount':
+  case 'payment':
+  case 'party':
+  case 'colony':
+    return option.type;
+  case 'resource':
+  case 'delegate':
+    return 'pick';
+  case 'resources':
+  case 'productionToLose':
+  case 'and':
+    // Only an `and` made of numbers has a sheet.
+    return unitsFor(option) !== undefined ? 'units' : undefined;
+  default:
+    return undefined;
+  }
 }
 
 /**
  * The question, when it is a choice between options the shell can answer -- whose
  * plants to remove, whether to pay for something, a card to discard or nothing --
  * which the choice sheet answers. A plain option is sent from the sheet itself; a pick
- * among cards, a number, a price, a party or a colony goes on to the sheet that asks it. The turn's menu
- * is a choice too, but it is answered from the turn page.
+ * among cards, a number, a price, a party, a colony, resources or a delegate goes on
+ * to the sheet that asks it. The turn's menu is a choice too, but it is answered from
+ * the turn page.
  */
 export function choiceInput(waitingFor: PlayerInputModel | undefined): OrOptionsModel | undefined {
   // Read into a plain boolean: as a type guard it would narrow away every `or`.

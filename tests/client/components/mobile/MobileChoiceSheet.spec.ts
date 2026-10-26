@@ -3,7 +3,7 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
-import {boardRuleIn, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
+import {boardRuleIn, choiceInput, nestedKind, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {CardName} from '@/common/cards/CardName';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {OrOptionsModel, PlayerInputModel, SelectPlayerModel} from '@/common/models/PlayerInputModel';
@@ -59,6 +59,15 @@ describe('MobileChoiceSheet', () => {
     expect(choiceInput(discardOrSkip())).is.not.undefined;
     const space = {...plants(), options: [option('Skip'), {type: 'space', title: 'Where', buttonLabel: 'OK', spaces: []}]} as unknown as OrOptionsModel;
     expect(choiceInput(space)).is.undefined;
+  });
+
+  it('hands a resource or a delegate to the pick sheet, and numbers to the units sheet', () => {
+    expect(nestedKind({type: 'resource', title: 'Gain 1 standard resource', buttonLabel: 'Select', include: ['steel']})).eq('pick');
+    expect(nestedKind({type: 'delegate', title: 'Remove', buttonLabel: 'Remove', players: ['NEUTRAL']})).eq('pick');
+    expect(nestedKind({type: 'resources', title: 'Gain 2', buttonLabel: 'Select', count: 2})).eq('units');
+    const amount = {type: 'amount', title: 'Heat', buttonLabel: 'OK', min: 0, max: 3, maxByDefault: false} as const;
+    expect(nestedKind({type: 'and', title: '', buttonLabel: 'OK', options: [amount, amount]})).eq('units');
+    expect(nestedKind({type: 'and', title: '', buttonLabel: 'OK', options: [amount, option('Skip')]})).is.undefined;
   });
 
   it('hands an option that is a question of its own on to its sheet', async () => {

@@ -110,7 +110,7 @@ describe('MobilePlayerHome', () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.vm.playing).deep.include({offer: 'play'});
-    expect(wrapper.vm.playing?.card.name).eq(CardName.ANTS);
+    expect((wrapper.vm.playing as ReadyCard | undefined)?.card.name).eq(CardName.ANTS);
     expect(wrapper.findComponent({name: 'MobilePlaySheet'}).exists()).is.true;
     // The action sheet stays out of it: nothing is picked for it.
     expect(pickedCard.value).is.undefined;
@@ -121,7 +121,7 @@ describe('MobilePlayerHome', () => {
     const wrapper = mount(menu(projectCard(CardName.ANTS, CardName.BIRDS)));
     wrapper.vm.select(CardName.BIRDS);
     wrapper.vm.turnCard(1);
-    expect(wrapper.vm.playing?.card.name).eq(CardName.ANTS);
+    expect((wrapper.vm.playing as ReadyCard | undefined)?.card.name).eq(CardName.ANTS);
     wrapper.vm.turnCard(-1);
     expect(wrapper.vm.playing?.card.name).eq(CardName.BIRDS);
   });
@@ -337,6 +337,27 @@ describe('MobilePlayerHome', () => {
     colony.vm.raiseSheet();
     expect(colony.vm.asking).eq('colony');
     expect(colony.vm.snap).eq('closed');
+  });
+
+  it('puts numbers to spread in the units sheet, and a resource or delegate in the pick sheet', () => {
+    const units = mount({type: 'resources', title: 'Gain 3 standard resources', buttonLabel: 'Select', count: 3} as PlayerInputModel);
+    units.vm.asking = undefined;
+    units.vm.raiseSheet();
+    expect(units.vm.asking).eq('units');
+    const pick = mount({type: 'delegate', title: 'Select which delegate to remove', buttonLabel: 'Remove delegate', players: ['NEUTRAL']} as PlayerInputModel);
+    pick.vm.asking = undefined;
+    pick.vm.raiseSheet();
+    expect(pick.vm.asking).eq('pick');
+    expect(pick.vm.snap).eq('closed');
+  });
+
+  it('a card the server asks to be played opens in the play sheet, with the others beside it', () => {
+    const wrapper = mount(projectCard(CardName.ANTS, CardName.BIRDS));
+    wrapper.vm.playing = undefined;
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.playSet).eq('asked');
+    expect((wrapper.vm.playing as ReadyCard | undefined)?.card.name).eq(CardName.ANTS);
+    expect(wrapper.vm.playList.map((item: ReadyCard) => item.card.name)).deep.eq([CardName.ANTS, CardName.BIRDS]);
   });
 
   it('the Delegate tile opens the party sheet for its entry, not the panel', () => {

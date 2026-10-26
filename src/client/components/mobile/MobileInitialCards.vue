@@ -1,36 +1,34 @@
 <template>
   <div class="mobile-initial" data-test="mobile-initial">
-    <ConfirmDialog
-      message="Continue without buying any project cards?"
-      ref="confirmation"
-      @accept="saveData" />
-
-    <div class="mobile-segment mobile-initial-steps" role="tablist">
-      <button
-        v-for="step in steps"
-        :key="step.id"
-        class="mobile-segment-button"
-        role="tab"
-        :aria-selected="step.id === current"
-        :data-test="'initial-step-' + step.id"
-        @click="current = step.id">
-        <span>{{ $t(step.label) }}</span>
-        <span class="mobile-segment-count mobile-num">{{ step.chosen }}/{{ step.needed }}</span>
-      </button>
+    <div class="mobile-initial-steps">
+      <div class="mobile-segmented" role="tablist">
+        <button
+          v-for="step in steps"
+          :key="step.id"
+          type="button"
+          class="mobile-segmented-option mobile-initial-step"
+          :class="{'mobile-segmented-option--on': step.id === current}"
+          role="tab"
+          :aria-selected="step.id === current"
+          :data-test="'initial-step-' + step.id"
+          @click="current = step.id">
+          <span>{{ $t(step.label) }}</span>
+          <span class="mobile-initial-step-count" :class="{'mobile-initial-step-count--done': step.chosen >= step.needed}">{{ step.chosen }}/{{ step.needed }}</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Every step stays mounted: a `SelectCard` holds the player's picks itself, so
-         tearing one down to show another would throw its selection away. -->
+    <!-- Every step stays mounted: a picker holds the player's picks itself, so tearing
+         one down to show another would throw its selection away. -->
     <div class="mobile-initial-body mobile-card-scaler">
       <div v-show="current === 'corporation'" data-test="initial-pane-corporation">
-        <SelectCard
-          :playerView="playerView"
-          :playerinput="corpCardOption"
-          :showtitle="false"
-          :onsave="noop"
+        <MobileCardPicker
+          :cards="corpCardOption.cards"
+          :max="corpCardOption.max"
+          :cubeColor="playerView.thisPlayer.color"
           @cardschanged="corporationChanged"/>
         <div v-if="playerCanChooseAridor" class="mobile-initial-aridor">
-          <h3 class="mobile-cards-group-title" v-i18n>These are the colony tiles Aridor may choose from:</h3>
+          <h3 class="mobile-eyebrow mobile-below-title" v-i18n>These are the colony tiles Aridor may choose from:</h3>
           <div class="player_home_colony_cont mobile-colony-list">
             <div
               class="player_home_colony small_colony"
@@ -45,29 +43,26 @@
       </div>
 
       <div v-if="hasPrelude" v-show="current === 'prelude'" data-test="initial-pane-prelude">
-        <SelectCard
-          :playerView="playerView"
-          :playerinput="preludeCardOption"
-          :showtitle="false"
-          :onsave="noop"
+        <MobileCardPicker
+          :cards="preludeCardOption.cards"
+          :max="preludeCardOption.max"
+          :cubeColor="playerView.thisPlayer.color"
           @cardschanged="preludesChanged"/>
       </div>
 
       <div v-if="hasCeo" v-show="current === 'ceo'" data-test="initial-pane-ceo">
-        <SelectCard
-          :playerView="playerView"
-          :playerinput="ceoCardOption"
-          :showtitle="false"
-          :onsave="noop"
+        <MobileCardPicker
+          :cards="ceoCardOption.cards"
+          :max="ceoCardOption.max"
+          :cubeColor="playerView.thisPlayer.color"
           @cardschanged="ceosChanged"/>
       </div>
 
       <div v-show="current === 'cards'" data-test="initial-pane-cards">
-        <SelectCard
-          :playerView="playerView"
-          :playerinput="projectCardOption"
-          :showtitle="false"
-          :onsave="noop"
+        <MobileCardPicker
+          :cards="projectCardOption.cards"
+          :max="projectCardOption.max"
+          :cubeColor="playerView.thisPlayer.color"
           @cardschanged="cardsChanged"/>
       </div>
     </div>
@@ -92,16 +87,41 @@
       </div>
       <button
         v-if="!onLastStep"
-        class="mobile-button mobile-button--go"
+        type="button"
+        class="mobile-play-sheet-button mobile-play-sheet-button--primary mobile-initial-go"
         data-test="initial-next"
         @click="goToNextStep()"
         v-i18n>Next</button>
       <button
         v-else-if="showsave"
-        class="mobile-button mobile-button--go"
+        type="button"
+        class="mobile-play-sheet-button mobile-play-sheet-button--primary mobile-initial-go"
         :disabled="!valid"
         data-test="initial-submit"
         @click="saveIfConfirmed()">{{ $t(playerinput.buttonLabel) }}</button>
+    </div>
+
+    <!-- Starting without a single project card is allowed, and rarely meant. -->
+    <div v-if="confirming" class="mobile-play-sheet" data-test="initial-confirm">
+      <div class="mobile-play-sheet-scrim" @click="confirming = false"></div>
+      <section class="mobile-play-sheet-panel" role="alertdialog" aria-modal="true">
+        <span class="mobile-play-sheet-grabber" aria-hidden="true"></span>
+        <div class="mobile-play-sheet-body">
+          <h2 class="mobile-confirm-sheet-title" v-i18n>Continue without buying any project cards?</h2>
+        </div>
+        <div class="mobile-play-sheet-actions">
+          <button
+            type="button"
+            class="mobile-play-sheet-button mobile-play-sheet-button--primary"
+            data-test="initial-confirm-accept"
+            @click="confirming = false; saveData()">{{ $t(playerinput.buttonLabel) }}</button>
+          <button
+            type="button"
+            class="mobile-play-sheet-button"
+            data-test="initial-confirm-cancel"
+            @click="confirming = false">{{ $t('Cancel') }}</button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -110,9 +130,8 @@
 import {defineComponent, PropType} from 'vue';
 
 import Colony from '@/client/components/colonies/Colony.vue';
-import ConfirmDialog from '@/client/components/common/ConfirmDialog.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
-import SelectCard from '@/client/components/SelectCard.vue';
+import MobileCardPicker from '@/client/components/mobile/MobileCardPicker.vue';
 
 import {CardName} from '@/common/cards/CardName';
 import {ColonyModel, simpleColonyModel} from '@/common/models/ColonyModel';
@@ -151,10 +170,8 @@ type DataModel = {
   selectedCeos: Array<CardName>;
   selectedCorporations: Array<CardName>;
   selectedPreludes: Array<CardName>;
-};
-
-type Refs = {
-  confirmation: InstanceType<typeof ConfirmDialog>;
+  /** Whether the player is being asked to confirm an opening with no project cards. */
+  confirming: boolean;
 };
 
 /**
@@ -166,8 +183,8 @@ type Refs = {
  * decision turns on is never on screen beside the cards. Here each selection is a
  * step, and the money and the missing count sit in a bar that does not scroll away.
  *
- * The selections themselves are the same `SelectCard` the desktop uses, and the
- * arithmetic is the same module `SelectInitialCards.vue` calls.
+ * The cards are chosen in the shell's own card grid, as the card chooser draws them,
+ * and the arithmetic is the same module `SelectInitialCards.vue` calls.
  */
 export default defineComponent({
   name: 'MobileInitialCards',
@@ -199,9 +216,8 @@ export default defineComponent({
   },
   components: {
     Colony,
-    ConfirmDialog,
+    MobileCardPicker,
     MobileFitBlock,
-    SelectCard,
   },
   data(): DataModel {
     return {
@@ -210,12 +226,10 @@ export default defineComponent({
       selectedCeos: [],
       selectedCorporations: [],
       selectedPreludes: [],
+      confirming: false,
     };
   },
   methods: {
-    noop() {
-      throw new Error('should not be called');
-    },
     cardsChanged(cards: Array<CardName>) {
       this.selectedCards = cards;
     },
@@ -237,7 +251,7 @@ export default defineComponent({
     },
     saveIfConfirmed() {
       if (this.preferences.show_alerts && projectCards(this.selection).length === 0) {
-        this.typedRefs.confirmation.show();
+        this.confirming = true;
       } else {
         this.saveData();
       }
@@ -250,9 +264,6 @@ export default defineComponent({
     },
   },
   computed: {
-    typedRefs(): Refs {
-      return this.$refs as Refs;
-    },
     selection(): InitialCardsSelection {
       return {
         corporations: this.selectedCorporations,
