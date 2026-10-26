@@ -67,7 +67,7 @@
       </div>
       <!-- The game's own settings, which everyone in it shares, ahead of this device's. -->
       <template v-if="playerView !== undefined && playerView.game.phase !== 'end'">
-        <h3 class="mobile-settings-group" v-i18n>This game</h3>
+        <h3 class="mobile-eyebrow" v-i18n>This game</h3>
         <div class="mobile-list">
           <label class="mobile-row mobile-more-switch" data-test="more-undo">
             <span class="mobile-row-body">

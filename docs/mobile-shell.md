@@ -264,7 +264,9 @@ them, leaving the client nothing to match on but translated titles.
    them, dimmed.
 3. **Tiles** — Heat to temp, Greenery, Standard projects, Milestones & awards,
    plus Trade when colonies are in the game and Delegate (and Party action, when
-   the menu offers it) with Turmoil. A tile the menu does not offer is dimmed to
+   the menu offers it) with Turmoil. Heat to temp and the party action have
+   nothing to choose, so they open the confirm sheet: the action in the
+   server's words and its one button. A tile the menu does not offer is dimmed to
    45%. A conversion that is short says how far, as have over need (`5/8`); a
    tile that is simply not on offer says nothing, since dimmed is enough. Empty
    sections — nothing since the last turn, no ready card — are left out rather
@@ -527,6 +529,17 @@ reach, and a second opinion here could only ever be wrong.
 are the mobile keys plus the preferences that mean something on a phone, grouped;
 the desktop `PreferencesDialog` is not embedded, because a third of its switches
 are about parts of the desktop layout the shell never draws.
+They are drawn as the menu's own grouped lists: segmented controls for the
+modes, a phone's green switch for the rest, and the language as one row with the
+system picker laid over it, since seventeen names are a list to scroll rather
+than a wall of buttons.
+
+**The page's dialogs** — an error from the server, the bug report — stay the
+desktop's elements, and while the shell is up they are drawn as its sheets: the
+bottom edge, a scrim, a blue button and a grey one. Errors used to come up as
+the browser's own `alert()`, headed with the site's address, because `showAlert`
+looked for an element id the dialog does not have; with that fixed the message
+goes in as text, never markup, since it can quote the server.
 
 ## Cards
 

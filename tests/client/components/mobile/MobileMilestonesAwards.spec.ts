@@ -42,4 +42,16 @@ describe('MobileMilestonesAwards', () => {
     await rows[2].trigger('click');
     expect(wrapper.emitted('claim')).deep.eq([['milestone', 'Terraformer'], ['award', 'Landlord']]);
   });
+
+  it('heads each row with the medal printed on the board', () => {
+    const art = (wrapper: ReturnType<typeof render>) =>
+      wrapper.findAll('[data-test="mobile-ma-art"]').map((each) => each.attributes('style'));
+    expect(art(render())).deep.eq([
+      'background-image: url("assets/ma/terraformer.png");',
+      'background-image: url("assets/ma/mayor.png");',
+      'background-image: url("assets/ma/landlord.png");',
+    ]);
+    const turmoil = mount(MobileMilestonesAwards, {...globalConfig, props: {milestones, awards, turmoil: true}});
+    expect(art(turmoil)[0]).contains('terraformer26.png');
+  });
 });

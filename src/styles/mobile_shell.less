@@ -294,12 +294,14 @@ html:has(> body.mobile-shell-active),
   position: absolute;
   left: 8px;
   bottom: 8px;
-  padding: 3px 7px;
-  border-radius: 5px;
-  background: fade(@mobile-sunk, 80%);
-  border: 1px solid @mobile-line-soft;
-  font-size: 11px;
-  color: @mobile-muted;
+  padding: 3px 8px;
+  border-radius: @m-radius-pill;
+  background: @m-glass;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-family: @m-font;
+  font-size: @m-small-size;
+  color: @m-label-2;
   pointer-events: none;
 }
 
@@ -314,21 +316,29 @@ html:has(> body.mobile-shell-active),
 }
 
 .mobile-hud-button {
-  width: @mobile-tap;
+  width: @m-tap;
   height: 38px;
-  border-radius: 8px;
-  background: fade(@mobile-raised, 78%);
-  border: 1px solid fade(@mobile-line, 80%);
-  color: @mobile-text;
-  font-size: 17px;
+  border: 0;
+  border-radius: @m-radius-button;
+  background: @m-glass;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-family: @m-font;
+  color: @m-label;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
+
+  &:active {
+    background: @m-raised;
+  }
 
   small {
-    font-family: Prototype, sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    font-size: @m-small-size;
+    font-weight: 600;
+    letter-spacing: 0.04em;
   }
 }
 
@@ -424,15 +434,18 @@ html:has(> body.mobile-shell-active),
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: @mobile-raised;
-  border: 1px solid @mobile-line;
-  box-shadow: 0 6px 18px fade(#000, 55%);
+  padding: 8px 8px 8px 16px;
+  border-radius: @m-radius-card;
+  background: @m-glass;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 0 0.5px @m-sep, 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-family: @m-font;
+  color: @m-label;
 }
 
 .mobile-confirm-title {
-  font-size: 13px;
+  font-size: @m-row-title-size;
   font-weight: 600;
 }
 
@@ -444,37 +457,179 @@ html:has(> body.mobile-shell-active),
 }
 
 .mobile-button {
-  padding: 8px 12px;
-  min-height: 38px;
-  border-radius: 8px;
-  border: 1px solid @mobile-line;
-  background: @mobile-raised;
-  color: @mobile-text;
-  font-size: 13px;
+  padding: 0 16px;
+  min-height: @m-tap;
+  border: 0;
+  border-radius: @m-radius-button-lg;
+  background: @m-fill;
+  font-family: @m-font;
+  font-size: 15px;
+  font-weight: 500;
+  color: @m-label;
   flex: none;
+  touch-action: manipulation;
+
+  &:active:not(:disabled) {
+    background: @m-fill-strong;
+  }
 }
 
 .mobile-confirm-back {
   margin-left: auto;
 }
 
+// The one that does it, blue as every sheet's own button is.
 .mobile-button--go {
-  background: @mobile-rust;
-  border-color: @mobile-rust;
+  background: @m-accent;
   color: #fff;
   font-weight: 600;
+
+  &:active:not(:disabled) {
+    background: @m-accent;
+    opacity: 0.85;
+  }
 }
 
+/*
+ * The page's own dialogs -- an error from the server, the bug report -- are the
+ * desktop's, and are drawn here as the shell's sheets: on the bottom edge, over a
+ * scrim, one blue button and a grey one, each as wide as the sheet.
+ */
 .mobile-shell-active dialog[open] {
   position: fixed;
-  inset: auto 8px calc(16px + env(safe-area-inset-bottom));
+  inset: auto 0 0;
   z-index: @mobile-layer-dialog;
-  max-width: none;
-  margin: 0;
-  border: 1px solid @mobile-line;
-  border-radius: 12px;
-  background: @mobile-raised;
-  color: @mobile-text;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100% - 24px - env(safe-area-inset-top));
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 20px @m-gutter calc(12px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border: 0;
+  border-radius: @m-radius-sheet @m-radius-sheet 0 0;
+  background: @m-raised;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  font-family: @m-font;
+  font-size: @m-row-title-size;
+  line-height: 1.4;
+  color: @m-label;
+  animation: mobile-play-sheet-in @m-duration @m-ease both;
+
+  &::backdrop {
+    background: @m-scrim;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  p {
+    margin: 0 0 12px;
+  }
+
+  a {
+    color: @m-accent;
+
+    &:focus:not(:focus-visible) {
+      outline: none;
+    }
+  }
+
+  // The alert's title, which a card's `.title` would otherwise draw as a banner.
+  .title {
+    float: none;
+    width: auto;
+    margin: 0 0 8px;
+    border: 0;
+    border-radius: 0;
+    font-family: @m-font;
+    font-size: @m-bar-title-size;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+    color: @m-label;
+  }
+
+  // The server's message keeps the lines it was written in.
+  #alert-dialog-message {
+    white-space: pre-line;
+    color: @m-label-2;
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: @m-radius-button-lg;
+    background: @m-bg;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: @m-secondary-size;
+    color: @m-label;
+    resize: none;
+  }
+
+  .dialog-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 0;
+
+    > div,
+    > form {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+
+  // .btn carries !important in common.less, so these have to match that weight.
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: auto;
+    min-height: @m-tap;
+    margin: 0;
+    padding: 0 20px;
+    border: 0;
+    border-radius: @m-radius-button-lg;
+    box-shadow: none;
+    font-family: @m-font;
+    font-size: 16px;
+    font-weight: 500;
+    touch-action: manipulation;
+
+    &,
+    &:focus,
+    &:hover {
+      border-color: transparent !important;
+      background: @m-fill !important;
+      color: @m-label !important;
+    }
+  }
+
+  .btn.btn-primary {
+    font-weight: 600;
+
+    &,
+    &:focus,
+    &:hover {
+      background: @m-accent !important;
+      color: #fff !important;
+    }
+  }
+
+  .center {
+    text-align: center;
+    font-size: @m-secondary-size;
+    color: @m-label-2;
+  }
 }
 
 //
@@ -765,36 +920,6 @@ html:has(> body.mobile-shell-active),
 // Cards
 //
 
-.mobile-segment {
-  display: flex;
-  gap: 4px;
-  padding: 8px;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: @mobile-ground;
-  border-bottom: 1px solid @mobile-line-soft;
-}
-
-.mobile-segment-button {
-  flex: 1;
-  min-height: @mobile-tap;
-  border-radius: 8px;
-  border: 1px solid @mobile-line;
-  background: @mobile-surface;
-  color: @mobile-muted;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  &[aria-selected="true"] {
-    background: @mobile-raised;
-    color: @mobile-text;
-    border-color: @mobile-marker-ring;
-  }
-}
-
 .mobile-cards-body {
   padding: 8px calc(8px + env(safe-area-inset-left)) 16px;
 }
@@ -1038,10 +1163,59 @@ html:has(> body.mobile-shell-active),
     white-space: normal;
   }
 
+  .mobile-row-title {
+    white-space: normal;
+  }
+
+  // A phone's switch: green when on, grey when off, the knob white either way.
   .form-switch {
     flex: none;
+    position: relative;
+    width: 51px;
+    height: 31px;
     margin: 0 6px 0 12px;
-    padding-left: 36px;
+    padding: 0;
+
+    .form-icon {
+      top: 0;
+      left: 0;
+      width: 51px;
+      height: 31px;
+      border: 0;
+      border-radius: @m-radius-pill;
+      background: @m-fill-strong;
+      transition: background-color @m-duration @m-ease;
+
+      &::before {
+        top: 2px;
+        left: 2px;
+        width: 27px;
+        height: 27px;
+        background: #fff;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+        transition: left @m-duration @m-ease;
+      }
+    }
+
+    input:checked + .form-icon {
+      background: @m-ok;
+
+      &::before {
+        left: 22px;
+      }
+    }
+
+    input:focus + .form-icon {
+      box-shadow: none;
+    }
+
+    input:focus-visible + .form-icon {
+      box-shadow: 0 0 0 2px @m-accent;
+    }
+
+    input:disabled + .form-icon {
+      opacity: 0.5;
+    }
   }
 }
 
@@ -1066,61 +1240,54 @@ html:has(> body.mobile-shell-active),
 // Settings
 //
 
-.mobile-settings-group {
-  font-family: Prototype, sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: @mobile-dim;
-  margin: 18px 0 2px;
-}
+// The same grouped lists as the menu the settings open from.
+.mobile-settings {
+  display: grid;
+  gap: 12px;
 
-.mobile-language-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.mobile-language {
-  padding: 6px 10px;
-  min-height: 36px;
-  border-radius: 7px;
-  border: 1px solid @mobile-line-soft;
-  background: @mobile-sunk;
-  color: @mobile-muted;
-  font-size: 13px;
-
-  &[aria-selected="true"] {
-    background: @mobile-raised;
-    border-color: @mobile-marker-ring;
-    color: @mobile-text;
+  > .mobile-eyebrow {
+    margin-top: 8px;
   }
 }
 
-.mobile-setting {
-  padding: 10px 0;
-  border-bottom: 1px solid @mobile-line-soft;
-}
-
-.mobile-setting-label {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.mobile-setting-hint {
-  display: block;
-  font-size: 11px;
-  color: @mobile-dim;
-  margin-top: 4px;
-}
-
-.mobile-setting-row {
-  display: flex;
-  align-items: center;
+// A setting with a control under its name rather than beside it.
+.mobile-row-body.mobile-setting {
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
+.mobile-setting-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.mobile-setting-range {
+  width: 100%;
+  margin: 0;
+  accent-color: @m-accent;
+}
+
+// The language row: the select lies over all of it, unseen, so a tap anywhere opens
+// the phone's own picker.
+.mobile-language {
+  position: relative;
+}
+
+.mobile-language-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+  cursor: pointer;
+}
 
 //
 // The opening hand

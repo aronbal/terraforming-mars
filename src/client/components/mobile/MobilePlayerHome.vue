@@ -56,6 +56,7 @@
               :awards="game.awards"
               :claimable="claimableMilestones"
               :fundable="fundableAwards"
+              :turmoil="game.turmoil !== undefined"
               @claim="claimBoardThing"/>
           </div>
           <div v-if="game.turmoil" class="mobile-below-block">
@@ -466,6 +467,8 @@ export default defineComponent({
         return {icon: 'check-check', tone: 'ok'};
       case 'undo':
         return {icon: 'undo-2', tone: 'accent'};
+      case 'turmoilParty':
+        return {icon: 'landmark', tone: 'pr'};
       default:
         return {icon: 'thermometer', tone: 'warn'};
       }

@@ -1,78 +1,108 @@
 <template>
   <section class="mobile-settings" :aria-label="$t('Settings')" data-test="mobile-settings">
-    <h3 class="mobile-settings-group" v-i18n>Look</h3>
-
-    <div class="mobile-setting">
-      <label class="mobile-setting-label" v-i18n>Phone layout</label>
-      <div class="mobile-setting-row">
-        <button
-          v-for="mode in mobileLayoutModes"
-          :key="mode"
-          class="mobile-segment-button"
-          :aria-selected="prefs.mobile_layout === mode"
-          :data-test="'mobile-layout-' + mode"
-          @click="setMode('mobile_layout', mode)">{{ $t(modeLabel(mode)) }}</button>
+    <h3 class="mobile-eyebrow" v-i18n>Look</h3>
+    <div class="mobile-list">
+      <div class="mobile-row">
+        <span class="mobile-row-body mobile-setting">
+          <span class="mobile-row-title" v-i18n>Phone layout</span>
+          <span class="mobile-segmented" role="radiogroup">
+            <button
+              v-for="mode in mobileLayoutModes"
+              :key="mode"
+              type="button"
+              role="radio"
+              class="mobile-segmented-option"
+              :class="{'mobile-segmented-option--on': prefs.mobile_layout === mode}"
+              :aria-checked="prefs.mobile_layout === mode"
+              :data-test="'mobile-layout-' + mode"
+              @click="setMode('mobile_layout', mode)">{{ $t(modeLabel(mode)) }}</button>
+          </span>
+          <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Auto uses the phone layout on narrow screens.</span>
+        </span>
       </div>
-      <span class="mobile-setting-hint" v-i18n>Auto uses the phone layout on narrow screens.</span>
-    </div>
-
-    <div class="mobile-setting">
-      <label class="mobile-setting-label" for="mobile-card-scale">
-        <span v-i18n>Card size</span> <span class="mobile-num">{{ cardScalePercent }}%</span>
-      </label>
-      <input
-        id="mobile-card-scale"
-        type="range"
-        :min="minCardScalePercent"
-        :max="maxCardScalePercent"
-        step="2"
-        data-test="card-scale"
-        :value="cardScalePercent"
-        @input="setCardScale($event)">
-    </div>
-
-    <div class="mobile-setting">
-      <label class="mobile-setting-label" v-i18n>Tag row</label>
-      <div class="mobile-setting-row">
-        <button
-          v-for="mode in tagRowModes"
-          :key="mode"
-          class="mobile-segment-button"
-          :aria-selected="tagRowSelected(mode)"
-          :data-test="'tag-row-' + mode"
-          @click="setMode('tag_row', mode)">{{ $t(mode === 'auto' ? 'On' : 'Off') }}</button>
+      <div class="mobile-row">
+        <span class="mobile-row-body mobile-setting">
+          <label class="mobile-setting-head" for="mobile-card-scale">
+            <span class="mobile-row-title" v-i18n>Card size</span>
+            <span class="mobile-row-trailing">{{ cardScalePercent }}%</span>
+          </label>
+          <input
+            id="mobile-card-scale"
+            class="mobile-setting-range"
+            type="range"
+            :min="minCardScalePercent"
+            :max="maxCardScalePercent"
+            step="2"
+            data-test="card-scale"
+            :value="cardScalePercent"
+            @input="setCardScale($event)">
+        </span>
+      </div>
+      <div class="mobile-row">
+        <span class="mobile-row-body mobile-setting">
+          <span class="mobile-row-title" v-i18n>Tag row</span>
+          <span class="mobile-segmented" role="radiogroup">
+            <button
+              v-for="mode in tagRowModes"
+              :key="mode"
+              type="button"
+              role="radio"
+              class="mobile-segmented-option"
+              :class="{'mobile-segmented-option--on': tagRowSelected(mode)}"
+              :aria-checked="tagRowSelected(mode)"
+              :data-test="'tag-row-' + mode"
+              @click="setMode('tag_row', mode)">{{ $t(mode === 'auto' ? 'On' : 'Off') }}</button>
+          </span>
+        </span>
       </div>
     </div>
-
-    <h3 class="mobile-settings-group" v-i18n>Cards</h3>
 
     <template v-for="group in switchGroups" :key="group.title">
-      <h3 v-if="group.heading" class="mobile-settings-group">{{ $t(group.title) }}</h3>
-      <div v-for="setting in group.settings" :key="setting.name" class="mobile-setting">
-        <label class="form-switch mobile-setting-label">
-          <input type="checkbox" v-model="prefs[setting.name]" :data-test="setting.name" @change="saveSwitch(setting.name)">
-          <i class="form-icon"></i> <span>{{ $t(setting.label) }}</span>
+      <h3 class="mobile-eyebrow">{{ $t(group.title) }}</h3>
+      <div class="mobile-list">
+        <label v-for="setting in group.settings" :key="setting.name" class="mobile-row mobile-more-switch">
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title">{{ $t(setting.label) }}</span>
+              <span v-if="setting.hint !== undefined" class="mobile-row-subtitle">{{ $t(setting.hint) }}</span>
+            </span>
+            <span class="form-switch">
+              <input type="checkbox" v-model="prefs[setting.name]" :data-test="setting.name" @change="saveSwitch(setting.name)">
+              <i class="form-icon"></i>
+            </span>
+          </span>
         </label>
-        <span v-if="setting.hint !== undefined" class="mobile-setting-hint">{{ $t(setting.hint) }}</span>
       </div>
     </template>
 
-    <h3 class="mobile-settings-group" v-i18n>Language</h3>
-    <div class="mobile-setting">
-      <div class="mobile-language-grid">
-        <button
-          v-for="lang in languages"
-          :key="lang.id"
-          class="mobile-language"
-          :aria-selected="prefs.lang === lang.id"
-          :data-test="'lang-' + lang.id"
-          @click="setLanguage(lang.id)">{{ lang.name }}</button>
-      </div>
-      <span class="mobile-setting-hint" v-i18n>Changing the language reloads the page.</span>
+    <h3 class="mobile-eyebrow" v-i18n>Language</h3>
+    <!-- One row, and the phone's own picker over it: seventeen names are a list to
+         scroll, not a wall of buttons to read. -->
+    <div class="mobile-list">
+      <label class="mobile-row mobile-row--button mobile-language">
+        <span class="mobile-row-body">
+          <span class="mobile-row-text">
+            <span class="mobile-row-title" v-i18n>Language</span>
+          </span>
+          <span class="mobile-row-trailing" data-test="language-name">{{ languageName }}</span>
+          <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+        </span>
+        <select class="mobile-language-select" :value="prefs.lang" data-test="language" @change="pickLanguage($event)">
+          <option v-for="lang in languages" :key="lang.id" :value="lang.id">{{ lang.name }}</option>
+        </select>
+      </label>
     </div>
+    <p class="mobile-section-note" v-i18n>Changing the language reloads the page.</p>
 
-    <div class="mobile-setting">
-      <button class="mobile-button" data-test="report-bug" @click="showBugDialog()" v-i18n>Report a bug</button>
+    <div class="mobile-list">
+      <button type="button" class="mobile-row mobile-row--button" data-test="report-bug" @click="showBugDialog()">
+        <span class="mobile-row-body">
+          <span class="mobile-row-text">
+            <span class="mobile-row-title" v-i18n>Report a bug</span>
+          </span>
+          <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+        </span>
+      </button>
     </div>
     <BugReportDialog ref="bugDialog"/>
   </section>
@@ -103,8 +133,10 @@ import {
  *
  * This replaces `PreferencesDialog` on a phone rather than embedding it. The dialog is
  * one flat column of fourteen switches, several of which are about parts of the
- * desktop layout the shell never draws -- the sidebar, the hover magnifier -- and
- * offering those here would be offering to change nothing.
+ * desktop layout the shell never draws -- the sidebar, the hover magnifier, the
+ * block that hides the milestones and awards -- and offering those here would be
+ * offering to change nothing. Milestones and awards are part of the game, and the
+ * shell always shows them under the board.
  */
 
 type SwitchSetting = {
@@ -115,15 +147,12 @@ type SwitchSetting = {
 
 type SwitchGroup = {
   title: string;
-  /** False for the group that continues the heading above it. */
-  heading: boolean;
   settings: ReadonlyArray<SwitchSetting>;
 };
 
 const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
   {
     title: 'Cards',
-    heading: false,
     settings: [
       {name: 'small_cards', label: 'Smaller cards'},
       {name: 'hide_discount_on_cards', label: 'Hide discount on cards'},
@@ -131,7 +160,6 @@ const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
   },
   {
     title: 'Board',
-    heading: true,
     settings: [
       {
         name: 'mobile_tap_targets',
@@ -139,14 +167,12 @@ const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
         hint: 'Draws the recommended touch target over every board space.',
       },
       {name: 'hide_tile_confirmation', label: 'Hide tile confirmation'},
-      {name: 'hide_awards_and_milestones', label: 'Hide awards and milestones'},
       {name: 'symbol_overlay', label: 'Add symbols on top of player colors'},
       {name: 'remove_background', label: 'Remove background image'},
     ],
   },
   {
     title: 'Game',
-    heading: true,
     settings: [
       {name: 'enable_sounds', label: 'Enable sounds'},
       {name: 'show_alerts', label: 'Show in-game alerts'},
@@ -156,7 +182,6 @@ const SWITCH_GROUPS: ReadonlyArray<SwitchGroup> = [
   },
   {
     title: 'Developer',
-    heading: true,
     settings: [
       {name: 'experimental_ui', label: 'Experimental UI'},
       {name: 'debug_view', label: 'Debug view'},
@@ -205,6 +230,9 @@ export default defineComponent({
     languages(): ReadonlyArray<{id: string, name: string}> {
       return ALL_LANGUAGES.map((id) => ({id, name: LANGUAGES[id][0]}));
     },
+    languageName(): string {
+      return this.languages.find((lang) => lang.id === this.prefs.lang)?.name ?? this.prefs.lang;
+    },
     cardScalePercent(): number {
       return Math.round(this.prefs.card_scale * 100);
     },
@@ -244,6 +272,12 @@ export default defineComponent({
       const percent = Number((event.target as HTMLInputElement).value);
       this.prefs.card_scale = percent / 100;
       this.save('card_scale');
+    },
+    pickLanguage(event: Event): void {
+      const id = (event.target as HTMLSelectElement).value;
+      if (id !== this.prefs.lang) {
+        this.setLanguage(id);
+      }
     },
     setLanguage(id: string): void {
       this.prefs.lang = id;

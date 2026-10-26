@@ -893,6 +893,19 @@
   }
 }
 
+// The medal, at half the size the board prints it: 140 x 83.
+.mobile-ma-art {
+  flex: none;
+  width: 70px;
+  height: 42px;
+  border-radius: 6px;
+  background: @m-raised no-repeat center / contain;
+}
+
+.mobile-ma-row--taken .mobile-ma-art {
+  opacity: 0.55;
+}
+
 .mobile-ma-name {
   display: flex;
   align-items: center;
