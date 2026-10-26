@@ -134,11 +134,12 @@ describe('MobileCardChooser', () => {
     expect(posted[0]).deep.include({type: 'or', index: 1, response: {type: 'card', cards: [CardName.ANTS]}});
   });
 
-  it('has no Cancel for a question that must be answered, only the scrim', async () => {
+  it('only closes a question that must be answered, with Close or the scrim', async () => {
     const wrapper = render(draft());
-    expect(wrapper.find('[data-test=card-chooser-cancel]').exists()).is.false;
+    expect(wrapper.find('[data-test=card-chooser-cancel]').text()).eq('Close');
+    await wrapper.find('[data-test=card-chooser-cancel]').trigger('click');
     await wrapper.find('[data-test=card-chooser-scrim]').trigger('click');
-    expect(wrapper.emitted('close')).has.length(1);
+    expect(wrapper.emitted('close')).has.length(2);
   });
 
   it('answers a pick among cards that is an option of a choice as that option', async () => {

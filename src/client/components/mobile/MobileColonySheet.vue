@@ -42,11 +42,10 @@
           data-test="colony-sheet-submit"
           @click="submit">{{ $t(input.buttonLabel) }}</button>
         <button
-          v-if="input.optional || entry !== undefined"
           type="button"
           class="mobile-play-sheet-button"
           data-test="colony-sheet-cancel"
-          @click="close">{{ $t('Cancel') }}</button>
+          @click="close">{{ $t((input.optional || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
       </div>
     </section>
   </div>

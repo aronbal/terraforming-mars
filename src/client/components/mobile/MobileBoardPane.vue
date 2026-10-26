@@ -46,7 +46,13 @@
         </template>
         <template v-else>
           <div class="mobile-confirm-title" v-i18n>Choose a space</div>
-          <button class="mobile-button mobile-confirm-back" @click="$emit('showActions')" v-i18n>Actions</button>
+          <!-- The way out of the placement, where there is one: back to the choice it
+               came from, or the menu entry given up. -->
+          <button
+            v-if="backLabel !== undefined"
+            class="mobile-button mobile-confirm-back"
+            data-test="placement-back"
+            @click="$emit('back')">{{ $t(backLabel) }}</button>
         </template>
       </div>
     </div>
@@ -127,8 +133,13 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
+    /** What the placement bar's way out says, or undefined for a placement with none. */
+    backLabel: {
+      type: String,
+      default: undefined,
+    },
   },
-  emits: ['toggleTileView', 'showActions'],
+  emits: ['toggleTileView', 'back'],
   components: {
     Board,
   },

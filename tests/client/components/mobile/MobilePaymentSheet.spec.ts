@@ -119,8 +119,8 @@ describe('MobilePaymentSheet', () => {
     expect((posted[0] as {response: object}).response).deep.include({type: 'payment'});
   });
 
-  it('can be cancelled only when the question is optional', async () => {
-    expect(render(payment(3)).find('[data-test="payment-sheet-cancel"]').exists()).is.false;
+  it('can be cancelled only when the question is optional, and only closed otherwise', async () => {
+    expect(render(payment(3)).find('[data-test="payment-sheet-cancel"]').text()).eq('Close');
     const wrapper = render(payment(3, {}, true));
     await wrapper.find('[data-test="payment-sheet-cancel"]').trigger('click');
     expect(wrapper.emitted('close')).has.length(1);

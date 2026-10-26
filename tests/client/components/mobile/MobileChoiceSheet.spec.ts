@@ -58,7 +58,10 @@ describe('MobileChoiceSheet', () => {
     expect(choiceInput(amount)).is.not.undefined;
     expect(choiceInput(discardOrSkip())).is.not.undefined;
     const space = {...plants(), options: [option('Skip'), {type: 'space', title: 'Where', buttonLabel: 'OK', spaces: []}]} as unknown as OrOptionsModel;
-    expect(choiceInput(space)).is.undefined;
+    expect(choiceInput(space)).is.not.undefined;
+    expect(nestedKind(space.options[1])).eq('space');
+    const event = {...plants(), options: [option('Skip'), {type: 'globalEvent', title: 'Which', buttonLabel: 'OK', globalEventNames: []}]} as unknown as OrOptionsModel;
+    expect(choiceInput(event)).is.undefined;
   });
 
   it('hands a resource or a delegate to the pick sheet, and numbers to the units sheet', () => {

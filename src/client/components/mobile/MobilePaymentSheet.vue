@@ -63,11 +63,10 @@
           data-test="payment-sheet-submit"
           @click="submit">{{ message('Pay · ${0} M€', payment.megacredits) }}</button>
         <button
-          v-if="playerinput.optional === true || entry !== undefined"
           type="button"
           class="mobile-play-sheet-button"
           data-test="payment-sheet-cancel"
-          @click="close">{{ $t('Cancel') }}</button>
+          @click="close">{{ $t((playerinput.optional === true || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
       </div>
     </section>
   </div>
