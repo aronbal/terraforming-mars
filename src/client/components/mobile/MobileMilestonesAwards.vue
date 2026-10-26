@@ -45,6 +45,7 @@
 import {defineComponent, PropType} from 'vue';
 
 import {getAward, getMilestone} from '@/client/MilestoneAwardManifest';
+import {medalArt} from '@/client/components/mobile/BoardGame';
 import {Color} from '@/common/Color';
 import {AWARD_COSTS, MAX_AWARDS, MAX_MILESTONES, MILESTONE_COST} from '@/common/constants';
 import {ClaimedMilestoneModel} from '@/common/models/ClaimedMilestoneModel';
@@ -142,13 +143,8 @@ export default defineComponent({
     },
   },
   methods: {
-    /* The same file the desktop's `ma-name--*` classes draw. */
     art(name: string): string {
-      let key = name.replaceAll(' ', '-').replaceAll('.', '').toLowerCase();
-      if (key === 'terraformer' && this.turmoil) {
-        key = 'terraformer26';
-      }
-      return `url("assets/ma/${key}.png")`;
+      return medalArt(name, this.turmoil);
     },
     owner(name: string | undefined, color: Color | undefined): Row['owner'] {
       return name !== undefined && color !== undefined ? {name, color} : undefined;

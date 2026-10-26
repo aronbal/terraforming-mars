@@ -1,0 +1,665 @@
+/*
+ * The board-game style of the mobile Board tab: the board as it lies on the table.
+ *
+ * The terraform rating track runs round the edge, the planet sits in the middle and
+ * the milestones and awards are printed along the foot, each part a tap away from a
+ * closer look. It is built from the game's own artwork -- the board, the medals, the
+ * M€ coin, the stars -- and CSS; nothing here is a scan of the printed board.
+ *
+ * The frame is a 26 x 26 grid, the size of `TRACK_SIDE` in BoardGame.ts: a step of
+ * the track in every cell round the edge, and the inside left to the board.
+ */
+
+@bg-side: 26;
+// The frame's proportions: the board artwork at full width, and the panels under it.
+@bg-ratio: 414 / 500;
+
+// The track, after the printed one: orange steps on a dark edge, every fifth in gold.
+@bg-edge: #26120a;
+@bg-step: #c45a24;
+@bg-step-hi: #e88742;
+@bg-five: #f0be45;
+@bg-five-hi: #ffe58c;
+@bg-ink: #2a1206;
+
+// The milestone and award plates: brushed metal, with an orange name plaque.
+@bg-plate: #e4e7ea;
+@bg-plate-lo: #a3aab2;
+@bg-plate-ink: #1d2228;
+@bg-plaque: #f39446;
+@bg-plaque-lo: #cf5a1b;
+
+@bg-space: #05060c;
+
+@keyframes mobile-bg-offer {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1.5px @m-accent, 0 0 0 0 fade(@m-accent, 0%);
+  }
+
+  50% {
+    box-shadow: 0 0 0 1.5px @m-accent, 0 0 7px 2px fade(@m-accent, 70%);
+  }
+}
+
+.m-bg-space() {
+  background:
+    radial-gradient(ellipse at 50% 36%, rgba(86, 52, 120, 0.32), transparent 62%),
+    radial-gradient(ellipse at 85% 90%, rgba(40, 70, 140, 0.22), transparent 55%),
+    @bg-space url("./assets/stars.jpg") center / cover;
+}
+
+/*
+ * The host holds the frame and the board laid over its window. Zoomed into the
+ * planet, the board fills the pane instead, so the host steps out of the way as its
+ * containing block, and the pane stops scrolling under it.
+ */
+.mobile-bg-host {
+  position: relative;
+}
+
+.mobile-pane--zoomed {
+  overflow: hidden;
+
+  .mobile-bg-host {
+    position: static;
+  }
+
+  .mobile-below {
+    visibility: hidden;
+  }
+}
+
+.mobile-bg {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(@bg-side, minmax(0, 1fr));
+  grid-template-rows: repeat(@bg-side, minmax(0, 1fr));
+  aspect-ratio: @bg-ratio;
+  background: @bg-edge;
+  font-family: @m-font;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+//
+// The terraform rating track
+//
+
+// The steps sit straight in the frame's grid.
+.mobile-bg-track {
+  display: contents;
+  cursor: pointer;
+}
+
+.mobile-bg-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: linear-gradient(@bg-step-hi, @bg-step);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.45);
+  color: fade(@bg-ink, 80%);
+  font-size: 6.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  .m-tabular();
+}
+
+// Every fifth step, as the printed track does, so a position reads without counting.
+.mobile-bg-step--five {
+  background: linear-gradient(@bg-five-hi, @bg-five);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.55), 0 0 4px rgba(255, 214, 102, 0.35);
+  color: @bg-ink;
+  font-size: 8.5px;
+  font-weight: 800;
+}
+
+/*
+ * A player's marker: bigger than a cube on the map, in their colour, with a light
+ * ring that reads on the orange steps, on the gold ones and over the planet alike.
+ */
+.mobile-track-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.95), 0 1px 4px 1px rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-family: @m-font;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+// The colour-blind symbols, dark on the light colours.
+.mobile-track-marker--yellow,
+.mobile-track-marker--orange,
+.mobile-track-marker--pink,
+.mobile-track-marker--green,
+.mobile-track-marker--bronze {
+  color: #111;
+}
+
+.mobile-bg-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  touch-action: manipulation;
+
+  // The rest of a thumb's target round a 16px marker.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+  }
+}
+
+//
+// The inside: the planet's window, and the panels under it
+//
+
+.mobile-bg-inner {
+  grid-area: 2 / 2 / @bg-side / @bg-side;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 0 22px rgba(0, 0, 0, 0.8);
+  .m-bg-space();
+}
+
+// Exactly the board pane's stage, which MobilePlayerHome lays over it.
+.mobile-bg-window {
+  flex: none;
+  aspect-ratio: unit(@mobile-stage-width) / unit(@mobile-stage-height);
+}
+
+.mobile-bg-panels {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 6px;
+  padding: 2px 5px 6px;
+}
+
+.mobile-bg-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 5px 6px;
+  border: 0;
+  border-radius: 14px 14px 6px 6px;
+  background: linear-gradient(@bg-plate, @bg-plate-lo);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.5px rgba(0, 0, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.65);
+  color: @bg-plate-ink;
+  font-family: @m-font;
+  text-align: left;
+  cursor: zoom-in;
+  touch-action: manipulation;
+  transition: transform 120ms @m-ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.mobile-bg-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.mobile-bg-plaque {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(@bg-plaque, @bg-plaque-lo);
+  box-shadow: inset 0 0 0 1px rgba(90, 30, 0, 0.45), inset 0 1px 0 rgba(255, 220, 180, 0.6);
+  color: @bg-ink;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mobile-bg-costs {
+  display: flex;
+  gap: 2px;
+}
+
+// The price of each one still to take, on the M€ coin the board prints it on.
+.mobile-bg-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: url("./assets/resources/megacredit.png") center / contain no-repeat;
+  color: #000;
+  font-size: 7px;
+  font-weight: 800;
+  .m-tabular();
+}
+
+// Spent: a milestone claimed, an award funded at that price.
+.mobile-bg-coin--used {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.mobile-bg-coin--next {
+  box-shadow: 0 0 0 1.5px @m-accent;
+}
+
+/* Three to a row: a game has five or six of each, and in one row at half the
+   board's width a medal was too small to tell from the next. */
+.mobile-bg-medals {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  place-content: center;
+  gap: 3px 4px;
+}
+
+.mobile-bg-medal {
+  position: relative;
+  flex: none;
+  width: calc((100% - 8px) / 3);
+  aspect-ratio: 140 / 83;
+  border-radius: 3px;
+  background: center / contain no-repeat;
+}
+
+.mobile-bg-medal--offered {
+  animation: mobile-bg-offer 1.8s @m-ease infinite;
+}
+
+// A player's cube on what they claimed or funded, as it is put on the printed board.
+.mobile-bg-cube {
+  top: -6px;
+  right: -5px;
+  margin: 0;
+  transform: scale(0.75);
+  transform-origin: top right;
+  filter: drop-shadow(1px 1px 1px #000);
+}
+
+//
+// A panel zoomed up to the width of the board
+//
+
+.mobile-bg-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: zoom-out;
+}
+
+.mobile-bg-fade-enter-active,
+.mobile-bg-fade-leave-active {
+  transition: opacity 300ms @m-ease;
+}
+
+.mobile-bg-fade-enter-from,
+.mobile-bg-fade-leave-to {
+  opacity: 0;
+}
+
+.mobile-bg-zoomed {
+  grid-area: 2 / 2 / @bg-side / @bg-side;
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 4px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(lighten(@bg-plate, 4%), @bg-plate-lo);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 44px rgba(0, 0, 0, 0.7);
+  color: @bg-plate-ink;
+  font-family: @m-font;
+
+  .mobile-bg-plaque {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .mobile-bg-costs {
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  .mobile-bg-coin {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    font-size: 11px;
+  }
+
+  .mobile-bg-coin--next {
+    box-shadow: 0 0 0 2px @m-accent;
+  }
+}
+
+.mobile-bg-zoomed-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+}
+
+.mobile-bg-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: @m-radius-pill;
+  background: rgba(0, 0, 0, 0.09);
+  color: @bg-plate-ink;
+  font-family: @m-font;
+  font-size: 14px;
+  font-weight: 600;
+  touch-action: manipulation;
+}
+
+.mobile-bg-zoomed-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 7px 7px;
+}
+
+.mobile-bg-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 8px 3px 3px;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.42);
+  color: inherit;
+  font-family: @m-font;
+  text-align: left;
+  touch-action: manipulation;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.mobile-bg-row--offered {
+  box-shadow: inset 0 0 0 2px @m-accent;
+}
+
+.mobile-bg-row--taken .mobile-bg-row-rule {
+  opacity: 0.6;
+}
+
+.mobile-bg-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-bg-row-rule {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #2b3139;
+}
+
+.mobile-bg-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mobile-bg-row-scores {
+  gap: 8px;
+  font-size: 12px;
+  color: @bg-plate-ink;
+
+  .mobile-choice-standing-dot {
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.mobile-bg-row-offer {
+  background: @m-accent;
+  color: #fff;
+}
+
+/*
+ * A medal with its name printed on its bar, the way the desktop's `ma-name` draws it
+ * at 140 x 83: in a zoomed panel's rows, and in the medal sheet.
+ */
+.mobile-medal {
+  position: relative;
+  flex: none;
+  width: 140px;
+  height: 83px;
+  background: center / contain no-repeat;
+}
+
+.mobile-medal-name {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 61px;
+  overflow: hidden;
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mobile-medal-cube {
+  top: 0;
+  right: 4px;
+  margin: 0;
+}
+
+// Small enough that six rows, the most a game deals, fit the board without scrolling.
+.mobile-medal--row {
+  width: 96px;
+  height: 57px;
+
+  .mobile-medal-name {
+    left: 5px;
+    right: 5px;
+    top: 42px;
+    font-size: 8.5px;
+  }
+
+  .mobile-medal-cube {
+    top: -3px;
+    right: -2px;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
+}
+
+//
+// The board laid over the frame
+//
+
+// A picture in the frame's window: no gesture, no controls, and one tap to zoom in.
+.mobile-bg-host .mobile-board-section--picture {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% / @bg-side);
+  left: calc(100% / @bg-side);
+  width: calc(100% * (@bg-side - 2) / @bg-side);
+
+  .mobile-board-viewport {
+    max-height: none;
+    background: transparent;
+    pointer-events: none;
+    touch-action: auto;
+  }
+}
+
+.mobile-board-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// Zoomed in: the whole pane, over the stars the frame is printed on.
+.mobile-bg-host .mobile-board-section--zoomed {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+
+  .mobile-board-viewport {
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    .m-bg-space();
+  }
+}
+
+.mobile-board-close {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  gap: 4px;
+  padding: 0 14px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+//
+// The sheets
+//
+
+.mobile-medal-sheet-body {
+  align-items: stretch;
+
+  > .mobile-medal {
+    align-self: center;
+    width: 168px;
+    height: 100px;
+    margin-top: 4px;
+
+    .mobile-medal-name {
+      top: 73px;
+      font-size: 14px;
+    }
+  }
+}
+
+.mobile-medal-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  .mobile-pill .mobile-choice-standing-dot {
+    margin-right: 2px;
+  }
+}
+
+.mobile-medal-sheet-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  color: @m-label;
+}
+
+.mobile-medal-sheet-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.mobile-track-sheet-place {
+  flex: none;
+  width: 16px;
+  color: @m-label-2;
+  font-size: @m-value-size;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mobile-play-sheet-row .mobile-track-marker {
+  width: 20px;
+  height: 20px;
+  margin: 0 6px 0 4px;
+  font-size: 12px;
+}
+
+.mobile-track-sheet-rating {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.mobile-track-sheet-row--you .mobile-play-sheet-row-title {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bg-fade-enter-active,
+  .mobile-bg-fade-leave-active {
+    transition: none;
+  }
+
+  .mobile-bg-medal--offered {
+    animation: none;
+    box-shadow: 0 0 0 1.5px @m-accent;
+  }
+
+  .mobile-bg-panel {
+    transition: none;
+
+    &:active {
+      transform: none;
+    }
+  }
+}

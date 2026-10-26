@@ -2,17 +2,19 @@ import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
+import {BoardFraming} from '@/client/components/mobile/BoardGame';
 import {fakeGameModel} from '../testHelpers';
 import {beginSpaceSelection, clearPlacement, offerPlacement, resetSpaceSelectionForTest} from '@/client/utils/spaceSelection';
 
 describe('MobileBoardPane', () => {
-  function mount() {
+  function mount(framing: BoardFraming = 'column') {
     return shallowMount(MobileBoardPane, {
       ...globalConfig,
       props: {
         game: fakeGameModel(),
         tileView: 'show',
         tapTargets: false,
+        framing,
       },
     });
   }
@@ -41,6 +43,39 @@ describe('MobileBoardPane', () => {
     expect(wrapper.find('.mobile-board-stage--tap-targets').exists()).is.false;
     await wrapper.setProps({tapTargets: true});
     expect(wrapper.find('.mobile-board-stage--tap-targets').exists()).is.true;
+  });
+
+  it('is a picture in the board-game frame: no controls, and a tap zooms in', async () => {
+    const wrapper = mount('picture');
+    expect(wrapper.find('[data-test="zoom-readout"]').exists()).is.false;
+    expect(wrapper.find('.mobile-board-hud').exists()).is.false;
+    expect(wrapper.find('[data-test="board-close"]').exists()).is.false;
+    await wrapper.find('[data-test="board-open"]').trigger('click');
+    expect(wrapper.emitted('open')).has.length(1);
+  });
+
+  it('zoomed in from the frame, pans and zooms with a way back out', async () => {
+    const wrapper = mount('zoomed');
+    expect(wrapper.find('.mobile-board-hud').exists()).is.true;
+    expect(wrapper.find('[data-test="board-open"]').exists()).is.false;
+    await wrapper.find('[data-test="board-close"]').trigger('click');
+    expect(wrapper.emitted('close')).has.length(1);
+  });
+
+  it('keeps the map while a space is being chosen, so there is no way back to the picture', async () => {
+    beginSpaceSelection();
+    const wrapper = mount('zoomed');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-test="board-close"]').exists()).is.false;
+    expect(wrapper.find('[data-test="placement-bar"]').exists()).is.true;
+    resetSpaceSelectionForTest();
+  });
+
+  it('draws the modern column as it always has', () => {
+    const wrapper = mount();
+    expect(wrapper.find('[data-test="board-section-column"]').exists()).is.true;
+    expect(wrapper.find('[data-test="board-open"]').exists()).is.false;
+    expect(wrapper.find('[data-test="board-close"]').exists()).is.false;
   });
 
   /* On a phone the question is asked in the bar under the map, clear of the space. */
