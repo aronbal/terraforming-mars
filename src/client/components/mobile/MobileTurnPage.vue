@@ -460,6 +460,9 @@ export default defineComponent({
       case 'heat':
         this.$emit('confirm', 'convertHeat');
         return;
+      case 'party':
+        this.confirmEntry(tile.entry, 'turmoilParty');
+        return;
       }
       this.openEntry(tile.entry);
     },

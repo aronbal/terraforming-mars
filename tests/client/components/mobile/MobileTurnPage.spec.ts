@@ -2,7 +2,7 @@ import {shallowMount} from '@vue/test-utils';
 import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
-import {fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
+import {fakeGameModel, fakePlayerViewModel, fakePublicPlayerModel} from '../testHelpers';
 import {CardName} from '@/common/cards/CardName';
 import {PlayerInputModel} from '@/common/models/PlayerInputModel';
 import {LogEvent} from '@/client/components/mobile/MobileLog';
@@ -103,6 +103,25 @@ describe('MobileTurnPage', () => {
     await wrapper.find('[data-test="tile-projects"]').trigger('click');
     expect(wrapper.emitted('confirm')).deep.eq([['convertHeat']]);
     expect(wrapper.emitted('openProjects')).has.length(1);
+  });
+
+  // The ruling party's action is a price to pay and nothing to choose.
+  it('the party action is confirmed in the confirm sheet', async () => {
+    const wrapper = shallowMount(MobileTurnPage, {
+      ...globalConfig,
+      props: {
+        playerView: fakePlayerViewModel({
+          waitingFor: menu(option('Pay 10 M€ to draw 3 cards', 'turmoilParty')),
+          game: fakeGameModel({turmoil: {} as never}),
+        } as never),
+        recent: [],
+        players: [{color: 'red', name: 'Mette'}],
+        now: 0,
+      },
+    });
+    await wrapper.find('[data-test="tile-party"]').trigger('click');
+    expect(wrapper.emitted('confirm')).deep.eq([['turmoilParty']]);
+    expect(wrapper.emitted('openEntry')).is.undefined;
   });
 
   it('greenery opens its entry, which goes straight to the map', async () => {

@@ -186,9 +186,10 @@ export default defineComponent({
       const dialogElement: HTMLElement | null = document.getElementById('alert-dialog');
       const buttonElement: HTMLElement | null = document.getElementById('alert-dialog-button');
       const messageElement: HTMLElement | null = document.getElementById('alert-dialog-message');
-      const titleElement: HTMLElement | null = document.getElementById('alert-dialog-title');
+      const titleElement: HTMLElement | null = document.getElementById('alert-title');
       if (buttonElement !== null && titleElement !== null && messageElement !== null && dialogElement !== null && hasShowModal(dialogElement)) {
-        messageElement.innerHTML = $t(message);
+        // The message can quote the server, which can quote a player: text, never markup.
+        messageElement.textContent = $t(message);
         titleElement.textContent = $t(title);
         const handler = () => {
           buttonElement.removeEventListener('click', handler);
