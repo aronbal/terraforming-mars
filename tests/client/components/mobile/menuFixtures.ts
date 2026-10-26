@@ -1,5 +1,7 @@
 import {CardName} from '@/common/cards/CardName';
 import {OrOptionsModel, PlayerInputModel} from '@/common/models/PlayerInputModel';
+import {TurmoilModel} from '@/common/models/TurmoilModel';
+import {PartyName} from '@/common/turmoil/PartyName';
 
 /* Turn menus as the server sends them, for the mobile shell's specs. */
 
@@ -95,5 +97,26 @@ export function cardChoice(names: Array<CardName>, options: {min?: number, max?:
     selectBlueCardAction: false,
     showOwner: false,
     showSelectAll: false,
+  };
+}
+
+/** Turmoil with Mars First dominant and the Greens in power, for the party sheet and panel. */
+export function fakeTurmoil(): TurmoilModel {
+  return {
+    dominant: PartyName.MARS,
+    ruling: PartyName.GREENS,
+    chairman: 'neutral',
+    parties: [
+      {name: PartyName.MARS, partyLeader: 'red', delegates: [{color: 'green', number: 1}, {color: 'red', number: 2}]},
+      {name: PartyName.SCIENTISTS, partyLeader: undefined, delegates: []},
+      {name: PartyName.GREENS, partyLeader: undefined, delegates: []},
+    ],
+    lobby: ['red'],
+    reserve: [{color: 'red', number: 5}],
+    distant: undefined,
+    coming: undefined,
+    current: undefined,
+    politicalAgendas: undefined,
+    policyActionUsers: [],
   };
 }

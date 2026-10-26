@@ -49,21 +49,17 @@
           @showActions="raiseSheet()"/>
 
         <div class="mobile-below" ref="below">
-          <!-- No fit block: milestone and award tiles wrap on their own, and forcing
-               them onto one line would only push the last few off the edge. -->
           <div class="mobile-below-block">
-            <Milestones
+            <MobileMilestonesAwards
               :milestones="game.milestones"
-              :claimable="claimableMilestones"
-              @claim="claimBoardThing('milestone', $event)"/>
-            <Awards
               :awards="game.awards"
+              :claimable="claimableMilestones"
               :fundable="fundableAwards"
-              @fund="claimBoardThing('award', $event)"/>
+              @claim="claimBoardThing"/>
           </div>
-          <MobileFitBlock v-if="game.turmoil" class="mobile-below-block">
-            <Turmoil :turmoil="game.turmoil"/>
-          </MobileFitBlock>
+          <div v-if="game.turmoil" class="mobile-below-block">
+            <MobileTurmoilPanel :turmoil="game.turmoil"/>
+          </div>
           <MobileFitBlock v-if="game.moon" class="mobile-below-block">
             <MoonBoard :model="game.moon" :tileView="tileView" id="shortkey-moonBoard"/>
           </MobileFitBlock>
@@ -71,7 +67,7 @@
             <PlanetaryTracks :tracks="game.pathfinders" :gameOptions="game.gameOptions"/>
           </MobileFitBlock>
           <div v-if="game.colonies.length > 0" class="mobile-below-block" id="shortkey-colonies">
-            <DynamicTitle title="Colonies" :color="thisPlayer.color"/>
+            <h3 class="mobile-eyebrow mobile-below-title" v-i18n>Colonies</h3>
             <div class="player_home_colony_cont mobile-colony-list">
               <button
                 v-for="colony in game.colonies"
@@ -206,6 +202,20 @@
       :entry="askingEntry"
       @close="closeAsking()"/>
 
+    <!-- A party to send a delegate to. -->
+    <MobilePartySheet
+      v-if="asking === 'party'"
+      :playerView="playerView"
+      :entry="askingEntry"
+      @close="closeAsking()"/>
+
+    <!-- A colony to build on. -->
+    <MobileColonySheet
+      v-if="asking === 'colony'"
+      :playerView="playerView"
+      :entry="askingEntry"
+      @close="closeAsking()"/>
+
     <!-- A choice: whose plants to remove, whether to pay, which player loses production. -->
     <MobileChoiceSheet
       v-if="asking === 'choice'"
@@ -221,9 +231,7 @@
       @close="magnifiedLine = undefined"/>
 
     <MobileOverlay v-if="overlay === 'players'" :title="$t('Players')" @close="overlay = undefined">
-      <MobileFitBlock id="shortkey-playersoverview">
-        <PlayersOverview :playerView="playerView" v-trim-whitespace/>
-      </MobileFitBlock>
+      <MobilePlayersOverview id="shortkey-playersoverview" :playerView="playerView"/>
     </MobileOverlay>
     <MobileOverlay v-if="overlay === 'menu'" :title="$t('Menu')" @close="overlay = undefined">
       <MobileMore :playerView="playerView" @settingsChanged="refreshPreferences()"/>
@@ -234,16 +242,15 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
-import Awards from '@/client/components/Awards.vue';
 import Colony from '@/client/components/colonies/Colony.vue';
-import DynamicTitle from '@/client/components/common/DynamicTitle.vue';
-import Milestones from '@/client/components/Milestones.vue';
 import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileAmountSheet from '@/client/components/mobile/MobileAmountSheet.vue';
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
+import MobileColonySheet from '@/client/components/mobile/MobileColonySheet.vue';
+import MobilePartySheet from '@/client/components/mobile/MobilePartySheet.vue';
 import MobilePaymentSheet from '@/client/components/mobile/MobilePaymentSheet.vue';
 import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue';
 import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
@@ -252,16 +259,17 @@ import MobileFocusStage from '@/client/components/mobile/MobileFocusStage.vue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import MobileLogCards from '@/client/components/mobile/MobileLogCards.vue';
 import MobileLogPane, {LogGeneration} from '@/client/components/mobile/MobileLogPane.vue';
+import MobileMilestonesAwards from '@/client/components/mobile/MobileMilestonesAwards.vue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
 import MobilePlaySheet from '@/client/components/mobile/MobilePlaySheet.vue';
+import MobilePlayersOverview from '@/client/components/mobile/MobilePlayersOverview.vue';
 import MobileTabBar from '@/client/components/mobile/MobileTabBar.vue';
 import MobileTradeSheet from '@/client/components/mobile/MobileTradeSheet.vue';
 import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
+import MobileTurmoilPanel from '@/client/components/mobile/MobileTurmoilPanel.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
-import PlayersOverview from '@/client/components/overview/PlayersOverview.vue';
-import Turmoil from '@/client/components/turmoil/Turmoil.vue';
 
 import {CardName} from '@/common/cards/CardName';
 import {GameModel} from '@/common/models/GameModel';
@@ -275,6 +283,7 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
+import {colonyInput, partyInput} from '@/client/components/mobile/PickSheet';
 import {NestedStep, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {paymentInput} from '@/client/components/mobile/PaymentSheet';
 import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
@@ -311,7 +320,7 @@ type DataModel = {
   /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
   choosing: {entry: number | undefined} | undefined;
   /** The sheet of its own a plain question is answered in, while it is up. */
-  asking: 'amount' | 'choice' | 'payment' | undefined;
+  asking: 'amount' | 'choice' | 'payment' | 'party' | 'colony' | undefined;
   /** The option of the choice that sheet answers, when it was chosen in the choice sheet. */
   askingEntry: number | undefined;
   /** The milestone or award in the claim sheet. */
@@ -344,12 +353,11 @@ export default defineComponent({
     },
   },
   components: {
-    Awards,
     Colony,
-    DynamicTitle,
-    Milestones,
     MobileActionPanel,
     MobileBoardPane,
+    MobileColonySheet,
+    MobilePartySheet,
     MobileCardsPane,
     MobileFitBlock,
     MobileAmountSheet,
@@ -359,6 +367,7 @@ export default defineComponent({
     MobileClaimSheet,
     MobileConfirmSheet,
     MobileFocusStage,
+    MobileMilestonesAwards,
     MobileHeader,
     MobileLogCards,
     MobileLogPane,
@@ -368,10 +377,10 @@ export default defineComponent({
     MobileTabBar,
     MobileTradeSheet,
     MobileTurnPage,
+    MobileTurmoilPanel,
     MoonBoard,
     PlanetaryTracks,
-    PlayersOverview,
-    Turmoil,
+    MobilePlayersOverview,
   },
   data(): DataModel {
     return {
@@ -656,6 +665,16 @@ export default defineComponent({
         this.asking = 'amount';
         return;
       }
+      if (partyInput(this.playerView.waitingFor) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'party';
+        return;
+      }
+      if (colonyInput(this.playerView.waitingFor) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'colony';
+        return;
+      }
       if (choiceInput(this.playerView.waitingFor) !== undefined || playerChoiceInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
         this.asking = 'choice';
@@ -730,6 +749,14 @@ export default defineComponent({
     },
     /** A tile or a button on the turn page: the entry it stands for, opened in the sheet. */
     openEntry(index: number): void {
+      const option = isActionMenu(this.playerView.waitingFor) ? this.playerView.waitingFor.options[index] : undefined;
+      // Sending a delegate has a sheet of its own, like any party to choose.
+      if (option?.type === 'party') {
+        this.forgetPick();
+        this.asking = 'party';
+        this.askingEntry = index;
+        return;
+      }
       clearPickedCard();
       clearBoardPick();
       pickEntry(index);

@@ -65,12 +65,10 @@ import {defineComponent, PropType} from 'vue';
 
 import Card from '@/client/components/card/Card.vue';
 import {CardModel} from '@/common/models/CardModel';
-import {CardType} from '@/common/cards/CardType';
 import {CardOrderStorage} from '@/client/utils/CardOrderStorage';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
-import {getCardsByType, isCardActivated} from '@/client/utils/CardUtils';
-import {getCardOrThrow} from '@/client/cards/ClientCardManifest';
-import {sortActiveCards} from '@/client/utils/ActiveCardsSortingOrder';
+import {isCardActivated} from '@/client/utils/CardUtils';
+import {CardGroup, playedGroups} from '@/client/components/mobile/PlayedCards';
 import {CardOffer, offerIn} from '@/client/utils/cardSelection';
 
 /*
@@ -81,11 +79,6 @@ import {CardOffer, offerIn} from '@/client/utils/cardSelection';
  * is still what you plan the next one around. A tap opens the card in the play
  * sheet, exactly as on the turn page.
  */
-
-type CardGroup = {
-  title: string;
-  cards: ReadonlyArray<CardModel>;
-};
 
 type DataModel = {
   view: 'hand' | 'played';
@@ -142,17 +135,7 @@ export default defineComponent({
       return [...ready, ...rest];
     },
     playedGroups(): ReadonlyArray<CardGroup> {
-      const tableau = this.player.tableau;
-      const active = getCardsByType(tableau, [CardType.ACTIVE, CardType.PRELUDE])
-        .filter((card) => getCardOrThrow(card.name).type === CardType.ACTIVE || getCardOrThrow(card.name).hasAction);
-      const automated = getCardsByType(tableau, [CardType.AUTOMATED, CardType.PRELUDE])
-        .filter((card) => !getCardOrThrow(card.name).hasAction);
-      return [
-        {title: 'Corporation', cards: getCardsByType(tableau, [CardType.CORPORATION, CardType.CEO])},
-        {title: 'Active', cards: sortActiveCards(active)},
-        {title: 'Automated', cards: automated},
-        {title: 'Events', cards: getCardsByType(tableau, [CardType.EVENT])},
-      ].filter((group) => group.cards.length > 0);
+      return playedGroups(this.player.tableau);
     },
     isCardActivated(): typeof isCardActivated {
       return isCardActivated;

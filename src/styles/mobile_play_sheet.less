@@ -644,3 +644,266 @@
   font-size: @m-secondary-size;
   color: @m-label-2;
 }
+
+// A Turmoil party: its colour and name, its standing, its delegates, its agenda.
+.mobile-party {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mobile-party-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-party-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+// The party's colour on the board, as a small square the way the board's banners are.
+.mobile-party-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.mobile-party-swatch--greens { background: #16b215; }
+.mobile-party-swatch--scientists { background: #fff; }
+.mobile-party-swatch--mars_first { background: #c97e23; }
+.mobile-party-swatch--unity { background: #108ff0; }
+.mobile-party-swatch--reds { background: #e65b5a; }
+.mobile-party-swatch--kelvinists { background: #5d4d4d; }
+
+.mobile-party-delegates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 16px;
+  font-size: @m-secondary-size;
+  color: @m-label-2;
+}
+
+.mobile-party-delegate {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  .m-tabular();
+
+  .mobile-choice-standing-dot {
+    width: 11px;
+    height: 11px;
+  }
+}
+
+// The party leader's delegate, ringed the way the board raises it onto its own spot.
+.mobile-party-delegate--leader .mobile-choice-standing-dot {
+  box-shadow: 0 0 0 2px @m-raised, 0 0 0 3.5px @m-label;
+}
+
+.mobile-party-agenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mobile-party-agenda-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 8px;
+  border-radius: @m-radius-button-sm;
+  background: rgba(255, 255, 255, 0.88);
+  color: #222;
+}
+
+.mobile-party-agenda-label {
+  font-size: @m-label-size;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+// The desktop's own agenda art, drawn for its board; small and on one line here.
+.mobile-party-agenda-art {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    zoom: 0.8;
+  }
+
+  .policy-top-margin {
+    display: flex;
+    align-items: center;
+    margin: 0;
+  }
+}
+
+// A colony to choose: its own tile, the whole of it the target.
+.mobile-colony-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-colony-option {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  text-align: left;
+  width: 100%;
+  padding: 4px;
+  border: none;
+  border-radius: @m-radius-button-lg;
+  background: @m-fill;
+}
+
+.mobile-colony-option--on {
+  background: fade(@m-accent, 18%);
+  box-shadow: inset 0 0 0 2px @m-accent;
+}
+
+.mobile-colony-option-mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: @m-radius-pill;
+  background: @m-accent;
+  color: #fff;
+}
+
+//
+// Turmoil under the board
+//
+
+.mobile-turmoil {
+  display: grid;
+  gap: 10px;
+  padding: 0 8px;
+  color: @m-label;
+  font-family: @m-font;
+}
+
+.mobile-turmoil-ruling,
+.mobile-turmoil-pools {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+.mobile-turmoil-ruling-text,
+.mobile-turmoil-chair,
+.mobile-turmoil-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-turmoil-chair {
+  align-items: flex-end;
+}
+
+.mobile-turmoil-pool:last-child {
+  align-items: flex-end;
+}
+
+.mobile-turmoil-dot {
+  width: 12px;
+  height: 12px;
+}
+
+.mobile-turmoil-when {
+  .m-eyebrow();
+}
+
+.mobile-turmoil-event .mobile-row-body {
+  align-items: flex-start;
+}
+
+.mobile-turmoil-event-parties {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.mobile-turmoil-parties {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-turmoil-party {
+  padding: 10px 14px;
+  border-radius: @m-radius-card;
+  background: @m-card;
+}
+
+//
+// Milestones and awards under the board
+//
+
+.mobile-ma {
+  display: grid;
+  gap: 14px;
+  padding: 0 8px;
+  color: @m-label;
+  font-family: @m-font;
+}
+
+.mobile-ma-group {
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-ma-row {
+  border: none;
+  background: transparent;
+  font-family: @m-font;
+
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+}
+
+.mobile-ma-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  .mobile-pill .mobile-choice-standing-dot {
+    margin-right: 2px;
+  }
+}
+
+// Claimed or funded: still there to read, but no longer in play.
+.mobile-ma-row--taken .mobile-row-title {
+  color: @m-label-2;
+}
+
+.mobile-below-title {
+  margin: 4px 8px 8px;
+}
