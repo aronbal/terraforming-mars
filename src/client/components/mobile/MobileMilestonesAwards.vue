@@ -16,6 +16,8 @@
           :disabled="!row.offered"
           data-test="mobile-ma-row"
           @click="$emit('claim', group.kind, row.name)">
+          <!-- The board's own medal for it, so it reads as the one printed on the board. -->
+          <span class="mobile-ma-art" :style="{backgroundImage: row.art}" aria-hidden="true" data-test="mobile-ma-art"></span>
           <span class="mobile-row-body">
             <span class="mobile-row-text">
               <span class="mobile-ma-name">
@@ -51,6 +53,8 @@ import {FundedAwardModel} from '@/common/models/FundedAwardModel';
 type Row = {
   name: string;
   description: string;
+  /** The board's artwork for it, as a CSS image. */
+  art: string;
   /** Who claimed or funded it, if anyone has. */
   owner: {name: string, color: Color} | undefined;
   offered: boolean;
@@ -66,8 +70,8 @@ type Group = {
 };
 
 /*
- * The milestones and the awards under the board, as two lists: each with its rule,
- * everyone's score, and who has claimed or funded it. The ones the turn can take are
+ * The milestones and the awards under the board, as two lists: each with the medal
+ * printed on the board, its rule, everyone's score, and who has claimed or funded it. The ones the turn can take are
  * marked and open the claim sheet, as the turn page's tile does.
  */
 export default defineComponent({
@@ -89,6 +93,11 @@ export default defineComponent({
       type: Array as PropType<ReadonlyArray<string>>,
       default: () => [],
     },
+    /** With Turmoil, Terraformer asks for 26 TR, and its medal says so. */
+    turmoil: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: {
     claim: (_kind: 'milestone' | 'award', _name: string) => true,
@@ -106,6 +115,7 @@ export default defineComponent({
           rows: this.milestones.map((milestone) => ({
             name: milestone.name,
             description: getMilestone(milestone.name)?.description ?? '',
+            art: this.art(milestone.name),
             owner: this.owner(milestone.playerName, milestone.color),
             offered: this.claimable.includes(milestone.name),
             scores: milestone.playerName === undefined ? milestone.scores : [],
@@ -120,6 +130,7 @@ export default defineComponent({
           rows: this.awards.map((award) => ({
             name: award.name,
             description: getAward(award.name)?.description ?? '',
+            art: this.art(award.name),
             owner: this.owner(award.playerName, award.color),
             offered: this.fundable.includes(award.name),
             // A funded award is still scored at the end, so its standings stay in view.
@@ -131,6 +142,14 @@ export default defineComponent({
     },
   },
   methods: {
+    /* The same file the desktop's `ma-name--*` classes draw. */
+    art(name: string): string {
+      let key = name.replaceAll(' ', '-').replaceAll('.', '').toLowerCase();
+      if (key === 'terraformer' && this.turmoil) {
+        key = 'terraformer26';
+      }
+      return `url("assets/ma/${key}.png")`;
+    },
     owner(name: string | undefined, color: Color | undefined): Row['owner'] {
       return name !== undefined && color !== undefined ? {name, color} : undefined;
     },

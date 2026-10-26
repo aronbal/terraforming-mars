@@ -56,6 +56,7 @@
               :awards="game.awards"
               :claimable="claimableMilestones"
               :fundable="fundableAwards"
+              :turmoil="game.turmoil !== undefined"
               @claim="claimBoardThing"/>
           </div>
           <div v-if="game.turmoil" class="mobile-below-block">
