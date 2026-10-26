@@ -9,7 +9,7 @@ import {MilestoneName} from '@/common/ma/MilestoneName';
 import {OrOptionsModel, PlayerInputModel, SelectPlayerModel} from '@/common/models/PlayerInputModel';
 
 /** An option the choice sheet hands on to a sheet of its own once it is chosen. */
-export type NestedKind = 'card' | 'amount' | 'payment' | 'party' | 'colony' | 'units' | 'pick';
+export type NestedKind = 'card' | 'amount' | 'payment' | 'party' | 'colony' | 'units' | 'pick' | 'space';
 
 /** Where a chosen option goes next: the sheet that answers it, for option `index` of the choice. */
 export type NestedStep = {kind: NestedKind, index: number};
@@ -22,6 +22,7 @@ export function nestedKind(option: PlayerInputModel): NestedKind | undefined {
   case 'payment':
   case 'party':
   case 'colony':
+  case 'space':
     return option.type;
   case 'resource':
   case 'delegate':
@@ -40,8 +41,8 @@ export function nestedKind(option: PlayerInputModel): NestedKind | undefined {
  * The question, when it is a choice between options the shell can answer -- whose
  * plants to remove, whether to pay for something, a card to discard or nothing --
  * which the choice sheet answers. A plain option is sent from the sheet itself; a pick
- * among cards, a number, a price, a party, a colony, resources or a delegate goes on
- * to the sheet that asks it. The turn's menu is a choice too, but it is answered from
+ * among cards, a number, a price, a party, a colony, resources, a delegate or a space
+ * on the board goes on to the sheet, or the board, that asks it. The turn's menu is a choice too, but it is answered from
  * the turn page.
  */
 export function choiceInput(waitingFor: PlayerInputModel | undefined): OrOptionsModel | undefined {

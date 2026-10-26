@@ -45,8 +45,9 @@
           :game="game"
           :tileView="tileView"
           :tapTargets="tapTargets"
+          :backLabel="placementBack"
           @toggleTileView="cycleTileView()"
-          @showActions="raiseSheet()"/>
+          @back="leavePlacement()"/>
 
         <div class="mobile-below" ref="below">
           <div class="mobile-below-block">
@@ -120,6 +121,7 @@
       <MobileActionPanel
         v-show="panelMode === 'sheet' || view === 'turn'"
         :playerView="playerView"
+        :hostsInput="panelHostsInput"
         :mode="panelMode"
         :snap="snap"
         :cardScale="cardScale"
@@ -192,7 +194,7 @@
       v-if="asking === 'amount'"
       :playerView="playerView"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
 
     <!-- A price to pay: the cards just bought, a fee. -->
     <MobilePaymentSheet
@@ -200,35 +202,46 @@
       :playerView="playerView"
       :playerinput="paymentQuestion"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
 
     <!-- A party to send a delegate to. -->
     <MobilePartySheet
       v-if="asking === 'party'"
       :playerView="playerView"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
 
     <!-- A colony to build on. -->
     <MobileColonySheet
       v-if="asking === 'colony'"
       :playerView="playerView"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
 
     <!-- Several numbers at once: resources spread over cards, production to lose. -->
     <MobileUnitsSheet
       v-if="asking === 'units'"
       :playerView="playerView"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
 
     <!-- One of a short list: a standard resource, whose delegate to remove. -->
     <MobilePickSheet
       v-if="asking === 'pick'"
       :playerView="playerView"
       :entry="askingEntry"
-      @close="closeAsking()"/>
+      @close="putDownAsking()"/>
+
+    <!-- A space on the board, chosen as an option of a choice: the board takes the tap,
+         and this sends it as that option's answer. It draws nothing itself. -->
+    <SelectSpace
+      v-if="asking === 'space' && nestedSpace !== undefined"
+      v-show="false"
+      :playerView="playerView"
+      :playerinput="nestedSpace"
+      :onsave="sendNestedSpace"
+      :showsave="false"
+      :showtitle="false"/>
 
     <!-- A choice: whose plants to remove, whether to pay, which player loses production. -->
     <MobileChoiceSheet
@@ -286,6 +299,7 @@ import MobileTurnPage from '@/client/components/mobile/MobileTurnPage.vue';
 import MobileTurmoilPanel from '@/client/components/mobile/MobileTurmoilPanel.vue';
 import MoonBoard from '@/client/components/moon/MoonBoard.vue';
 import PlanetaryTracks from '@/client/components/pathfinders/PlanetaryTracks.vue';
+import SelectSpace from '@/client/components/SelectSpace.vue';
 
 import {CardName} from '@/common/cards/CardName';
 import {GameModel} from '@/common/models/GameModel';
@@ -299,14 +313,17 @@ import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
 import {ReadyCard, askedCards, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
-import {colonyInput, partyInput, pickQuestion} from '@/client/components/mobile/PickSheet';
+import {colonyInput, entryResponse, partyInput, pickQuestion, questionAt} from '@/client/components/mobile/PickSheet';
 import {unitsQuestion} from '@/client/components/mobile/UnitsSheet';
 import {NestedStep, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {paymentInput} from '@/client/components/mobile/PaymentSheet';
-import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
+import {PlayerInputModel, SelectPaymentModel, SelectSpaceModel} from '@/common/models/PlayerInputModel';
+import {SelectSpaceResponse} from '@/common/inputs/InputResponse';
+import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {ActionAnnotation} from '@/common/input/Annotation';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {ColonyName} from '@/common/colonies/ColonyName';
+import {Color} from '@/common/Color';
 import {clearPickedCard} from '@/client/utils/cardSelection';
 import {BoardThing, boardNamesIn, clearBoardPick} from '@/client/utils/boardSelection';
 import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/utils/mobileFocus';
@@ -339,7 +356,7 @@ type DataModel = {
   /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
   choosing: {entry: number | undefined} | undefined;
   /** The sheet of its own a plain question is answered in, while it is up. */
-  asking: 'amount' | 'choice' | 'payment' | 'party' | 'colony' | 'units' | 'pick' | undefined;
+  asking: 'amount' | 'choice' | 'payment' | 'party' | 'colony' | 'units' | 'pick' | 'space' | undefined;
   /** The option of the choice that sheet answers, when it was chosen in the choice sheet. */
   askingEntry: number | undefined;
   /** The milestone or award in the claim sheet. */
@@ -353,6 +370,20 @@ type DataModel = {
   /** The screen height to fill on an iOS home screen whose viewport stops short. */
   screenGap: number;
 };
+
+/** Whether one of the shell's own sheets answers `input`, rather than the panel. */
+function answeredBySheet(input: PlayerInputModel, players: ReadonlyArray<{color: Color, name: string}>): boolean {
+  return askedCards(input).length > 0 ||
+    isCardChoice(input) ||
+    paymentInput(input) !== undefined ||
+    amountInput(input) !== undefined ||
+    partyInput(input) !== undefined ||
+    colonyInput(input) !== undefined ||
+    unitsQuestion(input) !== undefined ||
+    pickQuestion(input, players) !== undefined ||
+    choiceInput(input) !== undefined ||
+    playerChoiceInput(input) !== undefined;
+}
 
 // The largest count a tab badge spells out.
 const MAX_BADGE = 9;
@@ -401,6 +432,7 @@ export default defineComponent({
     MobileTurmoilPanel,
     MoonBoard,
     PlanetaryTracks,
+    SelectSpace,
     MobilePlayersOverview,
   },
   data(): DataModel {
@@ -437,6 +469,37 @@ export default defineComponent({
       default:
         return {icon: 'thermometer', tone: 'warn'};
       }
+    },
+    /*
+     * The placement bar's way out, when there is one. A space chosen for an option of a
+     * choice goes back to the choice; one for a menu entry the player opened -- a
+     * greenery, a standard project -- gives the entry up. A space the server asks for
+     * after something was already done has none: what is done stays done, and the
+     * tabs are still there to look at the hand.
+     */
+    placementBack(): string | undefined {
+      if (this.asking === 'space') {
+        return 'Back';
+      }
+      return pickFocused.value ? 'Cancel' : undefined;
+    },
+    /* The space on the board asked for as the option chosen in the choice sheet. */
+    nestedSpace(): SelectSpaceModel | undefined {
+      const input = questionAt(this.playerView.waitingFor, this.askingEntry);
+      return this.askingEntry !== undefined && input?.type === 'space' ? input : undefined;
+    },
+    /*
+     * Whether the panel draws the question itself. A question one of the shell's own
+     * sheets answers is not drawn there as well: the desktop's copy of it, behind the
+     * sheet, would start a placement of its own the moment its first option was a
+     * space, and take the board away from the choice being made.
+     *
+     * A question the player may leave unanswered keeps the panel, which is what
+     * listens for the other players while they do.
+     */
+    panelHostsInput(): boolean {
+      const waitingFor = this.playerView.waitingFor;
+      return waitingFor === undefined || waitingFor.optional === true || !answeredBySheet(waitingFor, this.playerView.players);
     },
     /* The price the server is asking to be paid: the question, or the option chosen of it. */
     paymentQuestion(): SelectPaymentModel | undefined {
@@ -624,9 +687,7 @@ export default defineComponent({
     selectingSpace(selecting: boolean) {
       if (selecting) {
         // Get the sheet off the map, and the map in front of the player.
-        this.view = 'board';
-        this.scrollBoardPaneTo(0);
-        this.setSnap('closed');
+        this.showPlacement();
       } else if (this.sheetInUse) {
         this.raiseSheet();
       } else {
@@ -658,6 +719,38 @@ export default defineComponent({
       this.asking = undefined;
       this.askingEntry = undefined;
     },
+    /* The board, and nothing over it: a space is being chosen. */
+    showPlacement(): void {
+      this.view = 'board';
+      this.scrollBoardPaneTo(0);
+      this.setSnap('closed');
+    },
+    /* The placement bar's way out: back to the choice the space was chosen from, or
+       the menu entry given up and the turn page back. */
+    leavePlacement(): void {
+      if (this.asking === 'space') {
+        this.putDownAsking();
+        return;
+      }
+      this.forgetPick();
+      this.setSnap('closed');
+      this.view = 'turn';
+    },
+    /* A sheet answering an option of a choice, put down: the choice comes back, so
+       Cancel is a step back rather than out of the question altogether. */
+    putDownAsking(): void {
+      const fromChoice = this.askingEntry !== undefined && choiceInput(this.playerView.waitingFor) !== undefined;
+      this.closeAsking();
+      if (fromChoice) {
+        this.asking = 'choice';
+      }
+    },
+    async sendNestedSpace(response: SelectSpaceResponse): Promise<void> {
+      const entry = this.askingEntry;
+      if (entry !== undefined) {
+        await postPlayerInput(this, this.playerView, entryResponse(entry, response));
+      }
+    },
     /* An option chosen in the choice sheet that is a question of its own goes on to the
        sheet that asks it, which sends the answer as that option's. */
     openNested(step: NestedStep): void {
@@ -672,6 +765,13 @@ export default defineComponent({
     /* A choice between cards needs every card on screen; anything else leaves the
        board readable above it. */
     raiseSheet(): void {
+      /* A space is chosen on the board. Each answer redraws the shell from scratch, on
+         its turn page, so a second tile to place -- Ice Asteroid's two oceans -- would
+         otherwise come up as the panel's bare 'Select space', away from the map. */
+      if (selectingSpace.value) {
+        this.showPlacement();
+        return;
+      }
       // A card the server asks to be played is paid for in the play sheet, as one from the hand is.
       const asked = askedCards(this.playerView.waitingFor);
       if (asked.length > 0) {

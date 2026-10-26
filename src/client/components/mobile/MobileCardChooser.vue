@@ -56,11 +56,10 @@
           data-test="card-chooser-submit"
           @click="submit()">{{ submitLabel }}</button>
         <button
-          v-if="cancellable"
           type="button"
           class="mobile-play-sheet-button"
           data-test="card-chooser-cancel"
-          @click="close">{{ $t('Cancel') }}</button>
+          @click="close">{{ $t(cancellable ? 'Cancel' : 'Close') }}</button>
       </div>
     </section>
   </div>
@@ -142,8 +141,9 @@ export default defineComponent({
       }
       return this.chosen.length >= input.min && this.chosen.length <= input.max;
     },
-    /* Something to put back for a question that need not be answered now. One that
-       must be answered is put down with the scrim, and the turn page brings it back. */
+    /* Whether the sheet's second button puts the pick back, for a question that need
+       not be answered now. One that must be answered is only closed, to look at the
+       hand or the board; the turn page and the header bring it back. */
     cancellable(): boolean {
       return this.entry !== undefined || this.input?.optional === true;
     },

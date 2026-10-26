@@ -44,6 +44,38 @@ describe('SelectSpace', () => {
     expect(wrapper.exists()).to.be.true;
   });
 
+  /* A question given up leaves no space that still answers it. */
+  it('unwires the spaces it wired when it goes', () => {
+    const board = document.createElement('div');
+    board.id = 'main_board';
+    const tile = document.createElement('div');
+    tile.className = 'board-space-selectable';
+    tile.setAttribute('data_space_id', '05');
+    board.appendChild(tile);
+    document.body.appendChild(board);
+    try {
+      const wrapper = shallowMount(SelectSpace, {
+        ...globalConfig,
+        props: {
+          playerView: {} as PlayerViewModel,
+          playerinput: {title: 'Select a space', buttonLabel: 'Save', type: 'space', spaces: ['05']},
+          onsave: () => {},
+          showsave: true,
+          showtitle: true,
+        },
+      });
+      expect(tile.onclick).is.not.null;
+      expect(tile.classList.contains('board-space--available')).is.true;
+
+      wrapper.unmount();
+
+      expect(tile.onclick).is.null;
+      expect(tile.classList.contains('board-space--available')).is.false;
+    } finally {
+      board.remove();
+    }
+  });
+
   /* On a phone the dialog would cover the board, so the shell's bar asks instead. */
   it('hands the confirmation to the mobile shell', () => {
     PreferencesManager.INSTANCE.set('mobile_layout', 'on');

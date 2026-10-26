@@ -22,6 +22,11 @@ describe('MobileActionMenu', () => {
       expect(isActionMenu(menu(option('Steel'), option('Titanium')))).is.false;
     });
 
+    it('is not fooled by annotations that are not the menu\'s own', () => {
+      // World Government Terraforming marks its options for the computer opponent.
+      expect(isActionMenu(menu(option('Increase temperature', 'temperature'), option('Increase oxygen', 'oxygen')))).is.false;
+    });
+
     it('is not fooled by an input that is not a menu at all', () => {
       expect(isActionMenu(option('Confirm'))).is.false;
       expect(isActionMenu(undefined)).is.false;

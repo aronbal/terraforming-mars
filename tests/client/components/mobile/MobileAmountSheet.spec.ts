@@ -71,9 +71,9 @@ describe('MobileAmountSheet', () => {
     expect(wrapper.emitted('close')).has.length(1);
   });
 
-  it('offers Cancel only for a question that need not be answered now', () => {
-    expect(render(amount()).find('[data-test=amount-sheet-cancel]').exists()).is.false;
-    expect(render(amount({optional: true})).find('[data-test=amount-sheet-cancel]').exists()).is.true;
+  it('offers Cancel for a question that need not be answered now, and Close for one that must', () => {
+    expect(render(amount()).find('[data-test=amount-sheet-cancel]').text()).eq('Close');
+    expect(render(amount({optional: true})).find('[data-test=amount-sheet-cancel]').text()).eq('Cancel');
   });
 
   it('answers an option of a choice as that option', async () => {

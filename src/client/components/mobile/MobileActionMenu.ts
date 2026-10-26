@@ -1,4 +1,4 @@
-import {ActionAnnotation} from '@/common/input/Annotation';
+import {ACTION_ANNOTATIONS, ActionAnnotation} from '@/common/input/Annotation';
 import {CardModel} from '@/common/models/CardModel';
 import {CardName} from '@/common/cards/CardName';
 import {CardOffer, offerFor} from '@/client/utils/cardSelection';
@@ -71,13 +71,22 @@ function countFor(input: PlayerInputModel): number | undefined {
 /**
  * Whether `input` is a turn's action menu rather than an ordinary question.
  *
- * The menu is the only `or` whose entries carry annotations, which is what makes this
- * exact rather than a guess at the title.
+ * The menu is the only `or` whose entries carry the menu's annotations, which is what
+ * makes this exact rather than a guess at the title.
  */
 export function isActionMenu(input: PlayerInputModel | undefined): input is OrOptionsModel {
   return input !== undefined &&
     input.type === 'or' &&
-    input.options.some((option) => option.annotation !== undefined);
+    input.options.some((option) => isMenuAnnotation(option.annotation));
+}
+
+/*
+ * Only the menu's own annotations count: other inputs carry annotations for the
+ * computer opponent too -- World Government Terraforming marks its options with the
+ * global parameter each one raises -- and they are ordinary choices.
+ */
+function isMenuAnnotation(annotation: string | undefined): boolean {
+  return annotation !== undefined && (ACTION_ANNOTATIONS as ReadonlyArray<string>).includes(annotation);
 }
 
 /**

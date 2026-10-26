@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts">
-import {defineComponent} from 'vue';
+import {defineComponent, markRaw} from 'vue';
 import {SelectSpaceModel} from '@/common/models/PlayerInputModel';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {getPreferences, PreferencesManager} from '@/client/utils/PreferencesManager';
@@ -40,6 +40,8 @@ type DataModel = {
   selectedTile: HTMLElement | undefined,
   spaceId: SpaceId | undefined;
   warning: string | undefined;
+  /** The spaces this input wired its clicks onto, to unwire when it goes. */
+  wired: Array<HTMLElement>;
 };
 
 export default defineComponent({
@@ -72,6 +74,7 @@ export default defineComponent({
       selectedTile: undefined,
       spaceId: undefined,
       warning: undefined,
+      wired: markRaw([]),
     };
   },
   components: {
@@ -199,9 +202,18 @@ export default defineComponent({
       }
 
       tile.onclick = () => this.onTileSelected(tile);
+      this.wired.push(tile);
     }
   },
   unmounted() {
+    // A question given up -- another option chosen, the mobile shell's Back -- must
+    // leave no space on the board that still answers it.
+    // Only the spaces it wired itself: the board may already be another one, wired by
+    // the input that took over.
+    for (const tile of this.wired) {
+      tile.onclick = null;
+      tile.classList.remove('board-space--available', 'board-space--selected');
+    }
     clearPlacement();
     endSpaceSelection();
   },

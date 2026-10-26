@@ -19,11 +19,12 @@
       </div>
     </div>
     <div class="mobile-panel-body mobile-card-scaler" :style="cardScaleStyle" data-test="sheet-body">
+      <!-- A question one of the shell's sheets answers is not drawn here as well. -->
       <WaitingFor
-        v-if="playerView.game.phase !== 'end'"
+        v-if="playerView.game.phase !== 'end' && hostsInput"
         :playerView="playerView"
         :waitingfor="playerView.waitingFor"/>
-      <div v-else v-i18n>This game is over.</div>
+      <div v-else-if="playerView.game.phase === 'end'" v-i18n>This game is over.</div>
     </div>
   </div>
 </template>
@@ -79,6 +80,11 @@ export default defineComponent({
     actionWaiting: {
       type: Boolean,
       required: true,
+    },
+    /** Whether the panel draws the question itself, rather than a sheet of the shell's. */
+    hostsInput: {
+      type: Boolean,
+      default: true,
     },
   },
   emits: ['update:snap'],

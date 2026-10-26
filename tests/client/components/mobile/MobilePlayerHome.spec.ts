@@ -103,6 +103,51 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.snap).eq('closed');
   });
 
+  /* Every answer redraws the shell, so a second tile to place arrives with the space
+     selection already open, and no change for the watcher to see. */
+  it('keeps the board in front for a placement that is already open when the sheet is raised', () => {
+    const wrapper = mount({type: 'space', title: 'Select space for ocean tile', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel);
+    beginSpaceSelection();
+    wrapper.vm.view = 'turn';
+    wrapper.vm.raiseSheet();
+    expect(wrapper.vm.view).eq('board');
+    expect(wrapper.vm.snap).eq('closed');
+    expect(wrapper.vm.placementBack).is.undefined;
+  });
+
+  it('chooses a space for an option of a choice on the board, with Back to the choice', async () => {
+    const space = {type: 'space', title: 'Add an ocean', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel;
+    const wrapper = mount({type: 'or', title: 'World Government', buttonLabel: 'OK', options: [option('Increase temperature', 'temperature'), space]} as PlayerInputModel);
+    expect(wrapper.vm.panelHostsInput).is.false;
+    wrapper.vm.openNested({kind: 'space', index: 1});
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.asking).eq('space');
+    expect(wrapper.vm.nestedSpace).deep.eq(space);
+    expect(wrapper.vm.placementBack).eq('Back');
+
+    wrapper.vm.leavePlacement();
+    expect(wrapper.vm.asking).eq('choice');
+    expect(wrapper.vm.askingEntry).is.undefined;
+  });
+
+  it('gives up a menu entry being placed with Cancel, back on the turn page', () => {
+    const wrapper = mount(actionMenu());
+    wrapper.vm.openEntry(0);
+    wrapper.vm.view = 'board';
+    expect(wrapper.vm.placementBack).eq('Cancel');
+    wrapper.vm.leavePlacement();
+    expect(pickedEntry.value).is.undefined;
+    expect(wrapper.vm.view).eq('turn');
+  });
+
+  it('puts a sheet for an option of a choice down back onto the choice', () => {
+    const amount = {type: 'amount', title: 'How many', buttonLabel: 'OK', min: 0, max: 3, maxByDefault: false} as PlayerInputModel;
+    const wrapper = mount({type: 'or', title: 'Choose', buttonLabel: 'OK', options: [option('Skip'), amount]} as PlayerInputModel);
+    wrapper.vm.openNested({kind: 'amount', index: 1});
+    wrapper.vm.putDownAsking();
+    expect(wrapper.vm.asking).eq('choice');
+  });
+
   /* No bar to confirm on first: the play sheet is the confirmation. */
   it('a tap on a ready card opens it in the play sheet, with its payment', async () => {
     const wrapper = mount(actionMenu());
@@ -416,8 +461,8 @@ describe('MobilePlayerHome', () => {
   });
 
   it('raises a question with cards inside it all the way, so every card is on screen', () => {
-    const space = {type: 'space', title: 'Where', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel;
-    const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), space]} as PlayerInputModel;
+    const event = {type: 'globalEvent', title: 'Which', buttonLabel: 'OK', globalEventNames: []} as unknown as PlayerInputModel;
+    const nested = {type: 'or', title: 'Choose', buttonLabel: 'OK', options: [cardChoice([CardName.ANTS]), event]} as PlayerInputModel;
     const wrapper = mount(nested);
     wrapper.vm.raiseSheet();
     expect(wrapper.vm.snap).eq('full');

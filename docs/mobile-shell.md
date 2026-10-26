@@ -469,8 +469,11 @@ the hand to sell) opens at `full`, a confirmation at `half`. It has three stops:
 There used to be a fourth, `peek`: a 46px "Your turn · Tap to open" handle left at
 the bottom of every pane. It read as a second screen half-hidden behind the first,
 and was removed. Tapping the head, the scrim or dragging it down now puts the sheet
-away entirely; the turn page's question row, the placement bar's **Actions** and
-the header's turn pill bring it back.
+away entirely; the turn page's question row and the header's turn pill bring it
+back. Every sheet has a second button for that: `Cancel` where the question may be
+backed out of (it is optional, or an option of a choice, which then comes back),
+and `Close` where it must be answered, so the hand or the board can be looked at
+first.
 
 Compute the stops in **pixels, not percentages**, from the sheet's measured
 height. The placement confirm bar also needs a higher `z-index` than the sheet.
@@ -745,7 +748,10 @@ Four places where the implementation departs from the plan above, and why.
   honours `hide_tile_confirmation`, but on the mobile layout it no longer opens
   `ConfirmDialog`: that dialog sat over the board, hiding the space it asked
   about. It offers the tap through `spaceSelection.offerPlacement`, and the bar
-  under the map turns from "Choose a space · Actions" into "Place here? ✕ ✓".
+  under the map turns from "Choose a space" into "Place here? ✕ ✓". Its way out
+  depends on where the placement came from: `Back` to the choice it is an option
+  of, `Cancel` to give up a menu entry the player opened (a greenery), and none
+  for a space the server asks for after something was already done.
   Tapping another blinking space simply moves the choice.
   While the bar asks, the tapped space shows the tile it would get, faded and
   pulsing, with the player's cube on it (`BoardSpace` reads the pending
@@ -759,6 +765,22 @@ Four places where the implementation departs from the plan above, and why.
   a nested `SelectSpace`, and the clicks are wired onto the board's DOM rather
   than declared in the model, so there is nothing else to watch. On that signal
   the shell switches to the board, scrolls it into view and closes the sheet.
+  `raiseSheet` checks it too: every answer redraws the shell from scratch, and a
+  second tile in a row (Ice Asteroid's two oceans) arrives with the selection
+  already open, so the watcher sees no change and the shell would otherwise open on
+  the turn page with the panel's bare "Select space".
+  A `SelectSpace` that goes away unwires the spaces it wired, so a placement given
+  up leaves nothing on the board that still answers it.
+
+- **A space as an option of a choice** (World Government Terraforming's ocean, the
+  final greeneries) is chosen in the choice sheet, then placed on the board by a
+  hidden `SelectSpace` in `MobilePlayerHome` that sends it as that option's answer.
+  The panel no longer draws a question one of the shell's sheets answers
+  (`hostsInput`): the desktop `OrOptions` behind the sheet would mount its first
+  option's `SelectSpace` and take the board away from the choice.
+
+- **Only the menu's own annotations make a menu.** World Government Terraforming
+  annotates its options for the computer opponent, and was drawn as the turn page.
 
 - **Played cards are a grid, not `StackedCards`.** A stacked card's only
   affordance is hover, which does not exist on a touch screen — the same

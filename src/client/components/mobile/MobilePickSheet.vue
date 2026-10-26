@@ -43,11 +43,10 @@
           data-test="pick-sheet-submit"
           @click="submit">{{ $t(question.buttonLabel) }}</button>
         <button
-          v-if="question.optional || entry !== undefined"
           type="button"
           class="mobile-play-sheet-button"
           data-test="pick-sheet-cancel"
-          @click="close">{{ $t('Cancel') }}</button>
+          @click="close">{{ $t((question.optional || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
       </div>
     </section>
   </div>
