@@ -140,7 +140,7 @@
       :offer="playing.offer"
       :position="playingIndex"
       :count="playList.length"
-      :choices="playSet === 'projects' ? playList.map((item) => item.card.name) : []"
+      :choices="playSet !== 'ready' ? playList.map((item) => item.card.name) : []"
       @choose="choose($event)"
       @next="turnCard(1)"
       @previous="turnCard(-1)"
@@ -216,6 +216,20 @@
       :entry="askingEntry"
       @close="closeAsking()"/>
 
+    <!-- Several numbers at once: resources spread over cards, production to lose. -->
+    <MobileUnitsSheet
+      v-if="asking === 'units'"
+      :playerView="playerView"
+      :entry="askingEntry"
+      @close="closeAsking()"/>
+
+    <!-- One of a short list: a standard resource, whose delegate to remove. -->
+    <MobilePickSheet
+      v-if="asking === 'pick'"
+      :playerView="playerView"
+      :entry="askingEntry"
+      @close="closeAsking()"/>
+
     <!-- A choice: whose plants to remove, whether to pay, which player loses production. -->
     <MobileChoiceSheet
       v-if="asking === 'choice'"
@@ -251,6 +265,8 @@ import MobileAmountSheet from '@/client/components/mobile/MobileAmountSheet.vue'
 import MobileChoiceSheet from '@/client/components/mobile/MobileChoiceSheet.vue';
 import MobileColonySheet from '@/client/components/mobile/MobileColonySheet.vue';
 import MobilePartySheet from '@/client/components/mobile/MobilePartySheet.vue';
+import MobilePickSheet from '@/client/components/mobile/MobilePickSheet.vue';
+import MobileUnitsSheet from '@/client/components/mobile/MobileUnitsSheet.vue';
 import MobilePaymentSheet from '@/client/components/mobile/MobilePaymentSheet.vue';
 import MobileCardChooser from '@/client/components/mobile/MobileCardChooser.vue';
 import MobileClaimSheet from '@/client/components/mobile/MobileClaimSheet.vue';
@@ -280,10 +296,11 @@ import {MobileView, SheetSnap} from '@/client/components/mobile/MobileView';
 import {Phase} from '@/common/Phase';
 import {PlayerViewModel, PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Preferences, getPreferences} from '@/client/utils/PreferencesManager';
-import {ReadyCard, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
+import {ReadyCard, askedCards, asksForCards, isActionMenu, readyCards, standardProjects} from '@/client/components/mobile/MobileActionMenu';
 import {isCardChoice} from '@/client/components/mobile/CardChooser';
 import {amountInput} from '@/client/components/mobile/AmountSheet';
-import {colonyInput, partyInput} from '@/client/components/mobile/PickSheet';
+import {colonyInput, partyInput, pickQuestion} from '@/client/components/mobile/PickSheet';
+import {unitsQuestion} from '@/client/components/mobile/UnitsSheet';
 import {NestedStep, choiceInput, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {paymentInput} from '@/client/components/mobile/PaymentSheet';
 import {SelectPaymentModel} from '@/common/models/PlayerInputModel';
@@ -301,7 +318,9 @@ type Overlay = 'players' | 'menu';
 
 type Claimable = {kind: 'milestone' | 'award', name: string};
 
-type PlaySet = 'ready' | 'projects';
+/* The ready cards, the standard projects, or the cards the server asks one of to be
+   played, as Eccentric Sponsor does. */
+type PlaySet = 'ready' | 'projects' | 'asked';
 
 type DataModel = {
   view: MobileView;
@@ -311,7 +330,7 @@ type DataModel = {
   magnifiedLine: LogEvent | undefined;
   /** The card being paid for and played, or used, in the play sheet. */
   playing: ReadyCard | undefined;
-  /** What a swipe in the play sheet moves through: the ready cards, or the standard projects. */
+  /** What a swipe in the play sheet moves through. */
   playSet: PlaySet;
   /** The colony in the trade sheet. */
   trading: ColonyName | undefined;
@@ -320,7 +339,7 @@ type DataModel = {
   /** The pick among cards in the card chooser: a menu entry's, or the waiting question's. */
   choosing: {entry: number | undefined} | undefined;
   /** The sheet of its own a plain question is answered in, while it is up. */
-  asking: 'amount' | 'choice' | 'payment' | 'party' | 'colony' | undefined;
+  asking: 'amount' | 'choice' | 'payment' | 'party' | 'colony' | 'units' | 'pick' | undefined;
   /** The option of the choice that sheet answers, when it was chosen in the choice sheet. */
   askingEntry: number | undefined;
   /** The milestone or award in the claim sheet. */
@@ -358,6 +377,8 @@ export default defineComponent({
     MobileBoardPane,
     MobileColonySheet,
     MobilePartySheet,
+    MobilePickSheet,
+    MobileUnitsSheet,
     MobileCardsPane,
     MobileFitBlock,
     MobileAmountSheet,
@@ -512,6 +533,9 @@ export default defineComponent({
         const waitingFor = this.playerView.waitingFor;
         return standardProjects(isActionMenu(waitingFor) ? waitingFor : undefined);
       }
+      if (this.playSet === 'asked') {
+        return askedCards(this.playerView.waitingFor);
+      }
       return this.ready;
     },
     /** Where the card in the play sheet sits among them. */
@@ -648,13 +672,21 @@ export default defineComponent({
     /* A choice between cards needs every card on screen; anything else leaves the
        board readable above it. */
     raiseSheet(): void {
+      // A card the server asks to be played is paid for in the play sheet, as one from the hand is.
+      const asked = askedCards(this.playerView.waitingFor);
+      if (asked.length > 0) {
+        this.setSnap('closed');
+        this.playSet = 'asked';
+        this.playing = asked[0];
+        return;
+      }
       // A plain pick among cards has a sheet of its own, every card at once.
       if (isCardChoice(this.playerView.waitingFor)) {
         this.setSnap('closed');
         this.choosing = {entry: undefined};
         return;
       }
-      // So do a number, a price and a choice between plain options.
+      // So do a number, a price, a party, a colony, resources and a choice between plain options.
       if (paymentInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
         this.asking = 'payment';
@@ -673,6 +705,16 @@ export default defineComponent({
       if (colonyInput(this.playerView.waitingFor) !== undefined) {
         this.setSnap('closed');
         this.asking = 'colony';
+        return;
+      }
+      if (unitsQuestion(this.playerView.waitingFor) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'units';
+        return;
+      }
+      if (pickQuestion(this.playerView.waitingFor, this.playerView.players) !== undefined) {
+        this.setSnap('closed');
+        this.asking = 'pick';
         return;
       }
       if (choiceInput(this.playerView.waitingFor) !== undefined || playerChoiceInput(this.playerView.waitingFor) !== undefined) {

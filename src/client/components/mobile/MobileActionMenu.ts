@@ -174,6 +174,19 @@ export function standardProjects(menu: OrOptionsModel | undefined): ReadonlyArra
     .map((card) => ({card, offer: 'play' as const}));
 }
 
+/**
+ * The cards the server asks for one of to be played, outside the menu -- Eccentric
+ * Sponsor's card, a prelude's free play -- each as the play sheet takes it.
+ */
+export function askedCards(input: PlayerInputModel | undefined): ReadonlyArray<ReadyCard> {
+  if (input?.type !== 'projectCard') {
+    return [];
+  }
+  return input.cards
+    .filter((card) => offerFor(input, card.name) === 'play')
+    .map((card) => ({card, offer: 'play' as const}));
+}
+
 /** What the shell knows that the menu itself does not. */
 export type MenuContext = {
   /** The card picked on the turn page or the Cards view, if any. */

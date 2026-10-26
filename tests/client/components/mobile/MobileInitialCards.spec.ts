@@ -127,7 +127,21 @@ describe('MobileInitialCards', () => {
     await component.find('[data-test="initial-submit"]').trigger('click');
 
     expect(savedData).is.undefined;
-    expect(component.vm.$refs.confirmation).to.have.nested.property('$data.shown', true);
+    expect(component.find('[data-test="initial-confirm"]').exists()).is.true;
+
+    await component.find('[data-test="initial-confirm-accept"]').trigger('click');
+    expect(savedData).to.not.be.undefined;
+  });
+
+  it('chooses cards with a tap, one corporation at a time', async () => {
+    const component = createComponent([CardName.ECOLINE, CardName.HELION], [CardName.ANTS]);
+    const corporations = component.find('[data-test="initial-pane-corporation"]').findAll('[data-test="card-picker-card"]');
+
+    await corporations[0].trigger('click');
+    await corporations[1].trigger('click');
+
+    expect(component.vm.selectedCorporations).to.deep.eq([CardName.HELION]);
+    expect(component.find('[data-test="initial-step-corporation"]').text()).to.contain('1/1');
   });
 });
 
@@ -148,7 +162,7 @@ function stepIds(component: Component): Array<string> {
 }
 
 function selectCards(component: Component) {
-  return component.findAllComponents({name: 'select-card'});
+  return component.findAllComponents({name: 'MobileCardPicker'});
 }
 
 function createComponent(corpCards: Array<CardName>, projectCards: Array<CardName>, preludeCards?: Array<CardName>, ceoCards?: Array<CardName>) {

@@ -110,6 +110,9 @@ mobile/MobileLogCards.vue               the cards a log line names, opened large
 mobile/MobileOverlay.vue                the sheet the players and the menu open in
 mobile/MobileIcon.vue, MobileIcons.ts   the Lucide icons the chrome draws, inlined
 mobile/MobileInitialCards.vue           the opening hand, one selection at a time
+mobile/MobileCardPicker.vue             cards side by side, chosen with a tap (the opening hand)
+mobile/MobileUnitsSheet.vue, UnitsSheet.ts  several numbers at once: resources, production
+mobile/MobilePickSheet.vue              one of a short list: a resource, a delegate
 mobile/MobileTagRow.vue                 tag counts, from the model's own totals
 mobile/MobileBoardPane.vue              the 620x600 stage, pinch, pan, zoom HUD
 mobile/MobileActionPanel.vue            WaitingFor: a sheet for an opened entry or a question
@@ -325,13 +328,32 @@ as when a card asks; a colony to build on opens in the colony sheet
 send it with the one blue button, and take an `entry` like the amount sheet when they
 answer an option of a choice (`PickSheet.ts`).
 
+**Several numbers at once.** Microbes spread over cards (`AddResourcesToCards`),
+Stormcraft's heat and floaters, Philares' standard resources and production to lose
+open in the units sheet (`MobileUnitsSheet.vue`): a row with − and + per card or
+resource, drawn like the payment sheet's. `UnitsSheet.unitsFor` reads an `and` made
+only of numbers, `resources` and `productionToLose` into the same rows. Where the rows
+must add up to a count, the count heads them, a + that would pass it is greyed and the
+button waits until they do. Production to lose offers only what the player has, M€
+down to -5, as the desktop does. `AddResourcesToCards` now titles its question with
+the count, since an `and` has no title of its own.
+
+**One of a short list.** A standard resource to gain and the delegate Banned Delegate
+removes open in the pick sheet (`MobilePickSheet.vue`): a row per resource with its
+icon, or per delegate with its owner's dot and name (`Neutral` in grey).
+
+**A card asked for directly.** When the server asks for a card to play outside the
+menu (Eccentric Sponsor, a prelude's free play), it opens in the play sheet like a
+card from the hand, with every card offered side by side (`askedCards`).
+
 **Choosing between options.** A question that is a choice opens in the choice sheet
 (`MobileChoiceSheet.vue`), for example whose plants to remove, or whether to pay.
 - So does a question that is which player something is done to (Birds, Hackers):
   a row per player, with the dot of their colour before their name.
-- An option that is itself a pick among cards, a number, a price, a party or a colony
-  (Mars University's card to discard, say) is chosen here with `Continue`, and
-  answered next in the card chooser, the amount, payment, party or colony sheet. Those take the option's index as
+- An option that is itself a pick among cards, a number, a price, a party, a colony,
+  numbers or a resource or delegate (Mars University's card to discard, say) is
+  chosen here with `Continue`, and answered next in the sheet that asks it
+  (`ChoiceSheet.nestedKind`). Those take the option's index as
   `entry` and send their answer as that option's (`{type: 'or', index, response}`),
   the way the card chooser already answered the turn menu's entries. An option of any
   other kind leaves the whole question to the generic sheet.
@@ -633,9 +655,14 @@ under the last of them, which at phone width is five screens of scrolling.
 `MobileInitialCards.vue` makes each selection a step. The step bar says what each
 one has against what it wants (`Preludes 1/2`), and a bar at the foot holds the
 starting megacredits, the total after preludes, and whatever is still missing.
-Every step stays mounted, because a `SelectCard` holds the player's picks itself.
+Every step stays mounted, because each picker holds the player's picks itself.
 
-The selections are the same `SelectCard` the desktop renders, and the arithmetic —
+The cards are drawn in `MobileCardPicker.vue`, the card chooser's grid: two to a row,
+a blue ring and a tick on a chosen card. A corporation tap moves the choice; preludes
+and project cards are added up to the most allowed, and a second tap puts one back.
+The step bar is the shell's segmented control, a count turning green once a step is
+complete, and starting with no project cards is confirmed in a sheet rather than the
+desktop's dialog. The arithmetic —
 the corporation-specific prelude bonuses, the card cost, the counts that decide
 whether the button may be pressed — is `components/InitialCards.ts`, which both
 components call. `PlayerInputFactory` swaps the component in the way it already
