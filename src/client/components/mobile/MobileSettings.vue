@@ -22,6 +22,24 @@
       </div>
       <div class="mobile-row">
         <span class="mobile-row-body mobile-setting">
+          <span class="mobile-row-title" v-i18n>Board style</span>
+          <span class="mobile-segmented" role="radiogroup">
+            <button
+              v-for="style in boardStyles"
+              :key="style"
+              type="button"
+              role="radio"
+              class="mobile-segmented-option"
+              :class="{'mobile-segmented-option--on': prefs.mobile_board_style === style}"
+              :aria-checked="prefs.mobile_board_style === style"
+              :data-test="'board-style-' + style"
+              @click="setMode('mobile_board_style', style)">{{ $t(modeLabel(style)) }}</button>
+          </span>
+          <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Board game looks like the printed board.</span>
+        </span>
+      </div>
+      <div class="mobile-row">
+        <span class="mobile-row-body mobile-setting">
           <label class="mobile-setting-head" for="mobile-card-scale">
             <span class="mobile-row-title" v-i18n>Card size</span>
             <span class="mobile-row-trailing">{{ cardScalePercent }}%</span>
@@ -117,7 +135,9 @@ import {
   BooleanPreference,
   MAX_CARD_SCALE,
   MIN_CARD_SCALE,
+  MOBILE_BOARD_STYLES,
   MOBILE_LAYOUT_MODES,
+  MobileBoardStyle,
   MobileLayoutMode,
   Preference,
   Preferences,
@@ -195,6 +215,8 @@ const MODE_LABELS: Record<string, string> = {
   off: 'Off',
   always: 'Always',
   never: 'Never',
+  modern: 'Modern',
+  boardgame: 'Board game',
 };
 
 type Refs = {
@@ -221,6 +243,9 @@ export default defineComponent({
     },
     mobileLayoutModes(): ReadonlyArray<MobileLayoutMode> {
       return MOBILE_LAYOUT_MODES;
+    },
+    boardStyles(): ReadonlyArray<MobileBoardStyle> {
+      return MOBILE_BOARD_STYLES;
     },
     /* The tags have the header's spare line to themselves, so they are simply on or
        off; a stored `always` reads as on. */
@@ -260,9 +285,13 @@ export default defineComponent({
       // stylesheets read these off the page, not off the preference.
       applyPreferenceClasses(this.prefs);
     },
-    setMode(name: 'mobile_layout' | 'tag_row', mode: string): void {
+    /* Each is applied on the `changed` the save emits: the shell re-reads the
+       preferences, so the board redraws in its new style without a reload. */
+    setMode(name: 'mobile_layout' | 'tag_row' | 'mobile_board_style', mode: string): void {
       if (name === 'mobile_layout') {
         this.prefs.mobile_layout = mode as MobileLayoutMode;
+      } else if (name === 'mobile_board_style') {
+        this.prefs.mobile_board_style = mode as MobileBoardStyle;
       } else {
         this.prefs.tag_row = mode as TagRowMode;
       }
