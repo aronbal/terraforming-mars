@@ -39,18 +39,37 @@
         v-show="view === 'board'"
         ref="boardPane"
         class="mobile-pane mobile-pane--board"
+        :class="{'mobile-pane--zoomed': boardFraming === 'zoomed'}"
         role="tabpanel"
         :aria-label="$t('Board')">
-        <MobileBoardPane
-          :game="game"
-          :tileView="tileView"
-          :tapTargets="tapTargets"
-          :backLabel="placementBack"
-          @toggleTileView="cycleTileView()"
-          @back="leavePlacement()"/>
+        <!-- In the board-game style the frame is drawn round the same board, which is
+             laid over the window it leaves for the planet. The board is never
+             remounted for a change of style: `SelectSpace` holds on to its spaces. -->
+        <div :class="{'mobile-bg-host': boardGame}">
+          <MobileBoardGame
+            v-if="boardGame"
+            :playerView="playerView"
+            :part="boardZoom"
+            :claimable="claimableMilestones"
+            :fundable="fundableAwards"
+            @zoomTo="zoomBoard($event)"
+            @claim="claimBoardThing"/>
+          <MobileBoardPane
+            ref="board"
+            :game="game"
+            :tileView="tileView"
+            :tapTargets="tapTargets"
+            :framing="boardFraming"
+            :backLabel="placementBack"
+            @toggleTileView="cycleTileView()"
+            @open="zoomBoard('planet')"
+            @close="zoomBoard('overview')"
+            @back="leavePlacement()"/>
+        </div>
 
         <div class="mobile-below" ref="below">
-          <div class="mobile-below-block">
+          <!-- The board-game frame prints them along its bottom edge instead. -->
+          <div v-if="!boardGame" class="mobile-below-block">
             <MobileMilestonesAwards
               :milestones="game.milestones"
               :awards="game.awards"
@@ -272,6 +291,7 @@ import {defineComponent, PropType} from 'vue';
 
 import Colony from '@/client/components/colonies/Colony.vue';
 import MobileActionPanel from '@/client/components/mobile/MobileActionPanel.vue';
+import MobileBoardGame from '@/client/components/mobile/MobileBoardGame.vue';
 import MobileBoardPane from '@/client/components/mobile/MobileBoardPane.vue';
 import MobileCardsPane from '@/client/components/mobile/MobileCardsPane.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
@@ -331,6 +351,7 @@ import {clearPickedEntry, pickEntry, pickFocused, setPickFocus} from '@/client/u
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {readViewport, standaloneGap} from '@/client/utils/standaloneHeight';
 import {selectingSpace} from '@/client/utils/spaceSelection';
+import {BoardFraming, BoardZoom, boxOf, flipFrame, playZoom} from '@/client/components/mobile/BoardGame';
 
 type Overlay = 'players' | 'menu';
 
@@ -370,6 +391,8 @@ type DataModel = {
   now: number;
   /** The screen height to fill on an iOS home screen whose viewport stops short. */
   screenGap: number;
+  /** What the board-game Board tab is zoomed into. */
+  boardZoom: BoardZoom;
 };
 
 /** Whether one of the shell's own sheets answers `input`, rather than the panel. */
@@ -406,6 +429,7 @@ export default defineComponent({
   components: {
     Colony,
     MobileActionPanel,
+    MobileBoardGame,
     MobileBoardPane,
     MobileColonySheet,
     MobilePartySheet,
@@ -455,6 +479,7 @@ export default defineComponent({
       logLoading: false,
       now: Date.now(),
       screenGap: 0,
+      boardZoom: 'overview',
     };
   },
   computed: {
@@ -522,6 +547,16 @@ export default defineComponent({
     },
     tapTargets(): boolean {
       return this.preferences.mobile_tap_targets;
+    },
+    /* The Board tab drawn as the printed board, which the player turns on in Settings. */
+    boardGame(): boolean {
+      return this.preferences.mobile_board_style === 'boardgame';
+    },
+    boardFraming(): BoardFraming {
+      if (!this.boardGame) {
+        return 'column';
+      }
+      return this.boardZoom === 'planet' ? 'zoomed' : 'picture';
     },
     /* The tags are what card requirements are judged against -- whether a card
        needing three science tags is worth drafting turns on them -- so they sit in
@@ -691,11 +726,22 @@ export default defineComponent({
       if (selecting) {
         // Get the sheet off the map, and the map in front of the player.
         this.showPlacement();
-      } else if (this.sheetInUse) {
+        return;
+      }
+      // The space is chosen, or given up: the board-game board is a picture again.
+      if (this.boardZoom === 'planet') {
+        this.zoomBoard('overview');
+      }
+      if (this.sheetInUse) {
         this.raiseSheet();
       } else {
         this.setSnap('closed');
       }
+    },
+    /* A style changed in Settings while a space is being chosen still leaves the map
+       in front, rather than a picture of it that takes no tap. */
+    boardGame(boardGame: boolean) {
+      this.boardZoom = boardGame && selectingSpace.value ? 'planet' : 'overview';
     },
     // Something happened in the game, so the log has something new to say.
     step() {
@@ -722,11 +768,48 @@ export default defineComponent({
       this.asking = undefined;
       this.askingEntry = undefined;
     },
-    /* The board, and nothing over it: a space is being chosen. */
+    /* The board, and nothing over it: a space is being chosen. In the board-game
+       style that is the planet zoomed in, since the overview only shows it as a
+       picture. */
     showPlacement(): void {
       this.view = 'board';
+      if (this.boardGame) {
+        this.zoomBoard('planet');
+      }
       this.scrollBoardPaneTo(0);
       this.setSnap('closed');
+    },
+    /*
+     * Zooms the board-game board into one of its parts, or back out.
+     *
+     * A panel zooms itself. The planet is the shell's own board, so it is zoomed here:
+     * measured where it is, laid out where it goes, fitted, and then drawn from where
+     * it was to where it is now, so it grows out of its window rather than jumping.
+     * Off screen there is nothing to measure, and it simply changes.
+     */
+    async zoomBoard(part: BoardZoom): Promise<void> {
+      if (part === this.boardZoom) {
+        return;
+      }
+      const planet = part === 'planet' || this.boardZoom === 'planet';
+      const board = this.$refs.board as InstanceType<typeof MobileBoardPane> | undefined;
+      const section = board?.$el as HTMLElement | undefined;
+      const first = boxOf(section);
+      const firstStage = boxOf(section?.querySelector('.mobile-board-stage'));
+      this.boardZoom = part;
+      // The zoomed planet fills the pane from its top, so the pane has to be there.
+      this.scrollBoardPaneTo(0);
+      if (!planet || board === undefined || section === undefined || first === undefined || firstStage === undefined || first.width === 0) {
+        return;
+      }
+      await this.$nextTick();
+      board.fit();
+      await this.$nextTick();
+      const last = boxOf(section);
+      const lastStage = boxOf(section.querySelector('.mobile-board-stage'));
+      if (last !== undefined && lastStage !== undefined) {
+        playZoom(section, flipFrame(first, last, {first: firstStage, last: lastStage}));
+      }
     },
     /* The placement bar's way out: back to the choice the space was chosen from, or
        the menu entry given up and the turn page back. */
@@ -922,6 +1005,11 @@ export default defineComponent({
         return;
       }
       this.selectView('board');
+      // The board-game board prints them along its foot, and zooms in on them there.
+      if (this.boardGame) {
+        this.zoomBoard('milestones');
+        return;
+      }
       this.$nextTick(() => {
         const below = this.$refs.below as HTMLElement | undefined;
         this.scrollBoardPaneTo(below?.offsetTop ?? 0);

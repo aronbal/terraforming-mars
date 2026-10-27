@@ -115,6 +115,10 @@ mobile/MobileUnitsSheet.vue, UnitsSheet.ts  several numbers at once: resources, 
 mobile/MobilePickSheet.vue              one of a short list: a resource, a delegate
 mobile/MobileTagRow.vue                 tag counts, from the model's own totals
 mobile/MobileBoardPane.vue              the 620x600 stage, pinch, pan, zoom HUD
+mobile/MobileBoardGame.vue              the board-game style: TR track, panels, zooms
+mobile/MobileMedalSheet.vue             a milestone or award tapped on that board
+mobile/MobileTrackSheet.vue             who is where on the TR track, best first
+mobile/BoardGame.ts                     track cells, markers, medal art, FLIP frames
 mobile/MobileActionPanel.vue            WaitingFor: a sheet for an opened entry or a question
 mobile/MobileActionList.vue             the entry that was opened, or the menu as grouped rows
 mobile/MobileActionMenu.ts              ready cards, tiles' entries, and the entries left over
@@ -157,6 +161,7 @@ New preference keys in `PreferencesManager.ts`:
 - `card_scale: number` (0.40–1.00)
 - `tag_row: 'auto' | 'always' | 'never'`
 - `mobile_tap_targets: boolean` (the 44px overlay)
+- `mobile_board_style: 'modern' | 'boardgame'` (the Board tab; see **The board-game style**)
 
 `card_tap`, `play_from` and `action_sheet_peek` belonged to the Act tab and went
 with it in the turn-page redesign. A value still in a player's storage is ignored.
@@ -210,6 +215,64 @@ what lies under it is always on screen and the column is scrolled from there. A
 tappable "Milestones & awards ▼" handle used to sit between the two; on a phone it
 read as clutter and was removed. The turn page's Milestones & awards tile still
 scrolls the column straight to them.
+
+### The board-game style
+
+Settings › Look › **Board style** switches the Board tab between `Modern`, the
+column above, which stays the default, and `Board game`, which draws the board the
+way it lies on the table. The change applies at once: `MobileSettings` emits
+`changed`, the shell re-reads the preferences, and nothing reloads.
+
+`MobileBoardGame.vue` is the frame, a 26 × 26 grid at the pane's width:
+
+- **The TR track** round the edge, 0 in the bottom-left corner and clockwise to 99,
+  as on the printed board (`trackCell` in `BoardGame.ts`). Every fifth step is gold.
+  Each player has a 16px marker in their colour with a light ring, larger than a
+  cube on the map, and with the colour-blind symbol when `symbol_overlay` is on.
+  Markers on the same step sit side by side towards the middle of the board. A
+  rating past 100 goes round again. A tap on the track or a marker opens
+  `MobileTrackSheet`: each player's name, colour and TR, best first.
+- **The planet** is the shell's one `MobileBoardPane`, laid over the window the frame
+  leaves for it with `framing="picture"`: no gestures, no HUD, scaled with a
+  transform. A second `Board` cannot be drawn for the picture, because `SelectSpace`
+  finds the spaces by id. Changing the style never remounts the board either.
+- **Milestones and Awards** along the foot, each a metal plate with its plaque, the
+  price coins (8 · 8 · 8, or 8 · 14 · 20), the spent ones greyed and the next one
+  ringed, and the medals three to a row. A medal shows the cube of whoever claimed or
+  funded it, and pulses when the turn offers it.
+
+Colonies, Turmoil, the Moon and Pathfinders stay below the frame as before. The
+modern list of milestones and awards is not drawn in this style, since the frame
+prints them.
+
+**Zooming.** The shell holds `boardZoom`: `overview`, `milestones`, `awards` or
+`planet`.
+- A panel tapped zooms up over the inside of the frame, the medals large with the
+  name on their bar, the rule, and the scores. Back, or a tap beside it, zooms out.
+- A medal tapped opens `MobileMedalSheet`: the medal, its rule, what it pays,
+  everyone's score, and `Claim` or `Fund` when the turn offers it. That button only
+  hands the medal on to `claimBoardThing`, so the claim sheet sends the answer
+  exactly as it does from the modern list.
+- The planet tapped zooms into the interactive board (`framing="zoomed"`), which
+  fills the pane with its pan, zoom, HUD and placement bar, and a `‹ Board` button
+  back out.
+- Every zoom is a FLIP: the element is laid out where it ends, then drawn from where
+  it started with one uniform scale and a clip, and animated to rest in 300ms on
+  `@m-ease` with the Web Animations API (`flipFrame` and `playZoom`). With
+  `prefers-reduced-motion` the zooms simply happen. The planet's FLIP lines up the
+  board inside the viewport rather than the viewport itself, so the map grows out of
+  its window without stretching.
+
+**Placement.** `showPlacement()` zooms to the planet in this style, so a space is
+always chosen on the interactive map; the `‹ Board` button is hidden while one is.
+When the selection ends — answered, Back to the choice, Cancel on a menu entry — the
+board goes back to the overview. After an accepted answer the shell is remounted
+anyway, and `raiseSheet()` puts a second ocean straight back on the zoomed planet.
+
+What is left out: the standard projects box printed on the physical board (the turn
+page has them), and any artwork of the physical board itself. The frame is drawn
+from the repository's own assets — the board, the medals, the M€ coin, the stars —
+and CSS (`mobile_board_game.less`).
 
 ## Navigation
 

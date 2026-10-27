@@ -1,6 +1,6 @@
 <template>
-  <div class="mobile-board-section">
-    <div ref="viewport" class="mobile-board-viewport" data-test="board-viewport">
+  <div class="mobile-board-section" :class="'mobile-board-section--' + framing" :data-test="'board-section-' + framing">
+    <div ref="viewport" class="mobile-board-viewport" data-test="board-viewport" :aria-hidden="framing === 'picture'">
       <div
         class="mobile-board-stage"
         :class="{'mobile-board-stage--tap-targets': tapTargets}"
@@ -20,17 +20,26 @@
           id="shortkey-board"/>
       </div>
 
-      <div class="mobile-board-readout mobile-num" data-test="zoom-readout">
+      <div v-if="framing !== 'picture'" class="mobile-board-readout mobile-num" data-test="zoom-readout">
         {{ zoomPercent }}% · {{ hexPixels }}px
       </div>
 
-      <div class="mobile-board-hud">
+      <div v-if="framing !== 'picture'" class="mobile-board-hud">
         <button class="mobile-hud-button" :aria-label="$t('Fit board to screen')" data-test="zoom-fit" @click="fit()"><small>FIT</small></button>
         <button class="mobile-hud-button" :aria-label="$t('Zoom in')" @click="zoomByStep(zoomStep)">+</button>
         <button class="mobile-hud-button" :aria-label="$t('Zoom out')" @click="zoomByStep(1 / zoomStep)">&minus;</button>
       </div>
 
-      <div v-if="selectingSpace" class="mobile-confirm-bar" data-test="placement-bar">
+      <!-- Zoomed in from the board-game overview: the way back out. A space being
+           chosen keeps the map, since the overview only shows it as a picture. -->
+      <button
+        v-if="framing === 'zoomed' && !selectingSpace"
+        type="button"
+        class="mobile-hud-button mobile-board-close"
+        data-test="board-close"
+        @click="$emit('close')">&lsaquo; <span v-i18n>Board</span></button>
+
+      <div v-if="selectingSpace && framing !== 'picture'" class="mobile-confirm-bar" data-test="placement-bar">
         <template v-if="pending !== undefined">
           <div class="mobile-confirm-title" v-i18n>Place here?</div>
           <button
@@ -56,6 +65,15 @@
         </template>
       </div>
     </div>
+
+    <!-- The board as a picture in the board-game frame: one tap zooms into it. -->
+    <button
+      v-if="framing === 'picture'"
+      type="button"
+      class="mobile-board-open"
+      :aria-label="$t('Zoom in')"
+      data-test="board-open"
+      @click="$emit('open')"></button>
   </div>
 </template>
 
@@ -66,6 +84,7 @@ import Board from '@/client/components/Board.vue';
 import {GameModel} from '@/common/models/GameModel';
 import {TileView} from '@/client/components/board/TileView';
 import {PendingPlacement, pendingPlacement, selectingSpace} from '@/client/utils/spaceSelection';
+import {BoardFraming} from '@/client/components/mobile/BoardGame';
 
 /*
  * The stage: the 620x600 board artwork plus the bleed `mobile_shell.less` leaves on
@@ -133,13 +152,17 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
+    framing: {
+      type: String as PropType<BoardFraming>,
+      default: 'column',
+    },
     /** What the placement bar's way out says, or undefined for a placement with none. */
     backLabel: {
       type: String,
       default: undefined,
     },
   },
-  emits: ['toggleTileView', 'back'],
+  emits: ['toggleTileView', 'back', 'open', 'close'],
   components: {
     Board,
   },

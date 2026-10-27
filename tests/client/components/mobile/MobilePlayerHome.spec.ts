@@ -239,6 +239,103 @@ describe('MobilePlayerHome', () => {
     expect(wrapper.vm.claiming).deep.eq({kind: 'award', name: 'Banker'});
   });
 
+  describe('board-game style', () => {
+    beforeEach(() => {
+      PreferencesManager.INSTANCE.set('mobile_board_style', 'boardgame');
+    });
+
+    it('draws the frame round the one board, with the milestones and awards on it', () => {
+      const wrapper = mount(claimMenu());
+      const frame = wrapper.findComponent({name: 'MobileBoardGame'});
+      expect(frame.props('claimable')).deep.eq(['Builder']);
+      expect(frame.props('fundable')).deep.eq(['Landlord', 'Banker']);
+      expect(wrapper.findComponent({name: 'MobileBoardPane'}).props('framing')).eq('picture');
+      expect(wrapper.findComponent({name: 'MobileMilestonesAwards'}).exists()).is.false;
+    });
+
+    it('zooms where the frame asks, and back', async () => {
+      const wrapper = mount(actionMenu());
+      wrapper.findComponent({name: 'MobileBoardGame'}).vm.$emit('zoomTo', 'milestones');
+      expect(wrapper.vm.boardZoom).eq('milestones');
+      wrapper.findComponent({name: 'MobileBoardPane'}).vm.$emit('open');
+      await wrapper.vm.$nextTick();
+      expect(wrapper.findComponent({name: 'MobileBoardPane'}).props('framing')).eq('zoomed');
+      wrapper.findComponent({name: 'MobileBoardPane'}).vm.$emit('close');
+      expect(wrapper.vm.boardZoom).eq('overview');
+    });
+
+    it('a medal claimed on the frame opens the claim sheet, as a row under the modern board does', () => {
+      const wrapper = mount(claimMenu());
+      wrapper.findComponent({name: 'MobileBoardGame'}).vm.$emit('claim', 'award', 'Banker');
+      expect(wrapper.vm.claiming).deep.eq({kind: 'award', name: 'Banker'});
+    });
+
+    it('goes straight to the planet for a placement, and back to the board once it is over', async () => {
+      const wrapper = mount(option('Pay 3 M€?'));
+      beginSpaceSelection();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.vm.view).eq('board');
+      expect(wrapper.vm.boardZoom).eq('planet');
+      expect(wrapper.findComponent({name: 'MobileBoardPane'}).props('framing')).eq('zoomed');
+
+      resetSpaceSelectionForTest();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.vm.boardZoom).eq('overview');
+    });
+
+    /* Each answer redraws the shell, so the second of two oceans arrives with the
+       space selection already open. */
+    it('opens on the planet when the shell is redrawn with a space still to choose', () => {
+      beginSpaceSelection();
+      const wrapper = mount({type: 'space', title: 'Select space for ocean tile', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel);
+      expect(wrapper.vm.view).eq('board');
+      expect(wrapper.vm.boardZoom).eq('planet');
+    });
+
+    it('leaves the planet when a space for an option of a choice is backed out of', async () => {
+      const space = {type: 'space', title: 'Add an ocean', buttonLabel: 'OK', spaces: []} as unknown as PlayerInputModel;
+      const wrapper = mount({type: 'or', title: 'World Government', buttonLabel: 'OK', options: [option('Increase temperature', 'temperature'), space]} as PlayerInputModel);
+      wrapper.vm.openNested({kind: 'space', index: 1});
+      beginSpaceSelection();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.vm.boardZoom).eq('planet');
+
+      wrapper.vm.leavePlacement();
+      resetSpaceSelectionForTest();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.vm.asking).eq('choice');
+      expect(wrapper.vm.boardZoom).eq('overview');
+    });
+
+    it('Milestones & awards with nothing to claim zooms into the milestones on the board', () => {
+      const wrapper = mount(actionMenu());
+      wrapper.vm.openMilestones();
+      expect(wrapper.vm.view).eq('board');
+      expect(wrapper.vm.boardZoom).eq('milestones');
+    });
+
+    it('changes style without a reload, keeping the one board', async () => {
+      const wrapper = mount(actionMenu());
+      const board = wrapper.findComponent({name: 'MobileBoardPane'});
+      PreferencesManager.INSTANCE.set('mobile_board_style', 'modern');
+      wrapper.vm.refreshPreferences();
+      await wrapper.vm.$nextTick();
+      expect(wrapper.findComponent({name: 'MobileBoardGame'}).exists()).is.false;
+      expect(wrapper.findComponent({name: 'MobileBoardPane'}).props('framing')).eq('column');
+      expect(wrapper.findComponent({name: 'MobileBoardPane'}).vm).eq(board.vm);
+      expect(wrapper.findComponent({name: 'MobileMilestonesAwards'}).exists()).is.true;
+    });
+  });
+
+  it('keeps the modern Board tab unless the board-game style is chosen', () => {
+    const wrapper = mount(actionMenu());
+    expect(wrapper.findComponent({name: 'MobileBoardGame'}).exists()).is.false;
+    expect(wrapper.findComponent({name: 'MobileBoardPane'}).props('framing')).eq('column');
+    beginSpaceSelection();
+    wrapper.vm.showPlacement();
+    expect(wrapper.vm.boardZoom).eq('overview');
+  });
+
   /* The menu with three colonies to trade with. */
   function tradeMenu(): PlayerInputModel {
     return menu(option('Pass for this generation', 'pass'), trade(['Luna', 'Io', 'Europa']));

@@ -6,6 +6,10 @@ export type MobileLayoutMode = typeof MOBILE_LAYOUT_MODES[number];
 export const TAG_ROW_MODES = ['auto', 'always', 'never'] as const;
 export type TagRowMode = typeof TAG_ROW_MODES[number];
 
+/** How the mobile Board tab draws the board: the shell's own column, or the physical board's frame. */
+export const MOBILE_BOARD_STYLES = ['modern', 'boardgame'] as const;
+export type MobileBoardStyle = typeof MOBILE_BOARD_STYLES[number];
+
 export const MIN_CARD_SCALE = 0.4;
 export const MAX_CARD_SCALE = 1;
 
@@ -33,6 +37,7 @@ export type Preferences = {
   experimental_ui: boolean,
   mobile_layout: MobileLayoutMode,
   tag_row: TagRowMode,
+  mobile_board_style: MobileBoardStyle,
   card_scale: number,
   mobile_tap_targets: boolean,
   lang: string,
@@ -66,6 +71,7 @@ const defaults: Preferences = {
 
   mobile_layout: 'auto',
   tag_row: 'auto',
+  mobile_board_style: 'modern',
   card_scale: 0.62,
   mobile_tap_targets: false,
 
@@ -79,7 +85,7 @@ const defaults: Preferences = {
  * `PreferencesDialog` renders every boolean preference as a switch and mirrors it onto a
  * `preferences_<name>` body class; these are the ones it has to leave alone.
  */
-const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'card_scale']);
+const NON_BOOLEAN_PREFERENCES: ReadonlySet<Preference> = new Set<Preference>(['lang', 'mobile_layout', 'tag_row', 'mobile_board_style', 'card_scale']);
 
 export type BooleanPreference = {[K in Preference]: Preferences[K] extends boolean ? K : never}[Preference];
 
@@ -155,6 +161,9 @@ export class PreferencesManager {
       break;
     case 'tag_row':
       this._values.tag_row = asMode(TAG_ROW_MODES, val, defaults.tag_row);
+      break;
+    case 'mobile_board_style':
+      this._values.mobile_board_style = asMode(MOBILE_BOARD_STYLES, val, defaults.mobile_board_style);
       break;
     case 'card_scale':
       this._values.card_scale = asCardScale(val);

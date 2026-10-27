@@ -3,7 +3,7 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
 import {FakeLocalStorage} from '../FakeLocalStorage';
-import {PreferencesManager, getPreferences} from '@/client/utils/PreferencesManager';
+import {PreferencesManager, getPreferences, isBooleanPreference} from '@/client/utils/PreferencesManager';
 
 describe('MobileSettings', () => {
   let localStorage: FakeLocalStorage;
@@ -37,6 +37,30 @@ describe('MobileSettings', () => {
     mount().vm.setMode('tag_row', 'never');
     expect(getPreferences().tag_row).eq('never');
     expect(localStorage.getItem('tag_row')).eq('never');
+  });
+
+  it('stores the board style, modern unless chosen otherwise', async () => {
+    const wrapper = mount();
+    expect(getPreferences().mobile_board_style).eq('modern');
+    expect(wrapper.find('[data-test="board-style-modern"]').classes()).contains('mobile-segmented-option--on');
+    await wrapper.find('[data-test="board-style-boardgame"]').trigger('click');
+    expect(getPreferences().mobile_board_style).eq('boardgame');
+    expect(localStorage.getItem('mobile_board_style')).eq('boardgame');
+    expect(wrapper.emitted('changed')).has.length(1);
+    expect(wrapper.find('[data-test="board-style-boardgame"]').attributes('aria-checked')).eq('true');
+  });
+
+  it('reads the board style back, and ignores one it does not know', () => {
+    localStorage.setItem('mobile_board_style', 'boardgame');
+    PreferencesManager.resetForTest();
+    expect(getPreferences().mobile_board_style).eq('boardgame');
+    localStorage.setItem('mobile_board_style', 'felt');
+    PreferencesManager.resetForTest();
+    expect(getPreferences().mobile_board_style).eq('modern');
+  });
+
+  it('keeps the board style out of the desktop dialog\'s switches', () => {
+    expect(isBooleanPreference('mobile_board_style')).is.false;
   });
 
   it('stores the card scale as a fraction', () => {
