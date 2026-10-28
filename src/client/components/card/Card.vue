@@ -214,26 +214,34 @@ export default defineComponent({
      * Publishes the card's own size, so the shell can reserve room for the scaled
      * card without scaling the card's type down with it. See `mobile_shell.less`.
      *
-     * `offsetWidth` and `offsetHeight` are the layout box, which a transform does not
-     * touch, so this reads the card's full size however small it is being drawn -- and
-     * the margins computed from it never feed back into the measurement.
+     * The size is the observer's border box, the layout box, which a transform does
+     * not touch: it is the card's full size however small it is being drawn -- and the
+     * margins computed from it never feed back into the measurement.
+     *
+     * Taking it from the observer rather than reading `offsetWidth` matters when many
+     * cards appear at once, as on the cards list: each read after another card's write
+     * forced a fresh layout of the whole page, so a thousand cards took a thousand
+     * layouts of a thousand cards, and the page never finished loading.
      */
-    publishNaturalSize(): void {
+    publishNaturalSize(entry: ResizeObserverEntry): void {
       const el = this.$el as HTMLElement | undefined;
       if (el === undefined || el.style === undefined) {
         return;
       }
+      const box = entry.borderBoxSize?.[0];
+      const width = box?.inlineSize ?? el.offsetWidth;
+      const height = box?.blockSize ?? el.offsetHeight;
       /*
        * A card in a pane the shell has mounted but not shown has no box at all, and
        * measures zero. Publishing that would ask the shell to reserve no room for it;
        * leaving the properties unset uses the printed card size until the pane is
        * opened, which is what the observer below is watching for.
        */
-      if (el.offsetWidth === 0 || el.offsetHeight === 0) {
+      if (width === 0 || height === 0) {
         return;
       }
-      el.style.setProperty('--card-natural-w', `${el.offsetWidth}px`);
-      el.style.setProperty('--card-natural-h', `${el.offsetHeight}px`);
+      el.style.setProperty('--card-natural-w', `${width}px`);
+      el.style.setProperty('--card-natural-h', `${height}px`);
     },
   },
   mounted() {
@@ -242,9 +250,9 @@ export default defineComponent({
     if (!mobileLayout.value || typeof ResizeObserver === 'undefined') {
       return;
     }
-    this.publishNaturalSize();
-    // A card grows when a resource counter or a victory point badge appears on it.
-    this.sizeObserver = new ResizeObserver(() => this.publishNaturalSize());
+    // The observer reports every card once as soon as it is laid out, and again when
+    // it grows, as when a resource counter or a victory point badge appears on it.
+    this.sizeObserver = new ResizeObserver((entries) => entries.forEach((entry) => this.publishNaturalSize(entry)));
     this.sizeObserver.observe(this.$el as HTMLElement);
   },
   unmounted() {
