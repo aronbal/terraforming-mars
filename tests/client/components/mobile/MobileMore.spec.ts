@@ -30,6 +30,10 @@ describe('MobileMore', () => {
     expect(wrapper.vm.view).eq('menu');
   });
 
+  it('offers to reload the page', () => {
+    expect(mount().find('[data-test="more-reload"]').exists()).is.true;
+  });
+
   it('links to the other games by their real routes', () => {
     const paths = mount().vm.gameLinks.map((link: {path: string}) => link.path);
     expect(paths).deep.eq(['/new-game', '/continue-game', '/games-overview']);
