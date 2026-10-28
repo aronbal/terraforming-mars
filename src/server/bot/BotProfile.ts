@@ -27,6 +27,15 @@ export type BotProfile = {
   personality: number;
 
   /**
+   * Chance that the bot notices any one option, where 1 sees everything.
+   *
+   * Below 1 the bot overlooks some cards in hand and sometimes forgets where the
+   * opponent could build, the way a human misses things rather than playing
+   * at random. See `Attention`.
+   */
+  attention: number;
+
+  /**
    * How accurately the bot prices production, where 1 is accurate.
    *
    * Below 1 the bot undervalues its engine and under-builds, which is the
@@ -67,6 +76,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
   easy: {
     temperature: 4,
     personality: 0.35,
+    attention: 0.6,
     productionWeight: 0.4,
     terraformWeight: 0.65,
     valuesSynergy: false,
@@ -79,6 +89,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
   medium: {
     temperature: 1.8,
     personality: 0.25,
+    attention: 0.8,
     productionWeight: 0.72,
     terraformWeight: 0.85,
     valuesSynergy: false,
@@ -91,6 +102,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
   hard: {
     temperature: 0.6,
     personality: 0.15,
+    attention: 0.95,
     productionWeight: 1.0,
     terraformWeight: 1.0,
     valuesSynergy: true,
@@ -103,6 +115,7 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
   insane: {
     temperature: 0,
     personality: 0.1,
+    attention: 1,
     productionWeight: 1.05,
     terraformWeight: 1.0,
     valuesSynergy: true,
