@@ -492,6 +492,37 @@ describe('GameLoader', () => {
     expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
   });
 
+  it('restorePreviousSave goes back to the save asked for', async () => {
+    for (const generation of [12, 13, 14]) {
+      game.generation = generation;
+      game.save();
+    }
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1, 2, 3]);
+
+    const newGame = await instance.restorePreviousSave(game.id, 1);
+    expect(newGame?.generation).eq(12);
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+  });
+
+  it('restorePreviousSave refuses the latest save, and one not stored', async () => {
+    game.generation = 12;
+    game.save();
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+
+    expect(await instance.restorePreviousSave(game.id, 1)).is.undefined;
+    expect(await instance.restorePreviousSave(game.id, 7)).is.undefined;
+    expect(await database.getSaveIds(game.id)).deep.eq([0, 1]);
+  });
+
+  it('getRecentSaves lists the latest saves, oldest first', async () => {
+    for (const generation of [12, 13, 14]) {
+      game.generation = generation;
+      game.save();
+    }
+    const saves = await instance.getRecentSaves(game.id, 2);
+    expect(saves.map((save) => [save.saveId, save.game.generation])).deep.eq([[2, 13], [3, 14]]);
+  });
+
   it('restorePreviousSave needs an earlier save', async () => {
     expect(await database.getSaveIds(game.id)).deep.eq([0]);
     expect(await instance.restorePreviousSave(game.id)).is.undefined;

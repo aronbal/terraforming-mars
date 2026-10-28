@@ -3,6 +3,12 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileMore from '@/client/components/mobile/MobileMore.vue';
 import {fakePlayerViewModel} from '../testHelpers';
+import {SaveModel} from '@/common/models/SaveModel';
+import {LogMessage} from '@/common/logs/LogMessage';
+import {LogMessageData} from '@/common/logs/LogMessageData';
+import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
+import {LogMessageType} from '@/common/logs/LogMessageType';
+import {CardName} from '@/common/cards/CardName';
 
 describe('MobileMore', () => {
   function mount() {
@@ -88,20 +94,33 @@ describe('MobileMore', () => {
     });
   });
 
-  describe('going back one save', () => {
-    let requested: Array<{url: string, method: string}>;
+  describe('going back to an earlier save', () => {
+    let requested: Array<{url: string, method: string | undefined}>;
     let realFetch: typeof global.fetch;
     let realConfirm: typeof window.confirm;
     let confirmed: boolean;
+    let saves: Array<SaveModel>;
+
+    function line(message: string, data: Array<LogMessageData>, timestamp: number): LogMessage {
+      return {message, data, timestamp, type: LogMessageType.DEFAULT};
+    }
 
     beforeEach(() => {
       requested = [];
       confirmed = true;
+      const now = Date.now();
+      saves = [
+        {saveId: 7, generation: 3, activePlayer: 'red', log: [line('${0} played ${1}', [
+          {type: LogMessageDataType.PLAYER, value: 'blue'},
+          {type: LogMessageDataType.CARD, value: CardName.COMET}], now - 5 * 60000)]},
+        {saveId: 6, generation: 3, activePlayer: 'blue', log: [line('Generation ${0}', [{type: LogMessageDataType.RAW_STRING, value: '3'}], now)]},
+      ];
       realFetch = global.fetch;
       realConfirm = window.confirm;
-      global.fetch = (async (url: string, options: {method: string}) => {
-        requested.push({url, method: options.method});
-        return {ok: true, status: 200, json: async () => fakePlayerViewModel()};
+      global.fetch = (async (url: string, options?: {method: string}) => {
+        requested.push({url, method: options?.method});
+        const body = url.startsWith('api/game/saves') ? saves : fakePlayerViewModel();
+        return {ok: true, status: 200, json: async () => body};
       }) as unknown as typeof global.fetch;
       window.confirm = () => confirmed;
     });
@@ -116,24 +135,47 @@ describe('MobileMore', () => {
       return {wrapper: shallowMount(MobileMore, {...globalConfig, props: {playerView}}), playerView};
     }
 
+    async function openSaves(wrapper: ReturnType<typeof mountAs>['wrapper']) {
+      await wrapper.find('[data-test="more-rollback"]').trigger('click');
+      await flushPromises();
+    }
+
     it('is offered to the game master only', () => {
       expect(mountAs(true).wrapper.find('[data-test="more-rollback"]').exists()).is.true;
       expect(mountAs(false).wrapper.find('[data-test="more-rollback"]').exists()).is.false;
     });
 
-    it('asks first, then goes back through the server', async () => {
+    it('lists the saves, each named by the move made just before it', async () => {
       const {wrapper, playerView} = mountAs(true);
-      await wrapper.find('[data-test="more-rollback"]').trigger('click');
+      await openSaves(wrapper);
+      expect(requested).deep.eq([{url: 'api/game/saves?id=' + playerView.id, method: undefined}]);
+      const rows = wrapper.findAll('[data-test="more-save"]');
+      expect(rows.map((row) => row.find('.mobile-row-title').text())).deep.eq(['Played Comet', 'Generation 3']);
+      expect(rows[0].find('.mobile-row-subtitle').text()).eq('Generation 3 · ' + playerView.players.find((p) => p.color === 'blue')?.name + ' · 5 min');
+    });
+
+    it('asks first, then goes back to the save picked', async () => {
+      const {wrapper, playerView} = mountAs(true);
+      await openSaves(wrapper);
+      await wrapper.findAll('[data-test="more-save"]')[1].trigger('click');
       await flushPromises();
-      expect(requested).deep.eq([{url: 'api/game/rollback?id=' + playerView.id, method: 'POST'}]);
+      expect(requested.at(-1)).deep.eq({url: 'api/game/rollback?id=' + playerView.id + '&saveId=6', method: 'POST'});
     });
 
     it('does nothing when the player thinks better of it', async () => {
       confirmed = false;
       const {wrapper} = mountAs(true);
-      await wrapper.find('[data-test="more-rollback"]').trigger('click');
+      await openSaves(wrapper);
+      await wrapper.findAll('[data-test="more-save"]')[0].trigger('click');
       await flushPromises();
-      expect(requested).is.empty;
+      expect(requested.map((request) => request.method)).deep.eq([undefined]);
+    });
+
+    it('says so when there is no earlier save', async () => {
+      saves = [];
+      const {wrapper} = mountAs(true);
+      await openSaves(wrapper);
+      expect(wrapper.find('[data-test="more-saves-empty"]').exists()).is.true;
     });
   });
 

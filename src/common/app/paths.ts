@@ -6,6 +6,7 @@ export const paths = {
   API_GAME_HISTORY: 'api/game/history',
   API_GAME_LOGS: 'api/game/logs',
   API_GAME_ROLLBACK: 'api/game/rollback',
+  API_GAME_SAVES: 'api/game/saves',
   API_GAME_UNDO: 'api/game/undo',
   API_GAMES: 'api/games',
   API_HEAP_SNAPSHOT: 'api/heapsnapshot',

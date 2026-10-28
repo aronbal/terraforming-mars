@@ -18,13 +18,13 @@
             v-if="canGoBack"
             class="mobile-row mobile-row--button"
             data-test="more-rollback"
-            :disabled="saving"
-            @click="goBack">
+            @click="openSaves">
             <span class="mobile-row-body">
               <span class="mobile-row-text">
-                <span class="mobile-row-title" v-i18n>Go back one save</span>
-                <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Further back than Undo: to the save before the last one. Only you, as the one who set up the game, can.</span>
+                <span class="mobile-row-title" v-i18n>Go back to an earlier save</span>
+                <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Further back than Undo: pick the move to go back to. Only you, as the one who set up the game, can.</span>
               </span>
+              <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
             </span>
           </button>
         </div>
@@ -58,6 +58,40 @@
       <p class="mobile-section-note" v-i18n>
         This game keeps running while you are away, and Continue a game lists the ones you
         have open on this device. These screens are still drawn for a desktop.
+      </p>
+    </template>
+
+    <!-- The saves to go back to, newest first, each named by the move made just before it. -->
+    <template v-else-if="view === 'saves'">
+      <div class="mobile-more-head">
+        <button class="mobile-plain-button" data-test="more-back" @click="view = 'menu'" v-i18n>Back</button>
+      </div>
+      <h3 class="mobile-eyebrow" v-i18n>Go back to just after</h3>
+      <p v-if="saves === undefined" class="mobile-section-note" data-test="more-saves-loading" v-i18n>Loading</p>
+      <p v-else-if="savesFailed" class="mobile-section-note" data-test="more-saves-failed" v-i18n>The saves could not be loaded. Try again in a moment.</p>
+      <p v-else-if="saveRows.length === 0" class="mobile-section-note" data-test="more-saves-empty" v-i18n>There is no earlier save to go back to.</p>
+      <div v-else class="mobile-list">
+        <button
+          v-for="row in saveRows"
+          :key="row.saveId"
+          class="mobile-row mobile-row--button"
+          data-test="more-save"
+          :disabled="saving"
+          @click="goBackTo(row.saveId)">
+          <span class="mobile-glyph" :class="row.glyphClass">
+            <MobileIcon :name="row.icon" :size="16"/>
+          </span>
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title">{{ row.title }}</span>
+              <span class="mobile-row-subtitle">{{ row.subtitle }}</span>
+            </span>
+          </span>
+        </button>
+      </div>
+      <p class="mobile-section-note" v-i18n>
+        Each save is the game just after the move shown. Going back to one takes back every
+        move made since, for everyone, and deletes the later saves.
       </p>
     </template>
 
@@ -96,9 +130,13 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
+import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
+import {LogPlayer, formatAgo, glyphClassOf, isEventLine, toEvent} from '@/client/components/mobile/MobileLog';
+import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {paths} from '@/common/app/paths';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
+import {SaveModel} from '@/common/models/SaveModel';
 import {requestPlayerView} from '@/client/utils/playerInputRequest';
 
 /*
@@ -112,8 +150,20 @@ type GameLink = {
   test: string;
 };
 
+/** An earlier save as a row: the move made just before it, and when and where in the game. */
+type SaveRow = {
+  saveId: number;
+  title: string;
+  subtitle: string;
+  icon: MobileIconName;
+  glyphClass: string;
+};
+
 type DataModel = {
-  view: 'menu' | 'settings';
+  view: 'menu' | 'settings' | 'saves';
+  /** The saves the game master can go back to, once they have come. */
+  saves: ReadonlyArray<SaveModel> | undefined;
+  savesFailed: boolean;
   /** While a change to the game's own settings is on its way to the server. */
   saving: boolean;
   /** Once the game's link is on the clipboard. */
@@ -131,11 +181,14 @@ export default defineComponent({
   },
   emits: ['settingsChanged'],
   components: {
+    MobileIcon,
     MobileSettings,
   },
   data(): DataModel {
     return {
       view: 'menu',
+      saves: undefined,
+      savesFailed: false,
       saving: false,
       copied: false,
     };
@@ -144,6 +197,36 @@ export default defineComponent({
     /* For the game master, while the game runs. */
     canGoBack(): boolean {
       return this.playerView !== undefined && this.playerView.isGameMaster && this.playerView.game.phase !== 'end';
+    },
+    saveRows(): ReadonlyArray<SaveRow> {
+      const players: ReadonlyArray<LogPlayer> = this.playerView?.players.map((player) => ({color: player.color, name: player.name})) ?? [];
+      const translate = (text: string) => this.$t(text);
+      const now = Date.now();
+      return (this.saves ?? []).map((save) => {
+        const generation = this.$t('Generation') + ' ' + save.generation;
+        const lines = save.log.filter(isEventLine);
+        const last = lines[lines.length - 1];
+        if (last === undefined) {
+          // A save with nothing done since the one before, as at the start of a generation.
+          const timestamp = save.log[save.log.length - 1]?.timestamp;
+          return {
+            saveId: save.saveId,
+            title: generation,
+            subtitle: timestamp === undefined ? '' : formatAgo(timestamp, now),
+            icon: 'undo-2',
+            glyphClass: glyphClassOf(undefined),
+          };
+        }
+        const event = toEvent(last, save.generation, lines.length - 1, players, translate);
+        const actor = players.find((player) => player.color === event.color)?.name;
+        return {
+          saveId: save.saveId,
+          title: event.title,
+          subtitle: [generation, actor, formatAgo(event.timestamp, now)].filter((part) => part !== undefined).join(' · '),
+          icon: event.icon,
+          glyphClass: glyphClassOf(event.color),
+        };
+      });
     },
     gameUrl(): string {
       return window.location.origin + '/' + paths.PLAYER + '?id=' + this.playerView?.id;
@@ -167,15 +250,40 @@ export default defineComponent({
         window.getSelection()?.selectAllChildren(this.$refs.url as HTMLElement);
       }
     },
-    /* The save gone back from is deleted, so this asks first. */
-    async goBack(): Promise<void> {
+    /* Fetched afresh each time, since every move makes another. */
+    async openSaves(): Promise<void> {
       const playerView = this.playerView;
-      if (playerView === undefined || !window.confirm(this.$t('Go back one save? The latest save is deleted, and every move made since is taken back.'))) {
+      if (playerView === undefined) {
+        return;
+      }
+      this.view = 'saves';
+      this.saves = undefined;
+      this.savesFailed = false;
+      try {
+        const response = await fetch(paths.API_GAME_SAVES + '?id=' + playerView.id);
+        if (response.ok) {
+          this.saves = await response.json();
+          return;
+        }
+        console.error(`error fetching the saves, response code ${response.status}`);
+      } catch (err) {
+        console.error('error fetching the saves, unable to reach server', err);
+      }
+      this.savesFailed = true;
+      this.saves = [];
+    },
+    /* The later saves are deleted, so this asks first. */
+    async goBackTo(saveId: number): Promise<void> {
+      const playerView = this.playerView;
+      if (playerView === undefined || !window.confirm(this.$t('Go back to this save? Every move made since is taken back, and the later saves are deleted.'))) {
         return;
       }
       this.saving = true;
       try {
-        await requestPlayerView(this, playerView, paths.API_GAME_ROLLBACK + '?id=' + playerView.id, {method: 'POST'});
+        const url = paths.API_GAME_ROLLBACK + '?id=' + playerView.id + '&saveId=' + saveId;
+        if (await requestPlayerView(this, playerView, url, {method: 'POST'})) {
+          this.view = 'menu';
+        }
       } finally {
         this.saving = false;
       }

@@ -79,6 +79,26 @@ describe('ApiGameRollback', () => {
     const model = JSON.parse(res.content);
     expect(model.game.generation).eq(3);
     expect(model.game.gameOptions.undoOption).is.true;
-    expect(earlier.gameLog[earlier.gameLog.length - 1].message).eq('${0} went back one save');
+    expect(earlier.gameLog[earlier.gameLog.length - 1].message).eq('${0} went back to an earlier save');
+  });
+
+  it('goes back to the save asked for', async () => {
+    const {game, player} = newGame('game-rollback', true);
+    await scaffolding.ctx.gameLoader.add(game);
+    const fake = scaffolding.ctx.gameLoader as FakeGameLoader;
+    fake.previousSaves.push(Game.deserialize(game.serialize()));
+
+    scaffolding.url = '/api/game/rollback?id=' + player.id + '&saveId=4';
+    await scaffolding.post(ApiGameRollback.INSTANCE, res);
+    expect(res.statusCode).eq(statusCode.ok);
+    expect(fake.restoredSaveIds).deep.eq([4]);
+  });
+
+  it('refuses a save id that is not one', async () => {
+    const {game, player} = newGame('game-rollback', true);
+    await scaffolding.ctx.gameLoader.add(game);
+    scaffolding.url = '/api/game/rollback?id=' + player.id + '&saveId=two';
+    await scaffolding.post(ApiGameRollback.INSTANCE, res);
+    expect(res.content).eq('Bad request: invalid save id');
   });
 });

@@ -1,6 +1,7 @@
 import {IGame} from '../IGame';
 import {PlayerId, GameId, SpectatorId} from '../../common/Types';
 import {GameIdLedger} from './IDatabase';
+import {SerializedGame} from '../SerializedGame';
 
 /**
  * Loads games from javascript memory or database
@@ -28,10 +29,15 @@ export interface IGameLoader {
    */
   restoreGameAt(gameId: GameId, saveId: number): Promise<IGame>;
   /**
-   * Reload a game at the save before its latest one, deleting the latest.
-   * Resolves undefined when there is no earlier save.
+   * Reload a game at an earlier save -- `saveId`, or else the one before the latest --
+   * deleting every save after it. Resolves undefined when that is not a stored save
+   * before the latest.
    */
-  restorePreviousSave(gameId: GameId): Promise<IGame | undefined>;
+  restorePreviousSave(gameId: GameId, saveId?: number): Promise<IGame | undefined>;
+  /**
+   * The game's latest saves, `count` at most, oldest first, each as it was saved.
+   */
+  getRecentSaves(gameId: GameId, count: number): Promise<Array<{saveId: number, game: SerializedGame}>>;
   /**
    * Mark a game to be purged from the cache. It will be
    * purged a a future call to `sweep`.
