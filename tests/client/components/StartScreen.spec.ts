@@ -30,6 +30,24 @@ describe('StartScreen', () => {
     }
   });
 
+  it('draws the arrows instead of typing them', () => {
+    const wrapper = mount(StartScreen, {...globalConfig});
+
+    // iOS turns a typed ↗ into a blue emoji tile.
+    for (const link of wrapper.findAll('.start-screen-link')) {
+      const arrow = link.find('.start-screen-link-arrow');
+      expect(arrow.element.tagName.toLowerCase()).eq('svg');
+      expect(arrow.text()).eq('');
+    }
+  });
+
+  it('leaves the language to the flag row', () => {
+    const wrapper = mount(StartScreen, {...globalConfig});
+
+    expect(wrapper.find('.language-switcher').exists()).is.true;
+    expect(wrapper.find('.corner-language-icon').exists()).is.false;
+  });
+
   it('numbers the entries', () => {
     const wrapper = mount(StartScreen, {...globalConfig});
 

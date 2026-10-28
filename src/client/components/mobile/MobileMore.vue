@@ -54,6 +54,28 @@
         </button>
       </div>
 
+      <!-- The rules and the news, read here: a new tab would leave the game. -->
+      <h3 class="mobile-eyebrow" v-i18n>Help</h3>
+      <div class="mobile-list">
+        <button
+          v-for="link in helpLinks"
+          :key="link.href"
+          type="button"
+          class="mobile-row mobile-row--button"
+          :data-test="link.test"
+          @click="openHelp(link.href)">
+          <span class="mobile-glyph mobile-glyph--neutral">
+            <MobileIcon :name="link.icon" :size="16"/>
+          </span>
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title">{{ $t(link.label) }}</span>
+            </span>
+            <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
+          </span>
+        </button>
+      </div>
+
       <h3 class="mobile-eyebrow" v-i18n>Games</h3>
       <div class="mobile-list">
         <a v-for="link in gameLinks" :key="link.path" class="mobile-row mobile-row--button" :href="link.path" :data-test="link.test">
@@ -145,6 +167,7 @@ import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
 import {LogPlayer, formatAgo, glyphClassOf, isEventLine, toEvent} from '@/client/components/mobile/MobileLog';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {paths} from '@/common/app/paths';
+import {HELP_PAGES, openReaderAt} from '@/client/components/reader/reader';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {SaveModel} from '@/common/models/SaveModel';
 import {requestPlayerView} from '@/client/utils/playerInputRequest';
@@ -157,6 +180,14 @@ import {requestPlayerView} from '@/client/utils/playerInputRequest';
 type GameLink = {
   label: string;
   path: string;
+  test: string;
+};
+
+/** A page of the wiki or the README, opened in the app's reader. */
+type HelpLink = {
+  label: string;
+  href: string;
+  icon: MobileIconName;
   test: string;
 };
 
@@ -241,6 +272,14 @@ export default defineComponent({
     gameUrl(): string {
       return window.location.origin + '/' + paths.PLAYER + '?id=' + this.playerView?.id;
     },
+    helpLinks(): ReadonlyArray<HelpLink> {
+      return [
+        {label: 'How to Play', href: HELP_PAGES.howToPlay, icon: 'book-open', test: 'more-help-rules'},
+        {label: 'Variants', href: HELP_PAGES.variants, icon: 'list', test: 'more-help-variants'},
+        {label: 'Whats new?', href: HELP_PAGES.changelog, icon: 'sparkles', test: 'more-help-changelog'},
+        {label: 'About us', href: HELP_PAGES.about, icon: 'info', test: 'more-help-about'},
+      ];
+    },
     gameLinks(): ReadonlyArray<GameLink> {
       return [
         {label: 'New game', path: '/' + paths.NEW_GAME, test: 'more-new-game'},
@@ -250,6 +289,9 @@ export default defineComponent({
     },
   },
   methods: {
+    openHelp(href: string): void {
+      openReaderAt(href);
+    },
     /* Where the clipboard is refused, the link is selected instead, for the phone's own Copy. */
     async copyLink(): Promise<void> {
       try {

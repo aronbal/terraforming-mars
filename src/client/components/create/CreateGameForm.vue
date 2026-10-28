@@ -1,5 +1,9 @@
 <template>
-        <div id="create-game" class="create-game">
+        <div id="create-game" class="create-game" :class="{'create-game--mobile': mobileLayout}">
+            <!-- On a phone the form is drawn like the game, with the way back where a phone expects it. -->
+            <div v-if="mobileLayout" class="mobile-more-head">
+                <a class="mobile-plain-button create-game-back" href="/" data-test="create-game-back">&lsaquo; {{ $t('Back') }}</a>
+            </div>
             <div class="create-game-eyebrow" v-i18n>{{ constants.APP_NAME }}</div>
             <h1 v-i18n>Create New Game</h1>
             <div class="changelog"><a :href="wikiUrls.changelog" class="tooltip" v-i18n data-tooltip="Link opens in a new tab/window" target="_blank"><u v-i18n>Read our changelog to get the latest updates.</u></a></div>
@@ -574,7 +578,7 @@
                   :hint="'Start typing the card name to include'"
               />
             </div>
-          <div class="free-floating-preferences-icon">
+          <div v-if="!mobileLayout" class="free-floating-preferences-icon">
             <PreferencesIcon/>
           </div>
         </div>
@@ -599,6 +603,7 @@ import ColoniesFilter from '@/client/components/create/ColoniesFilter.vue';
 import {ColonyName} from '@/common/colonies/ColonyName';
 import CardsFilter from '@/client/components/create/CardsFilter.vue';
 import AppButton from '@/client/components/common/AppButton.vue';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
 import {playerColorClass} from '@/common/utils/utils';
 import {RandomMAOptionType} from '@/common/ma/RandomMAOptionType';
 import {GameId, JSONObject} from '@/common/Types';
@@ -719,6 +724,9 @@ export default defineComponent({
       ?.setAttribute('content', this.previousViewport);
   },
   computed: {
+    mobileLayout(): boolean {
+      return mobileLayout.value;
+    },
     wikiUrls(): typeof RULEBOOK_URLS & typeof WIKI_URLS {
       return {...RULEBOOK_URLS, ...WIKI_URLS};
     },

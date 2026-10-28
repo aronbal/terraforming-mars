@@ -9,6 +9,7 @@ import {LogMessageData} from '@/common/logs/LogMessageData';
 import {LogMessageDataType} from '@/common/logs/LogMessageDataType';
 import {LogMessageType} from '@/common/logs/LogMessageType';
 import {CardName} from '@/common/cards/CardName';
+import {closeReader, readerStack} from '@/client/components/reader/reader';
 
 describe('MobileMore', () => {
   function mount() {
@@ -37,6 +38,16 @@ describe('MobileMore', () => {
   it('links to the other games by their real routes', () => {
     const paths = mount().vm.gameLinks.map((link: {path: string}) => link.path);
     expect(paths).deep.eq(['/new-game', '/continue-game', '/games-overview']);
+  });
+
+  it('opens the rules in the reader, not in a new tab', async () => {
+    const wrapper = mount();
+    await wrapper.find('[data-test="more-help-rules"]').trigger('click');
+    try {
+      expect(readerStack.value.map((page) => page.title)).deep.eq(['Rulebooks']);
+    } finally {
+      closeReader();
+    }
   });
 
   describe('the link to this game', () => {
