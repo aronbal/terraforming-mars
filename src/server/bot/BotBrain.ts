@@ -29,7 +29,8 @@ import {SelectClaimedUndergroundToken} from '../inputs/SelectClaimedUndergroundT
 import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
 import {BotProfile, profileFor, weightsOf} from './BotProfile';
-import {BotPersonality, personalityOf} from './BotPersonality';
+import {BotPersonality} from './BotPersonality';
+import {playStyleOf} from './BotStrategy';
 import {BotRandom} from './BotRandom';
 import {PlayableCard, planPaymentFor} from './CardPayment';
 import {planPayment} from './PaymentPlanner';
@@ -70,9 +71,9 @@ export class BotBrain {
     difficulty: BotDifficulty,
     private readonly random: BotRandom = new BotRandom()) {
     this.profile = profileFor(difficulty);
-    this.personality = personalityOf(player, this.profile);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
+    this.personality = playStyleOf(player, this.profile, this.tempo);
     this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
     this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.personality);
   }

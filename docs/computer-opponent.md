@@ -81,6 +81,17 @@ and player ids, so it is stable for the whole game and across restarts, and
 different from game to game. `personality` in the profile sets how strong the
 taste is: easy 0.35, medium 0.25, hard 0.15, insane 0.1.
 
+On top of the personality, `BotStrategy.playStyleOf` gives the bot a plan for
+each decision. Its two focus tags (whose cards it overrates by at least 8%) are
+a weighted vote: the corporation's tags and its known style (Ecoline plants and
+greeneries, Tharsis cities, PhoboLog space, and so on) count most at the start
+and fade as Mars is terraformed, while every tag played (preludes and CEOs
+included) and every tag in hand adds to it. When the cards do not follow the
+corporation, the vote moves and so does the plan. A/B against the personality
+alone over 120 games: medium 52%, hard 51%, insane 50%, so it costs nothing.
+A stronger focus bonus (18%) did not make the main tags of Hard's games more
+varied, which the card supply decides, and cost about 4 VP a game.
+
 There is no tree search. Cloning a game to try moves is not reliable here,
 because `Game.serialize` deliberately drops the deferred-action queue, so a
 clone taken mid-action is not the position it came from. The bot is a tuned
