@@ -11,6 +11,8 @@ import {Space} from '../../src/server/boards/Space';
 import {SpaceType} from '../../src/common/boards/SpaceType';
 import {TileType} from '../../src/common/TileType';
 import {Phase} from '../../src/common/Phase';
+import {Attention} from '../../src/server/bot/Attention';
+import {BotRandom} from '../../src/server/bot/BotRandom';
 
 const lateGame: Tempo = {progress: 0.9, remainingGenerations: 1, endgame: true};
 const midGame: Tempo = {progress: 0.5, remainingGenerations: 5, endgame: false};
@@ -31,6 +33,16 @@ function openLandSpace(player: IPlayer): Space {
 function plantGreenery(space: Space, owner: IPlayer): void {
   space.tile = {tileType: TileType.GREENERY};
   space.player = owner;
+}
+
+/** Surrounds one neighbour of `space` with greeneries, so it is already a strong city space. */
+function ringNeighbour(space: Space, owner: IPlayer): void {
+  const board = owner.game.board;
+  const [hot, ...rest] = board.getAdjacentSpaces(space);
+  board.getAdjacentSpaces(hot)
+    .filter((candidate) => candidate.id !== space.id && rest.includes(candidate) === false)
+    .slice(0, 3)
+    .forEach((candidate) => plantGreenery(candidate, owner));
 }
 
 describe('SpaceEvaluator', () => {
@@ -64,12 +76,7 @@ describe('SpaceEvaluator', () => {
     const [game, player, opponent] = testGame(2);
     const profile = profileFor('hard');
     const space = openLandSpace(player);
-    const [hot, ...rest] = game.board.getAdjacentSpaces(space);
-    // Surround one neighbour with greeneries so it is already a strong city space.
-    game.board.getAdjacentSpaces(hot)
-      .filter((candidate) => candidate.id !== space.id && rest.includes(candidate) === false)
-      .slice(0, 3)
-      .forEach((candidate) => plantGreenery(candidate, opponent));
+    ringNeighbour(space, opponent);
 
     const during = scoreSpace(player, space, TileType.GREENERY, midGame, profile);
     // Once the final greeneries are being placed, nobody can build a city to exploit it.
@@ -77,5 +84,17 @@ describe('SpaceEvaluator', () => {
     const final = scoreSpace(player, space, TileType.GREENERY, midGame, profile);
 
     expect(final - during).to.be.greaterThan(VP_VALUE);
+  });
+
+  it('forgets the opponent\'s next city when it does not notice it', () => {
+    const [/* game */, player, opponent] = testGame(2);
+    const profile = profileFor('hard');
+    const space = openLandSpace(player);
+    ringNeighbour(space, opponent);
+
+    const aware = scoreSpace(player, space, TileType.GREENERY, midGame, profile);
+    const unaware = scoreSpace(player, space, TileType.GREENERY, midGame, profile, new Attention(0, new BotRandom(1)));
+
+    expect(unaware - aware).to.be.greaterThan(VP_VALUE);
   });
 });
