@@ -57,6 +57,14 @@
       <div v-for="resource in resources" :key="resource.type" class="mobile-resource" :data-test="'resource-' + resource.type">
         <span class="mobile-resource-badged">
           <i class="resource_icon mobile-resource-icon" :class="'resource_icon--' + resource.type"></i>
+          <!-- What one is worth in M€, on the coin it pays as, marked once an effect
+               has raised it. -->
+          <span
+            v-if="resource.value !== undefined"
+            class="mobile-resource-value"
+            :class="{'mobile-resource-value--raised': resource.raised}"
+            :aria-label="resource.value + ' M€'"
+            data-test="resource-value">{{ resource.value }}</span>
           <span
             v-if="resource.production !== 0"
             class="mobile-resource-production"
@@ -81,6 +89,7 @@ import MobileTagRow from '@/client/components/mobile/MobileTagRow.vue';
 import {GameModel} from '@/common/models/GameModel';
 import {PublicPlayerModel} from '@/common/models/PlayerModel';
 import {Resource} from '@/common/Resource';
+import {CardName} from '@/common/cards/CardName';
 
 /*
  * The shell's header: whose turn it is, how far Mars has come, what the player has,
@@ -108,6 +117,10 @@ type ResourceReadout = {
   type: Resource;
   count: number;
   production: number;
+  /** What one pays in M€, for the resources that pay for things. */
+  value?: number;
+  /** Whether an effect has made it worth more than it is to begin with. */
+  raised?: boolean;
 };
 
 // The ring's circumference, for a radius of 14 in its 32-unit box.
@@ -199,12 +212,25 @@ export default defineComponent({
       const player = this.player;
       return [
         {type: Resource.MEGACREDITS, count: player.megacredits, production: player.megacreditProduction},
-        {type: Resource.STEEL, count: player.steel, production: player.steelProduction},
-        {type: Resource.TITANIUM, count: player.titanium, production: player.titaniumProduction},
+        {
+          type: Resource.STEEL, count: player.steel, production: player.steelProduction,
+          value: player.steelValue, raised: player.steelValue > constants.DEFAULT_STEEL_VALUE,
+        },
+        {
+          type: Resource.TITANIUM, count: player.titanium, production: player.titaniumProduction,
+          value: player.titaniumValue, raised: player.titaniumValue > constants.DEFAULT_TITANIUM_VALUE,
+        },
         {type: Resource.PLANTS, count: player.plants, production: player.plantProduction},
         {type: Resource.ENERGY, count: player.energy, production: player.energyProduction},
-        {type: Resource.HEAT, count: player.heat, production: player.heatProduction},
+        {
+          type: Resource.HEAT, count: player.heat, production: player.heatProduction,
+          // Helion pays with heat as M€, as the desktop's resource panel shows.
+          value: this.heatPays ? 1 : undefined,
+        },
       ];
+    },
+    heatPays(): boolean {
+      return this.player.tableau.some((card) => card.name === CardName.HELION);
     },
   },
   methods: {

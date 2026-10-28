@@ -1745,6 +1745,28 @@ html:has(> body.mobile-shell-active),
   .m-tabular();
 }
 
+// What one is worth, on the M€ coin in the icon's top corner, opposite the production.
+.mobile-resource-value {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  background: url("./assets/resources/megacredit.png") center / contain no-repeat;
+  color: #000;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  .m-tabular();
+}
+
+// Raised by an effect: ringed, so the better rate is seen without remembering the usual one.
+.mobile-resource-value--raised {
+  box-shadow: 0 0 0 1.5px @m-ok;
+}
+
 .mobile-resource-production--negative {
   color: @m-bad;
 }

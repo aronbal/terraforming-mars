@@ -3,6 +3,7 @@ import {expect} from 'chai';
 import {globalConfig} from '../getLocalVue';
 import MobileHeader from '@/client/components/mobile/MobileHeader.vue';
 import {fakeGameModel, fakeGameOptionsModel, fakePublicPlayerModel} from '../testHelpers';
+import {CardName} from '@/common/cards/CardName';
 
 describe('MobileHeader', () => {
   function mount(venus: boolean) {
@@ -68,6 +69,26 @@ describe('MobileHeader', () => {
     const wrapper = mount(false);
     expect(wrapper.find('[data-test="resource-megacredits"] [data-test="resource-production"]').text()).eq('+3');
     expect(wrapper.find('[data-test="resource-steel"] [data-test="resource-production"]').exists()).is.false;
+  });
+
+  it('shows what steel and titanium are worth, and marks a raised rate', async () => {
+    const wrapper = mount(false);
+    expect(wrapper.find('[data-test="resource-steel"] [data-test="resource-value"]').text()).eq('2');
+    expect(wrapper.find('[data-test="resource-titanium"] [data-test="resource-value"]').text()).eq('3');
+    expect(wrapper.find('[data-test="resource-plants"] [data-test="resource-value"]').exists()).is.false;
+    expect(wrapper.find('[data-test="resource-heat"] [data-test="resource-value"]').exists()).is.false;
+    expect(wrapper.find('.mobile-resource-value--raised').exists()).is.false;
+
+    await wrapper.setProps({player: {...wrapper.vm.player, titaniumValue: 4}});
+    const titanium = wrapper.find('[data-test="resource-titanium"] [data-test="resource-value"]');
+    expect(titanium.text()).eq('4');
+    expect(titanium.classes()).contains('mobile-resource-value--raised');
+  });
+
+  it('shows heat worth 1 M€ with Helion', async () => {
+    const wrapper = mount(false);
+    await wrapper.setProps({player: {...wrapper.vm.player, tableau: [{name: CardName.HELION}]}});
+    expect(wrapper.find('[data-test="resource-heat"] [data-test="resource-value"]').text()).eq('1');
   });
 
   /* The views are in the tab bar at the bottom; the tags took their place. */
