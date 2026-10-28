@@ -29,8 +29,10 @@ import {SelectClaimedUndergroundToken} from '../inputs/SelectClaimedUndergroundT
 import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
 import {BotProfile, BotProfileOverride, resolveProfile, weightsOf} from './BotProfile';
-import {BotPersonality, personalityOf} from './BotPersonality';
+import {BotPersonality} from './BotPersonality';
+import {playStyleOf} from './BotStrategy';
 import {BotRandom} from './BotRandom';
+import {Attention} from './Attention';
 import {PlayableCard, planPaymentFor} from './CardPayment';
 import {planPayment} from './PaymentPlanner';
 import {ActionScorer} from './evaluate/ActionScorer';
@@ -68,6 +70,7 @@ export class BotBrain {
   private actions: ActionScorer;
   private readonly weights: ValueWeights;
   private readonly goals: GoalPlanner | undefined;
+  private readonly attention: Attention;
 
   constructor(
     private readonly player: IPlayer,
@@ -75,9 +78,10 @@ export class BotBrain {
     private readonly random: BotRandom = new BotRandom(),
     override?: BotProfileOverride) {
     this.profile = resolveProfile(difficulty, override);
-    this.personality = personalityOf(player, this.profile);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
+    this.personality = playStyleOf(player, this.profile, this.tempo);
+    this.attention = new Attention(this.profile.attention, random);
     this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
     this.goals = this.profile.planning.goals ?
       new GoalPlanner(player, this.profile, this.tempo, this.personality) :
@@ -87,7 +91,7 @@ export class BotBrain {
 
   private newActionScorer(): ActionScorer {
     const goal = this.goals?.context(this.player.botMemory);
-    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, {goal});
+    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal});
   }
 
   /**
@@ -333,12 +337,10 @@ export class BotBrain {
   }
 
   private respondToCardToPlay(input: SelectCardToPlay<PlayableCard>): InputResponse {
-    const playable = input.cards
-      .map((card, index) => ({card, index}))
-      .filter((entry) => input.enabled?.[entry.index] !== false)
+    const playable = this.actions.consideredCards(input)
       .map((entry) => ({
         card: entry.card,
-        score: this.perturbed(this.actions.valueOfPlayingFromMenu(input, entry.card)),
+        score: this.perturbed(entry.value),
         payment: planPaymentFor(this.player, input, entry.card),
       }))
       .filter((entry) => entry.payment !== undefined)
@@ -356,7 +358,7 @@ export class BotBrain {
   private respondToSpace(input: SelectSpace): InputResponse {
     const tileType = this.tileTypeOf(input);
     const scores = input.spaces.map((space) =>
-      scoreSpace(this.player, space, tileType, this.tempo, this.profile));
+      scoreSpace(this.player, space, tileType, this.tempo, this.profile, this.attention));
     const index = this.chooseIndex(scores);
     return {type: 'space', spaceId: input.spaces[index].id};
   }

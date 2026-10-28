@@ -1,5 +1,6 @@
 import {IMilestone} from './IMilestone';
 import {IPlayer} from '../IPlayer';
+import {IGame} from '../IGame';
 import {Turmoil} from '../turmoil/Turmoil';
 
 export class Terraformer implements IMilestone {
@@ -13,9 +14,11 @@ export class Terraformer implements IMilestone {
   public getScore(player: IPlayer): number {
     return player.terraformRating;
   }
+  /** The terraform rating this milestone needs in `game`. */
+  public targetRating(game: IGame): number {
+    return Turmoil.ifTurmoilElse(game, () => this.terraformRatingTurmoil, () => this.terraformRating);
+  }
   public canClaim(player: IPlayer): boolean {
-    const target = Turmoil.ifTurmoilElse(player.game, () => this.terraformRatingTurmoil, () => this.terraformRating);
-    const score = this.getScore(player);
-    return score >= target;
+    return this.getScore(player) >= this.targetRating(player.game);
   }
 }

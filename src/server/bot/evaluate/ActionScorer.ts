@@ -12,18 +12,15 @@ import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} fro
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
 import {BotPersonality, NEUTRAL_PERSONALITY} from '../BotPersonality';
+import {Attention} from '../Attention';
 import {CardEvaluator} from './CardEvaluator';
+import {MilestonesAndAwards} from './MilestonesAndAwards';
 import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 import {GoalContext} from '../plan/GoalPlanner';
 import {inPurseTerms} from '../plan/Economy';
 import {Payment} from '../../../common/inputs/Payment';
-
-/** Points awarded for claiming a milestone or winning an award. */
-const MILESTONE_POINTS = 5;
-const AWARD_FIRST_PLACE_POINTS = 5;
-const AWARD_SECOND_PLACE_POINTS = 2;
 
 /** What the bot assumes an unremarkable tile placement is worth in bonuses. */
 const TILE_PLACEMENT_VALUE = 2.5;
@@ -36,9 +33,6 @@ const MIN_MONEY_VALUE = 0.3;
 
 /** Most the endgame race can shift the value of terraforming, either way. */
 const MAX_CLOSING_SWING = 7;
-
-/** What an award lead is worth at the very start of the game, as a fraction. */
-const MINIMUM_AWARD_CERTAINTY = 0.25;
 
 /**
  * Scores an entry in the action menu, in megacredits.
@@ -62,11 +56,14 @@ export class ActionScorer {
     private readonly tempo: Tempo,
     private readonly cards: CardEvaluator,
     private readonly personality: BotPersonality = NEUTRAL_PERSONALITY,
+    private readonly attention: Attention = Attention.FULL,
     private readonly planning: ScorerPlanning = {}) {
     this.weights = weightsOf(profile);
+    this.contests = new MilestonesAndAwards(player, profile, tempo);
   }
 
   private readonly weights: ValueWeights;
+  private readonly contests: MilestonesAndAwards;
   private cachedMargin: number | undefined;
 
   /**
@@ -89,16 +86,29 @@ export class ActionScorer {
   /**
    * How keen the bot is to bring the game to a close.
    *
-   * Raising the last global parameters ends the game. That is worth doing when
-   * ahead and worth avoiding when behind, so this shifts the value of any
-   * action that terraforms once the end is in sight.
+   * Raising the last global parameters ends the game. When ahead, every step
+   * toward that is worth a little more. When behind, only the step that
+   * finishes Mars is held back: refusing ordinary terraforming just gives up
+   * points while the leader closes the game anyway.
    */
   private closingAdjustment(): number {
-    if (this.profile.playsAgainstOpponent === false || this.tempo.endgame === false) {
+    if (this.profile.timesTheEnd === false || this.tempo.endgame === false) {
       return 0;
     }
     const margin = this.scoreMargin();
-    return Math.max(-MAX_CLOSING_SWING, Math.min(MAX_CLOSING_SWING, margin * 0.6));
+    if (margin >= 0) {
+      return Math.min(MAX_CLOSING_SWING, margin * 0.6);
+    }
+    return this.stepsToFinishMars() <= 1 ? Math.max(-MAX_CLOSING_SWING, margin * 0.6) : 0;
+  }
+
+  /** How many steps of temperature, oxygen and oceans are left before the game ends. */
+  private stepsToFinishMars(): number {
+    const game = this.player.game;
+    const oceans = game.board.spaces.filter((space) => space.tile?.tileType === TileType.OCEAN).length;
+    return Math.max(0, (MAX_TEMPERATURE - game.getTemperature()) / 2) +
+      Math.max(0, MAX_OXYGEN_LEVEL - game.getOxygenLevel()) +
+      Math.max(0, MAX_OCEAN_TILES - oceans);
   }
 
   public score(option: PlayerInput): number {
@@ -173,46 +183,15 @@ export class ActionScorer {
     if (this.profile.racesMilestones === false) {
       return PASS_SCORE / 2;
     }
-    const cost = this.player.milestoneCost();
-    return MILESTONE_POINTS * VP_VALUE - cost + this.goalPenalty(cost);
+    return this.contests.bestMilestoneValue() + this.goalPenalty(this.player.milestoneCost());
   }
 
   private awardScore(): number {
     if (this.profile.racesMilestones === false) {
       return PASS_SCORE / 2;
     }
-    const game = this.player.game;
-    const cost = 8 + game.fundedAwards.length * 6;
-    let best = Number.NEGATIVE_INFINITY;
-    for (const award of game.awards) {
-      if (game.hasBeenFunded(award)) {
-        continue;
-      }
-      best = Math.max(best, this.awardValue(award.getScore(this.player), award, cost));
-    }
-    return best === Number.NEGATIVE_INFINITY ? PASS_SCORE / 2 : best + this.goalPenalty(cost);
-  }
-
-  private awardValue(ownScore: number, award: {getScore(player: IPlayer): number}, cost: number): number {
-    const best = Math.max(...this.player.opponents.map((opponent) => award.getScore(opponent)), 0);
-    if (ownScore < best) {
-      // Funding an award the opponent leads hands them points.
-      return -AWARD_FIRST_PLACE_POINTS * VP_VALUE;
-    }
-    const points = ownScore > best ? AWARD_FIRST_PLACE_POINTS : AWARD_SECOND_PLACE_POINTS;
-    return points * VP_VALUE * this.awardCertainty() - cost;
-  }
-
-  /**
-   * How much a current award lead is worth betting on.
-   *
-   * Leading an award in the first generation means almost nothing — one tag is
-   * enough to lead when nobody has played anything — while a lead late in the
-   * game is close to banked. Without this the bot funds awards on its opening
-   * turn, which is close to the worst use of eight megacredits in the game.
-   */
-  private awardCertainty(): number {
-    return MINIMUM_AWARD_CERTAINTY + (1 - MINIMUM_AWARD_CERTAINTY) * this.tempo.progress;
+    const value = this.contests.bestAwardValue();
+    return value === undefined ? PASS_SCORE / 2 : value + this.goalPenalty(this.player.game.getAwardFundingCost());
   }
 
   /**
@@ -220,9 +199,10 @@ export class ActionScorer {
    *
    * The submenu's own score decides whether to spend at all; this decides
    * which one to spend on, which matters because funding an award the
-   * opponent leads hands them the points. The titles are `AwardName` and
-   * `MilestoneName` identifiers rather than translated prose, so matching on
-   * them is safe.
+   * opponent leads hands them the points, and because an opponent may be
+   * about to claim one milestone but not another. The titles are `AwardName`
+   * and `MilestoneName` identifiers rather than translated prose, so matching
+   * on them is safe.
    */
   private namedChoiceValue(title: string | Message): number | undefined {
     const name = typeof title === 'string' ? title : title.message;
@@ -230,13 +210,12 @@ export class ActionScorer {
 
     const award = game.awards.find((candidate) => candidate.name === name);
     if (award !== undefined) {
-      const cost = 8 + game.fundedAwards.length * 6;
-      return this.awardValue(award.getScore(this.player), award, cost);
+      return this.contests.awardValue(award);
     }
 
-    // Every claimable milestone is worth the same five points.
-    if (game.milestones.some((candidate) => candidate.name === name)) {
-      return this.milestoneScore();
+    const milestone = game.milestones.find((candidate) => candidate.name === name);
+    if (milestone !== undefined) {
+      return this.profile.racesMilestones ? this.contests.milestoneValue(milestone) : PASS_SCORE / 2;
     }
     return undefined;
   }
@@ -244,10 +223,11 @@ export class ActionScorer {
   private convertPlantsScore(): number {
     const stock = stockValues(this.player, this.tempo, this.weights);
     const cost = this.player.plantsNeededForGreenery * stock.plants;
+    // Once oxygen is maxed a greenery no longer brings the end closer.
     const oxygenGain = this.player.game.getOxygenLevel() < MAX_OXYGEN_LEVEL ?
-      terraformRatingValue(this.tempo, this.weights) :
+      terraformRatingValue(this.tempo, this.weights) + this.closingAdjustment() :
       0;
-    return (VP_VALUE + TILE_PLACEMENT_VALUE) * this.personality.greeneries + oxygenGain - cost + 1 + this.closingAdjustment();
+    return (VP_VALUE + TILE_PLACEMENT_VALUE) * this.personality.greeneries + oxygenGain - cost + 1;
   }
 
   private convertHeatScore(option: PlayerInput): number {
@@ -275,19 +255,36 @@ export class ActionScorer {
     return 4;
   }
 
-  /** The value of the best card the player can actually pay for. */
+  /** The value of the best card the player notices and can actually pay for. */
   public bestPlayableCardScore(option: PlayerInput): number {
     if (!(option instanceof SelectCardToPlay)) {
       return 0;
     }
-    let best = Number.NEGATIVE_INFINITY;
-    option.cards.forEach((card, index) => {
-      if (option.enabled?.[index] === false) {
-        return;
-      }
-      best = Math.max(best, this.valueOfPlayingFromMenu(option, card));
-    });
-    return best;
+    return this.consideredCards(option)
+      .reduce((best, entry) => Math.max(best, entry.value), Number.NEGATIVE_INFINITY);
+  }
+
+  /**
+   * The entries of a play-a-card menu the bot weighs this decision, with their values.
+   *
+   * Only entries the player can pay for are candidates. A card in hand is
+   * weighed only when the bot notices it, while standard projects are printed
+   * on the board and always seen. A bot that would notice nothing still sees
+   * its best candidate: forgetting every card in hand is not a mistake people
+   * make. Choosing whether to play a card and choosing which card both read
+   * this, so the bot never opens the menu for a card it then overlooks.
+   */
+  public consideredCards(option: SelectCardToPlay<PlayableCard>): Array<{card: PlayableCard, value: number}> {
+    const candidates = option.cards
+      .filter((_card, index) => option.enabled?.[index] !== false)
+      .map((card) => ({card, value: this.valueOfPlayingFromMenu(option, card)}))
+      .filter((entry) => entry.value > Number.NEGATIVE_INFINITY);
+    const noticed = candidates.filter((entry) =>
+      isIStandardProjectCard(entry.card) || this.attention.noticesCard(entry.card.name));
+    if (noticed.length > 0 || candidates.length === 0) {
+      return noticed;
+    }
+    return [candidates.reduce((best, entry) => entry.value > best.value ? entry : best)];
   }
 
   /**
@@ -412,7 +409,8 @@ export class ActionScorer {
     case CardName.ASTEROID_STANDARD_PROJECT:
       return game.getTemperature() < MAX_TEMPERATURE ? tr + this.closingAdjustment() : 0;
     case CardName.BUFFER_GAS_STANDARD_PROJECT:
-      return tr + this.closingAdjustment();
+      // Raises no global parameter, so it does not bring the end closer.
+      return tr;
     case CardName.AQUIFER_STANDARD_PROJECT:
       return oceans < MAX_OCEAN_TILES ? tr + TILE_PLACEMENT_VALUE + this.closingAdjustment() : 0;
     case CardName.GREENERY_STANDARD_PROJECT:
