@@ -64,7 +64,7 @@ import {AwardName} from '@/common/ma/AwardName';
 import {MilestoneName} from '@/common/ma/MilestoneName';
 import {ClaimedMilestoneModel} from '@/common/models/ClaimedMilestoneModel';
 import {FundedAwardModel} from '@/common/models/FundedAwardModel';
-import {PlayerViewModel} from '@/common/models/PlayerModel';
+import {ViewModel} from '@/common/models/PlayerModel';
 
 type Score = {color: Color, name: string, score: number};
 
@@ -79,8 +79,9 @@ type Score = {color: Color, name: string, score: number};
 export default defineComponent({
   name: 'MobileMedalSheet',
   props: {
+    /* Any view of the game: the board's, or the results', which a spectator sees too. */
     playerView: {
-      type: Object as PropType<PlayerViewModel>,
+      type: Object as PropType<ViewModel>,
       required: true,
     },
     kind: {

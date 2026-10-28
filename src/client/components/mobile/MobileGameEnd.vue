@@ -96,13 +96,42 @@
           </summary>
           <ul class="mobile-end-lines">
             <li v-for="line in detailLines(player)" :key="line.key" class="mobile-end-line">
-              <span class="mobile-end-line-points" :class="{'mobile-end-line-points--minus': line.points < 0}">{{ line.points }}</span>
-              <span class="mobile-end-line-text">{{ line.text }}</span>
+              <!-- A card's line opens the card, a milestone's or an award's its rule: a
+                   picture or the rule says more than a name. -->
+              <button
+                v-if="line.card !== undefined || line.medal !== undefined"
+                type="button"
+                class="mobile-end-line-button"
+                :data-test="line.card !== undefined ? 'end-card-line' : 'end-medal-line'"
+                @click="open(line)">
+                <span class="mobile-end-line-points" :class="{'mobile-end-line-points--minus': line.points < 0}">{{ line.points }}</span>
+                <span class="mobile-end-line-text">{{ line.text }}</span>
+                <MobileIcon class="mobile-end-line-mark" :name="line.card !== undefined ? 'layers' : 'award'" :size="14"/>
+              </button>
+              <template v-else>
+                <span class="mobile-end-line-points" :class="{'mobile-end-line-points--minus': line.points < 0}">{{ line.points }}</span>
+                <span class="mobile-end-line-text">{{ line.text }}</span>
+              </template>
             </li>
           </ul>
         </details>
       </div>
     </section>
+
+    <!-- The card a line names, large over everything; a tap anywhere puts it down. -->
+    <div v-if="shown !== undefined" class="mobile-magnify mobile-end-magnify" role="dialog" :aria-label="$t(shown.card.name)" data-test="end-card" @click="shown = undefined">
+      <div class="mobile-log-cards-card">
+        <Card class="cardbox" :card="shown.card"/>
+      </div>
+      <p class="mobile-end-card-caption">{{ say('${0} VP', String(shown.points)) }}</p>
+    </div>
+
+    <MobileMedalSheet
+      v-if="medal !== undefined"
+      :playerView="viewModel"
+      :kind="medal.kind"
+      :name="medal.name"
+      @close="medal = undefined"/>
 
     <div class="mobile-end-actions mobile-gutter">
       <a class="mobile-play-sheet-button mobile-play-sheet-button--primary" href="new-game" data-test="end-new-game" v-i18n>New game</a>
@@ -115,13 +144,17 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
+import Card from '@/client/components/card/Card.vue';
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileMedalSheet from '@/client/components/mobile/MobileMedalSheet.vue';
 import {CHART, Category, categories, chartPoints, chartStep, standings, winners} from '@/client/components/mobile/GameEnd';
 import {translateAwardDetails, translateMilestoneDetails} from '@/client/components/gameend/maDetails';
 import {getCard} from '@/client/cards/ClientCardManifest';
 import {translateTextWithParams} from '@/client/directives/i18n';
 import {setDocumentTitle} from '@/client/utils/documentTitle';
 import {CardType} from '@/common/cards/CardType';
+import {CardModel} from '@/common/models/CardModel';
+import {CardName} from '@/common/cards/CardName';
 import {Color} from '@/common/Color';
 import {GameModel} from '@/common/models/GameModel';
 import {PublicPlayerModel, ViewModel} from '@/common/models/PlayerModel';
@@ -133,6 +166,20 @@ type DetailLine = {
   key: string;
   points: number;
   text: string;
+  /** The card the points came from, as it lay on the table. */
+  card?: CardModel;
+  /** Or the milestone or award they came from. */
+  medal?: Medal;
+};
+
+type Medal = {
+  kind: 'milestone' | 'award';
+  name: string;
+};
+
+type ShownCard = {
+  card: CardModel;
+  points: number;
 };
 
 type ChartLine = {
@@ -155,7 +202,9 @@ type ChartLine = {
 export default defineComponent({
   name: 'MobileGameEnd',
   components: {
+    Card,
     MobileIcon,
+    MobileMedalSheet,
   },
   props: {
     viewModel: {
@@ -167,6 +216,12 @@ export default defineComponent({
       type: String as PropType<Color | undefined>,
       default: undefined,
     },
+  },
+  data(): {shown: ShownCard | undefined, medal: Medal | undefined} {
+    return {
+      shown: undefined,
+      medal: undefined,
+    };
   },
   computed: {
     game(): GameModel {
@@ -240,14 +295,55 @@ export default defineComponent({
         .map((card) => this.$t(card.name))
         .join(' · ');
     },
+    /*
+     * The card behind a line of points: as it lay on the table, with its resources, or
+     * as printed. Not every line is a card -- Turmoil, colonies and a few expansions
+     * score under their own names -- and those have nothing to show.
+     */
+    cardFor(player: PublicPlayerModel, name: string): CardModel | undefined {
+      const onTable = player.tableau.find((model) => model.name === name);
+      if (onTable !== undefined) {
+        return onTable;
+      }
+      const card = getCard(name as CardName);
+      return card === undefined ? undefined : {name: card.name};
+    },
+    /* A milestone or award this game had, by name; anything else has no rule to show. */
+    medalFor(kind: Medal['kind'], name: string | undefined): Medal | undefined {
+      const list: ReadonlyArray<{name: string}> = kind === 'milestone' ? this.game.milestones : this.game.awards;
+      return name !== undefined && list.some((each) => each.name === name) ? {kind, name} : undefined;
+    },
+    open(line: DetailLine): void {
+      if (line.card !== undefined) {
+        this.shown = {card: line.card, points: line.points};
+      } else {
+        this.medal = line.medal;
+      }
+    },
     detailLines(player: PublicPlayerModel): Array<DetailLine> {
       const vp = player.victoryPointsBreakdown;
       return [
         ...vp.detailsCards
           .toSorted((a, b) => b.victoryPoint - a.victoryPoint)
-          .map((card) => ({key: 'card-' + card.cardName, points: card.victoryPoint, text: this.$t(card.cardName)})),
-        ...vp.detailsMilestones.map((detail) => ({key: 'm-' + detail.message + detail.messageArgs?.join(), points: detail.victoryPoint, text: translateMilestoneDetails(detail)})),
-        ...vp.detailsAwards.map((detail) => ({key: 'a-' + detail.message + detail.messageArgs?.join(), points: detail.victoryPoint, text: translateAwardDetails(detail)})),
+          .map((card) => ({
+            key: 'card-' + card.cardName,
+            points: card.victoryPoint,
+            text: this.$t(card.cardName),
+            card: this.cardFor(player, card.cardName),
+          })),
+        // "Claimed ${0} milestone" names the milestone first; "${0} place for ${1} award" the award second.
+        ...vp.detailsMilestones.map((detail) => ({
+          key: 'm-' + detail.message + detail.messageArgs?.join(),
+          points: detail.victoryPoint,
+          text: translateMilestoneDetails(detail),
+          medal: this.medalFor('milestone', detail.messageArgs?.[0]),
+        })),
+        ...vp.detailsAwards.map((detail) => ({
+          key: 'a-' + detail.message + detail.messageArgs?.join(),
+          points: detail.victoryPoint,
+          text: translateAwardDetails(detail),
+          medal: this.medalFor('award', detail.messageArgs?.[1]),
+        })),
       ];
     },
   },

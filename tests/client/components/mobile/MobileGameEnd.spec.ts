@@ -6,6 +6,7 @@ import MobileGameEnd from '@/client/components/mobile/MobileGameEnd.vue';
 import {categories, chartPoints, chartStep, standings, winners} from '@/client/components/mobile/GameEnd';
 import {Color} from '@/common/Color';
 import {PublicPlayerModel} from '@/common/models/PlayerModel';
+import {CardName} from '@/common/cards/CardName';
 
 function player(name: string, color: Color, total: number, megacredits: number, fields: Record<string, number> = {}): PublicPlayerModel {
   return fakePublicPlayerModel({
@@ -77,5 +78,77 @@ describe('MobileGameEnd', () => {
     const wrapper = render([aron, green]);
     expect(wrapper.find('[data-test="end-new-game"]').attributes('href')).eq('new-game');
     expect(wrapper.find('[data-test="end-board"]').attributes('href')).contains('&noredirect');
+  });
+
+  it('opens a card from its line of points, and puts it down with a tap', async () => {
+    const scorer = player('Scorer', 'blue', 90, 10, {victoryPoints: 3});
+    const withCards = {
+      ...scorer,
+      tableau: [{name: CardName.BIRDS, resources: 4}],
+      victoryPointsBreakdown: {
+        ...scorer.victoryPointsBreakdown,
+        detailsCards: [
+          {cardName: CardName.BIRDS, victoryPoint: 4},
+          {cardName: 'Colony VP', victoryPoint: 2},
+        ],
+      },
+    };
+    const wrapper = render([withCards, aron]);
+
+    // Only the card has a card to show; Colony VP is a line of points, nothing more.
+    const lines = wrapper.findAll('[data-test="end-card-line"]');
+    expect(lines).has.length(1);
+    expect(lines[0].text()).contains('Birds');
+
+    await lines[0].trigger('click');
+    const shown = wrapper.find('[data-test="end-card"]');
+    expect(shown.exists()).is.true;
+    expect(shown.text()).contains('4 VP');
+    expect(wrapper.vm.shown?.card).deep.eq({name: CardName.BIRDS, resources: 4});
+
+    await shown.trigger('click');
+    expect(wrapper.find('[data-test="end-card"]').exists()).is.false;
+  });
+
+  it('opens a milestone or an award from its line, with its rule', async () => {
+    const claimed = {
+      ...green,
+      victoryPointsBreakdown: {
+        ...green.victoryPointsBreakdown,
+        detailsMilestones: [{message: 'Claimed ${0} milestone', messageArgs: ['Terraformer'], victoryPoint: 5}],
+        detailsAwards: [{message: '${0} place for ${1} award (funded by ${2})', messageArgs: ['1st', 'Banker', 'red'], victoryPoint: 5}],
+      },
+    };
+    const view = fakePlayerViewModel();
+    const wrapper = mount(MobileGameEnd, {
+      ...globalConfig,
+      props: {
+        viewModel: {
+          ...view,
+          game: {
+            ...view.game,
+            generation: 2,
+            milestones: [{name: 'Terraformer', playerName: 'Green', color: 'green', scores: []}],
+            awards: [{name: 'Banker', playerName: 'Aron', color: 'red', scores: []}],
+          },
+          players: [claimed, aron],
+        },
+        myColor: 'red',
+      },
+    });
+
+    const lines = wrapper.findAll('[data-test="end-medal-line"]');
+    expect(lines).has.length(2);
+
+    await lines[0].trigger('click');
+    expect(wrapper.find('[data-test="medal-sheet"]').exists()).is.true;
+    expect(wrapper.find('[data-test="medal-sheet-rule"]').text()).not.eq('');
+    expect(wrapper.vm.medal).deep.eq({kind: 'milestone', name: 'Terraformer'});
+
+    await wrapper.find('[data-test="medal-sheet-close"]').trigger('click');
+    expect(wrapper.find('[data-test="medal-sheet"]').exists()).is.false;
+
+    await lines[1].trigger('click');
+    expect(wrapper.vm.medal).deep.eq({kind: 'award', name: 'Banker'});
   });
 });
