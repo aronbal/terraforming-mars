@@ -1,0 +1,127 @@
+/*
+ * The start screen on a phone, drawn in the mobile shell's grouped lists so the
+ * way into a game looks like the game. The rows, glyphs and eyebrows are the
+ * shell's own classes; only the page around them is set here.
+ */
+
+// The desktop menu's washes and padding belong to the desktop menu.
+.topmost-start-screen:has(.mobile-start) {
+  padding-bottom: 0;
+  background: @m-bg;
+
+  > .notice {
+    padding: 0 @m-gutter calc(16px + env(safe-area-inset-bottom));
+    font-family: @m-font;
+    font-size: @m-small-size;
+    color: @m-label-3;
+  }
+}
+
+.mobile-start {
+  display: grid;
+  gap: 12px;
+  box-sizing: border-box;
+  max-width: 560px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(@m-gutter + env(safe-area-inset-right))
+    24px
+    calc(@m-gutter + env(safe-area-inset-left));
+  align-content: start;
+  background: @m-bg;
+  color: @m-label;
+  font-family: @m-font;
+  font-size: 14px;
+
+  // The shell resets its buttons under #mobile-shell, which this page is not in.
+  // Zero specificity, as there, so the shell's button classes still win.
+  :where(&) button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .mobile-eyebrow {
+    margin-top: 12px;
+  }
+}
+
+// The app's own icon over the name, as the home screen shows it.
+.mobile-start-head {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 16px 0 20px;
+  text-align: center;
+}
+
+.mobile-start-icon {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 0.5px fade(@m-label, 14%),
+    0 12px 32px rgba(232, 120, 60, 0.18);
+}
+
+.mobile-start-title {
+  display: grid;
+  gap: 4px;
+}
+
+.mobile-start-title-top {
+  .m-eyebrow();
+  font-size: @m-secondary-size;
+  letter-spacing: 0.42em;
+  // Letter spacing trails the last letter; indent the same so the word centres.
+  text-indent: 0.42em;
+  color: @m-warn;
+}
+
+.mobile-start-title-bottom {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-indent: 0.08em;
+  text-transform: uppercase;
+  color: @m-label;
+}
+
+// The shell draws its rows for buttons; as links they must not take a link's colour.
+.mobile-start-link {
+  &,
+  &:hover,
+  &:visited,
+  &:focus {
+    color: @m-label;
+    text-decoration: none;
+  }
+}
+
+.mobile-start-external {
+  flex: none;
+  margin-right: 6px;
+  color: @m-label-3;
+}
+
+.mobile-start-footer {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  text-align: center;
+  font-size: @m-small-size;
+  color: @m-label-3;
+  .m-tabular();
+
+  a,
+  a:visited {
+    color: @m-label-2;
+    text-decoration: none;
+  }
+}

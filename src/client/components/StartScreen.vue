@@ -1,5 +1,7 @@
 <template>
-<div class="start-screen">
+<!-- On a phone, the start screen is drawn like the game it leads to. -->
+<MobileStartScreen v-if="mobileLayout"/>
+<div v-else class="start-screen">
   <div v-i18n class="start-screen-links">
     <div class="start-screen-header start-screen-link--title">
       <div class="start-screen-title-top">TERRAFORMING</div>
@@ -16,7 +18,11 @@
       >
         <span class="start-screen-link-index">{{ String(index + 1).padStart(2, '0') }}</span>
         <span class="start-screen-link-label">{{ entry.label }}</span>
-        <span class="start-screen-link-arrow" aria-hidden="true">{{ entry.external === true ? '↗' : '→' }}</span>
+        <!-- Drawn rather than typed: iOS renders ↗ as a blue emoji tile. -->
+        <svg class="start-screen-link-arrow" viewBox="0 0 16 16" aria-hidden="true">
+          <path v-if="entry.external === true" d="M4.5 11.5l7-7M6 4.5h5.5V10" />
+          <path v-else d="M2 8h12M10 4l4 4-4 4" />
+        </svg>
       </a>
     </nav>
     <div class="start-screen-header start-screen-link--languages">
@@ -35,8 +41,8 @@
       </div>
     </div>
   </div>
+  <!-- No corner flag here: the flag row above already picks the language. -->
   <div class="free-floating-preferences-icon">
-    <LanguageIcon class="corner-language-icon"/>
     <PreferencesIcon/>
   </div>
 </div>
@@ -44,8 +50,9 @@
 
 <script setup lang="ts">
 import LanguageSwitcher from '@/client/components/LanguageSwitcher.vue';
-import LanguageIcon from '@/client/components/LanguageIcon.vue';
 import PreferencesIcon from '@/client/components/PreferencesIcon.vue';
+import MobileStartScreen from '@/client/components/MobileStartScreen.vue';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
 
 import raw_settings from '@/genfiles/settings.json';
 import * as constants from '@/common/constants';
