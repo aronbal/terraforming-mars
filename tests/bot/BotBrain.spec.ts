@@ -45,6 +45,37 @@ describe('BotBrain', () => {
     }
   });
 
+  it('sometimes takes a close second, the way a person does', () => {
+    const [/* game */, player] = testGame(2);
+    const random = new BotRandom(7);
+
+    // Passing scores a little under an unremarkable card action.
+    const pass = new SelectOption('Pass for this generation');
+    pass.annotation = 'pass';
+    const options = new OrOptions(pass, new SelectOption('Do something useful'));
+
+    let passes = 0;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      if ((new BotBrain(player, 'medium', random).respond(options) as {index: number}).index === 0) {
+        passes++;
+      }
+    }
+    expect(passes).to.be.within(10, 100);
+  });
+
+  it('always takes the best option at insane', () => {
+    const [/* game */, player] = testGame(2);
+    const random = new BotRandom(7);
+
+    const pass = new SelectOption('Pass for this generation');
+    pass.annotation = 'pass';
+    const options = new OrOptions(pass, new SelectOption('Do something useful'));
+
+    for (let attempt = 0; attempt < 50; attempt++) {
+      expect(new BotBrain(player, 'insane', random).respond(options)).to.have.property('index', 1);
+    }
+  });
+
   it('answers every branch of an and', () => {
     const [/* game */, player] = testGame(2);
     const brain = new BotBrain(player, 'hard', new BotRandom(1));

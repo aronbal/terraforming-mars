@@ -11,7 +11,7 @@ are played by people, so mixed games (two humans and a bot, say) work too.
 
 | Level | Name | Plays like |
 | --- | --- | --- |
-| `easy` | Easy | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
+| `easy` | Easy | Takes legal moves with little planning and often misjudges close calls. Badly undervalues production, so it never builds an engine. |
 | `medium` | Medium | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
 | `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
 | `insane` | Insane | Everything Hard does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Hard — see the ladder below. |
@@ -64,9 +64,22 @@ allowance, so the bot treats them as playable rather than worthless.
 The levels run identical code; a profile decides how much of that code's advice
 the bot takes. The largest lever is `productionWeight`, which is how accurately
 the bot prices its own engine — `easy` prices it at 0.4 of its true value and
-therefore under-builds, the way a weak player does. On top of that, weaker
-levels mix noise into every score and occasionally discard their ranking
-entirely.
+therefore under-builds, the way a weak player does.
+
+On top of that, every level but `insane` picks between options with a softmax
+rather than always taking the best (`temperature` in the profile, in
+megacredits: easy 4, medium 1.8, hard 0.6). A close second is picked often and
+a clearly bad move almost never, so mistakes look like a person's misjudgement,
+not a random click. Two options 1 M€ apart: hard takes the worse one about 16%
+of the time, medium 36%. Five apart: hard practically never, medium 6%,
+easy 22%.
+
+Each bot also has a **personality** for the game (`BotPersonality.ts`): two
+favourite tags whose cards it overrates, a keenness for cities and for
+greeneries, and how much cash it likes to keep back. It is derived from the game
+and player ids, so it is stable for the whole game and across restarts, and
+different from game to game. `personality` in the profile sets how strong the
+taste is: easy 0.35, medium 0.25, hard 0.15, insane 0.1.
 
 There is no tree search. Cloning a game to try moves is not reliable here,
 because `Game.serialize` deliberately drops the deferred-action queue, so a
@@ -95,12 +108,12 @@ npx tsx src/server/tools/bot_tournament.ts 60
 Results from 60 games per pairing, seats alternated:
 
 ```
-medium  vs easy     medium wins 59/60 ( 98%)
-hard    vs easy     hard wins   59/60 ( 98%)
+medium  vs easy     medium wins 56/60 ( 93%)
+hard    vs easy     hard wins   60/60 (100%)
 insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   38/60 ( 63%)
-insane  vs medium   insane wins 38/60 ( 63%)
-insane  vs hard     insane wins 32/60 ( 53%)
+hard    vs medium   hard wins   37/60 ( 62%)
+insane  vs medium   insane wins 45/60 ( 75%)
+insane  vs hard     insane wins 31/60 ( 52%)
 ```
 
 **Read this honestly: there are three distinct tiers, not four.** `easy` is far

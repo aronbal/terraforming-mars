@@ -29,6 +29,7 @@ import {SelectClaimedUndergroundToken} from '../inputs/SelectClaimedUndergroundT
 import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
 import {BotProfile, profileFor, weightsOf} from './BotProfile';
+import {BotPersonality, personalityOf} from './BotPersonality';
 import {BotRandom} from './BotRandom';
 import {PlayableCard, planPaymentFor} from './CardPayment';
 import {planPayment} from './PaymentPlanner';
@@ -58,6 +59,7 @@ export class UnansweredInputError extends Error {
  */
 export class BotBrain {
   private readonly profile: BotProfile;
+  private readonly personality: BotPersonality;
   private readonly tempo: Tempo;
   private readonly cards: CardEvaluator;
   private readonly actions: ActionScorer;
@@ -68,10 +70,11 @@ export class BotBrain {
     difficulty: BotDifficulty,
     private readonly random: BotRandom = new BotRandom()) {
     this.profile = profileFor(difficulty);
+    this.personality = personalityOf(player, this.profile);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
-    this.cards = new CardEvaluator(player, this.profile, this.tempo);
-    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards);
+    this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
+    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.personality);
   }
 
   public respond(input: PlayerInput): InputResponse {
@@ -265,7 +268,7 @@ export class BotBrain {
 
   private rankCards(cards: ReadonlyArray<ICard>, cardCost: number): Array<{card: ICard, net: number}> {
     return cards
-      .map((card) => ({card, net: this.noisy(this.cards.valueOfPlaying(card) - cardCost)}))
+      .map((card) => ({card, net: this.perturbed(this.cards.valueOfPlaying(card) - cardCost)}))
       .sort((a, b) => b.net - a.net);
   }
 
@@ -282,7 +285,7 @@ export class BotBrain {
       .filter((entry) => input.enabled?.[entry.index] !== false)
       .map((entry) => ({
         card: entry.card,
-        score: this.noisy(this.actions.valueOfPlayingFromMenu(input, entry.card)),
+        score: this.perturbed(this.actions.valueOfPlayingFromMenu(input, entry.card)),
         payment: planPaymentFor(this.player, input, entry.card),
       }))
       .filter((entry) => entry.payment !== undefined)
@@ -436,40 +439,38 @@ export class BotBrain {
   /* ------------------------------------------------------------- helpers */
 
   /**
-   * Picks the index of the highest score, with difficulty-dependent slop.
+   * Picks an option, more likely the better it scores.
    *
-   * Easier bots mix noise into every score and occasionally throw the ranking
-   * away entirely, which is what makes them beatable without making them
-   * pick illegal or self-destructive moves.
+   * Taking the highest score after adding Gumbel noise to each is the same as
+   * drawing from a softmax over the scores, so a close second is picked often
+   * and a bad option almost never. At temperature 0 this is the plain best.
    */
   private chooseIndex(scores: ReadonlyArray<number>): number {
-    if (scores.length === 0) {
-      return 0;
-    }
-    const legal = scores
-      .map((score, index) => ({score, index}))
-      .filter((entry) => entry.score > Number.NEGATIVE_INFINITY);
-    if (legal.length === 0) {
-      return 0;
-    }
-    if (this.profile.blunderRate > 0 && this.random.next() < this.profile.blunderRate) {
-      return (this.random.pick(legal) ?? legal[0]).index;
-    }
-    const best = legal
-      .map((entry) => ({index: entry.index, score: this.noisy(entry.score)}))
-      .reduce((a, b) => b.score > a.score ? b : a);
-    return best.index;
+    let best = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    scores.forEach((score, index) => {
+      const perturbed = this.perturbed(score);
+      if (perturbed > bestScore) {
+        best = index;
+        bestScore = perturbed;
+      }
+    });
+    return best;
   }
 
-  /** Blends a score toward random noise according to the difficulty. */
-  private noisy(score: number): number {
-    const noise = this.profile.noise;
-    if (noise <= 0 || !Number.isFinite(score)) {
+  /**
+   * Adds Gumbel noise scaled by the profile's temperature.
+   *
+   * Sorting by perturbed scores ranks options the way repeated softmax draws
+   * would, which is what card selection relies on.
+   */
+  private perturbed(score: number): number {
+    const temperature = this.profile.temperature;
+    if (temperature <= 0 || !Number.isFinite(score)) {
       return score;
     }
-    // Scale the noise to the score so it stays meaningful at any magnitude.
-    const spread = Math.max(4, Math.abs(score));
-    return score * (1 - noise) + (this.random.next() * 2 - 1) * spread * noise;
+    const uniform = Math.min(Math.max(this.random.next(), 1e-12), 1 - 1e-12);
+    return score - temperature * Math.log(-Math.log(uniform));
   }
 
   private looksLikeLoss(title: string | Message): boolean {

@@ -9,6 +9,7 @@ import {Tag} from '../../../common/cards/Tag';
 import {Resource} from '../../../common/Resource';
 import {Units} from '../../../common/Units';
 import {BotProfile, weightsOf} from '../BotProfile';
+import {BotPersonality, NEUTRAL_PERSONALITY} from '../BotPersonality';
 import {bestCitySpaceValue} from './SpaceEvaluator';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 
@@ -27,7 +28,8 @@ export class CardEvaluator {
   constructor(
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
-    private readonly tempo: Tempo) {
+    private readonly tempo: Tempo,
+    private readonly personality: BotPersonality = NEUTRAL_PERSONALITY) {
     this.weights = weightsOf(profile);
   }
 
@@ -40,14 +42,22 @@ export class CardEvaluator {
    * than aborting the bot's turn.
    */
   public valueOfPlaying(card: ICard): number {
+    let value: number;
     try {
-      return this.behaviorValue(card) +
+      value = this.behaviorValue(card) +
         this.victoryPointValue(card) +
         this.synergyValue(card) +
         this.repeatableActionValue(card);
     } catch (err) {
-      return this.victoryPointValue(card);
+      value = this.victoryPointValue(card);
     }
+    return value * this.tasteFor(card);
+  }
+
+  /** How much more than its worth the bot's personality likes `card`. */
+  private tasteFor(card: ICard): number {
+    const favoured = card.tags.some((tag) => this.personality.favouriteTags.includes(tag));
+    return favoured ? this.personality.favouriteTagBonus : 1;
   }
 
   /** Value of playing `card` now, net of the megacredits it takes to do so. */
@@ -142,11 +152,11 @@ export class CardEvaluator {
       value += count * (trValue + TILE_PLACEMENT_VALUE);
     }
     if (behavior.greenery !== undefined) {
-      value += VP_VALUE + trValue + TILE_PLACEMENT_VALUE;
+      value += (VP_VALUE + TILE_PLACEMENT_VALUE) * this.personality.greeneries + trValue;
     }
     if (behavior.city !== undefined) {
       // A city is worth the points of the greeneries beside it, and room for more.
-      value += bestCitySpaceValue(this.player, this.tempo, this.profile, behavior.city);
+      value += bestCitySpaceValue(this.player, this.tempo, this.profile, behavior.city) * this.personality.cities;
     }
     if (behavior.tile !== undefined) {
       value += TILE_PLACEMENT_VALUE;

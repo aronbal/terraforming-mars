@@ -11,6 +11,7 @@ import {Message} from '../../../common/logs/Message';
 import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} from '../../../common/constants';
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
+import {BotPersonality, NEUTRAL_PERSONALITY} from '../BotPersonality';
 import {CardEvaluator} from './CardEvaluator';
 import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
@@ -50,7 +51,8 @@ export class ActionScorer {
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
     private readonly tempo: Tempo,
-    private readonly cards: CardEvaluator) {
+    private readonly cards: CardEvaluator,
+    private readonly personality: BotPersonality = NEUTRAL_PERSONALITY) {
     this.weights = weightsOf(profile);
   }
 
@@ -234,7 +236,7 @@ export class ActionScorer {
     const oxygenGain = this.player.game.getOxygenLevel() < MAX_OXYGEN_LEVEL ?
       terraformRatingValue(this.tempo, this.weights) :
       0;
-    return VP_VALUE + oxygenGain + TILE_PLACEMENT_VALUE - cost + 1 + this.closingAdjustment();
+    return (VP_VALUE + TILE_PLACEMENT_VALUE) * this.personality.greeneries + oxygenGain - cost + 1 + this.closingAdjustment();
   }
 
   private convertHeatScore(option: PlayerInput): number {
@@ -291,7 +293,7 @@ export class ActionScorer {
     const gross = isIStandardProjectCard(card) ?
       this.standardProjectValue(card) :
       this.cards.valueOfPlaying(card);
-    const reserve = this.profile.reserveMegacredits;
+    const reserve = Math.max(0, this.profile.reserveMegacredits + this.personality.thrift);
     const shortfall = Math.max(0, cost - (this.player.megaCredits - reserve));
     // Spending down to nothing has a real cost: it forecloses next turn.
     return gross - cost - shortfall * 0.05;
@@ -355,9 +357,10 @@ export class ActionScorer {
     case CardName.AQUIFER_STANDARD_PROJECT:
       return oceans < MAX_OCEAN_TILES ? tr + TILE_PLACEMENT_VALUE + this.closingAdjustment() : 0;
     case CardName.GREENERY_STANDARD_PROJECT:
-      return VP_VALUE + (game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? tr + this.closingAdjustment() : 0) + TILE_PLACEMENT_VALUE;
+      return (VP_VALUE + TILE_PLACEMENT_VALUE) * this.personality.greeneries +
+        (game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? tr + this.closingAdjustment() : 0);
     case CardName.CITY_STANDARD_PROJECT:
-      return production.megacredits + bestCitySpaceValue(this.player, this.tempo, this.profile);
+      return production.megacredits + bestCitySpaceValue(this.player, this.tempo, this.profile) * this.personality.cities;
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT:
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT_VARIANT:
       return game.getVenusScaleLevel() < MAX_VENUS_SCALE ? tr : 0;
