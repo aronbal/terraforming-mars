@@ -3,7 +3,7 @@ import {testGame} from '../TestGame';
 import {runAllActions} from '../TestingUtils';
 import {BotBrain} from '../../src/server/bot/BotBrain';
 import {BotRandom} from '../../src/server/bot/BotRandom';
-import {BotProfileOverride} from '../../src/server/bot/BotProfile';
+import {BotProfileOverride, NO_PLANNING} from '../../src/server/bot/BotProfile';
 import {GameLoader} from '../../src/server/database/GameLoader';
 import {IGameLoader} from '../../src/server/database/IGameLoader';
 import {restoreTestGameLoader, setTestGameLoader} from '../testing/setup';
@@ -17,7 +17,8 @@ import {IGame} from '../../src/server/IGame';
 import {TestPlayer} from '../TestPlayer';
 import {cast} from '../../src/common/utils/utils';
 
-const LOOKAHEAD: BotProfileOverride = {planning: {lookahead: 4, lookaheadDiscount: 0.9, lookaheadBudgetMs: 1000}};
+const STATIC: BotProfileOverride = {planning: NO_PLANNING};
+const LOOKAHEAD: BotProfileOverride = {planning: {...NO_PLANNING, lookahead: 4, lookaheadDiscount: 0.9, lookaheadBudgetMs: 1000}};
 
 /**
  * A bot at the top of its turn, three megacredits short of Space Elevator,
@@ -64,7 +65,7 @@ describe('TurnPlanner', () => {
   it('plays the card that makes an expensive one affordable first', () => {
     const [/* game */, player] = shortOfSpaceElevator();
 
-    expect(chosenCard(player, {}), 'without looking ahead').to.eq(new Mine().name);
+    expect(chosenCard(player, STATIC), 'without looking ahead').to.eq(new Mine().name);
     expect(chosenCard(player, LOOKAHEAD), 'looking ahead').to.eq(new InvestmentLoan().name);
     expect(player.botMemory?.stats?.lookaheadChanged).to.eq(1);
   });
@@ -72,7 +73,7 @@ describe('TurnPlanner', () => {
   it('does not look ahead with lookahead off or no time to do it', () => {
     const [/* game */, player] = shortOfSpaceElevator();
 
-    expect(chosenCard(player, {planning: {lookahead: 0}})).to.eq(new Mine().name);
+    expect(chosenCard(player, STATIC)).to.eq(new Mine().name);
     expect(chosenCard(player, {planning: {...LOOKAHEAD.planning, lookaheadBudgetMs: 0}})).to.eq(new Mine().name);
     expect(player.botMemory).is.undefined;
   });

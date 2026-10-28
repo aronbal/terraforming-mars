@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {profileFor, resolveProfile} from '../../src/server/bot/BotProfile';
+import {NO_PLANNING, profileFor, resolveProfile} from '../../src/server/bot/BotProfile';
 import {parseOverride} from '../../src/server/tools/bot_tournament';
 
 describe('BotProfile', () => {
@@ -22,5 +22,14 @@ describe('BotProfile', () => {
       buyRate: 0.5,
       planning: {goals: false, lookahead: 4},
     });
+  });
+
+  it('plans more the stronger the level', () => {
+    expect(profileFor('easy').planning).to.deep.eq(NO_PLANNING);
+    expect(profileFor('medium').planning.goals).is.true;
+    expect(profileFor('medium').planning.lookahead).to.eq(0);
+    expect(profileFor('hard').planning.enablerWeight).to.be.greaterThan(0);
+    expect(profileFor('hard').planning.lookahead).to.eq(0);
+    expect(profileFor('insane').planning.lookahead).to.be.greaterThan(0);
   });
 });

@@ -12,9 +12,9 @@ are played by people, so mixed games (two humans and a bot, say) work too.
 | Level | Name | Plays like |
 | --- | --- | --- |
 | `easy` | Easy | Takes legal moves with little planning and often misjudges close calls. Badly undervalues production, so it never builds an engine. |
-| `medium` | Medium | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
-| `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. Watches the opponent the way a competent human does: claims a milestone before they can, funds awards only on leads they cannot close, and pushes to end the game when ahead. |
-| `insane` | Insane | Everything Hard does, plus placement denial. Measures as roughly even with Hard — see the ladder below. |
+| `medium` | Medium | Builds production, plays what it can afford, terraforms steadily, and races milestones. Will hold back a generation to afford a card it wants. |
+| `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. Watches the opponent the way a competent human does: claims a milestone before they can, funds awards only on leads they cannot close, and pushes to end the game when ahead. Saves up for big cards and sees what a card does for the rest of its hand. |
+| `insane` | Insane | Everything Hard does, plus placement denial, and it plays the first action of each turn with the second in view, trying its best moves out on a copy of the game. |
 
 ## How it works
 
@@ -40,6 +40,13 @@ have made through the UI.
 | `src/server/bot/evaluate/ActionScorer.ts` | Scores an entry in the action menu. |
 | `src/server/bot/evaluate/MilestonesAndAwards.ts` | Prices claiming a milestone and funding an award. |
 | `src/server/bot/evaluate/SpaceEvaluator.ts` | Scores a space for a tile. |
+| `src/server/bot/BotMemory.ts` | What a bot carries from one decision to the next, saved with the game. |
+| `src/server/bot/plan/RequirementForecast.ts` | When a card's requirements will be met, if ever. |
+| `src/server/bot/plan/Economy.ts` | What a player has and earns towards one card. |
+| `src/server/bot/plan/GoalPlanner.ts` | Picks a card to save for and prices moves against it. |
+| `src/server/bot/plan/Enablers.ts` | What a card does for the other cards in hand. |
+| `src/server/bot/plan/GameClone.ts` | When and how a game may be copied to try moves on. |
+| `src/server/bot/plan/TurnPlanner.ts` | Plays the best moves out on a copy and scores what follows. |
 
 ### Evaluation
 
@@ -127,10 +134,90 @@ How much a level reads its opponent is split into three flags:
 Everything is priced in megacredits like the rest of the evaluator. Medium and
 Easy price milestones and awards on their own position alone.
 
-There is no tree search. Cloning a game to try moves is not reliable here,
-because `Game.serialize` deliberately drops the deferred-action queue, so a
-clone taken mid-action is not the position it came from. The bot is a tuned
-static evaluator instead.
+### Planning
+
+Everything above prices one decision on its own. `planning` in the profile
+holds what the bot carries from one decision to the next. Each part adds a
+megacredit term to the scores the evaluator already gives, before the softmax,
+so it composes with the personality, the play style and `attention`.
+
+**Memory.** A brain is built for every decision and a runner for every
+request, so nothing a bot means to keep can live on either. `BotMemory` lives
+on the player and is saved with the game (`SerializedPlayer.botMemory`, only
+when present), so a restart or a rollback restores the memory that belongs to
+that position. It is written only at the top of the bot's turn, and is
+replaced rather than changed. `parseBotMemory` drops an unknown version or a
+card that no longer exists.
+
+**Requirement forecast** (`requirementForecast`, `plan/RequirementForecast.ts`).
+When buying, drafting or discarding, a card whose requirements can never be
+met again — a maximum already passed, too many tags, an expansion not in play —
+ranks last. The engine only ever offers cards to play once their requirements
+are met; before this the bot happily bought cards it could never play. The
+forecast also extrapolates global parameters from the last few generations'
+snapshots, which the savings goals use; it never calls a global requirement's
+`satisfies`, which writes Think Tank costs onto the card.
+
+**Savings goals** (`goals` and `goal*`, `plan/GoalPlanner.ts`,
+`plan/Economy.ts`). A static evaluator spends what it has on the best thing it
+can afford now, so the expensive card in hand waits behind a stream of cheaper
+ones. At the top of its turn the bot may pick a hand card one to `goalMaxEta`
+generations away, worth at least `goalMinNet` net of its cost after a
+`goalRisk` discount per generation of waiting, and remember it. A move whose
+spending pushes the goal back a generation is charged `goalCommitment` times
+the value lost (all of it if the goal would miss the end of the game); spending
+slack the goal does not need in time is free; income that brings the goal
+forward earns `enablerWeight` times the value gained. That applies to cards and
+standard projects, and as a penalty only to milestones and awards. The goal is
+dropped once played, discarded, out of reach, or `goalMaxAgeSlack`
+generations late, is replaced only by one better by `goalSwitchMargin`, and no
+goal is set in the last generation. New candidates are noticed through
+`attention`; a held goal is remembered.
+
+**Enablers** (`enablerWeight`, `plan/Enablers.ts`). The evaluator prices each
+card alone and ignores `cardDiscount`. This credits a move with what it does for
+the goal and the best three other hand cards: discounts on matching cards in
+hand, a tag or global minimum it meets for one of them now, and, as a penalty, a
+global maximum it pushes one of them past.
+
+**Lookahead** (`lookahead`, `plan/TurnPlanner.ts`, `plan/GameClone.ts`).
+When the bot has a second action this turn, it copies the game and plays up to
+`lookahead` moves out on the copy as far as the next action menu, then asks
+what the best follow-up is worth there. Half the slots go to the best moves by
+their own score and half to hand cards that could change what is possible (they
+gain resources now, give a discount, raise a global parameter, or carry a tag a
+hand card needs), because the move that opens up the turn is often weak on its
+own. A move is credited with `lookaheadDiscount` times its follow-up; moves not
+simulated are credited with the best other move still affordable after paying
+for them. Passing and ending the turn get nothing, since they forgo the second
+action. Only cards held before the move count as follow-ups, and cards that
+draw or reveal cards, or whose effect is bespoke code, are never simulated, so
+the copy cannot leak the real deck into the decision. `lookaheadBudgetMs` caps
+the time per decision: bot moves run synchronously in the HTTP request.
+
+The safe point for a copy is the top of an action. `Game.serialize` drops the
+deferred-action queue, but at the action menu the queue is empty, and loading
+a game in the action phase rebuilds that very menu, so the position survives a
+round trip exactly. `canCloneSafely` checks for it (action phase, empty queue,
+the bot up and at its menu, nobody else asked anything, no corporation first
+action or Double Down, every player with a corporation). `cloneForLookahead`
+takes the save path — serialize without the log, JSON round trip,
+`Game.deserialize(…, {simulation: true})` — and a simulation never saves,
+never records a result and is never marked in the cache. `GameClone.spec.ts`
+checks that playing moves on a copy leaves the real game untouched and that no
+call reaches `GameLoader` or the database; keep it passing.
+
+What each level plans:
+
+| Knob | Easy | Medium | Hard | Insane |
+| --- | --- | --- | --- | --- |
+| `requirementForecast` | off | on | on | on |
+| `goals` | off | on | on | on |
+| `goalMaxEta` / `goalMinNet` | – | 1 / 15 | 2 / 10 | 2 / 8 |
+| `goalSwitchMargin` / `goalCommitment` / `goalRisk` / `goalMaxAgeSlack` | – | 0.3 / 0.5 / 0.85 / 1 | 0.3 / 0.8 / 0.88 / 2 | 0.25 / 1 / 0.9 / 2 |
+| `goalGuardsResearch` | off | off | off | off |
+| `enablerWeight` | 0 | 0 | 0.5 | 0.7 |
+| `lookahead` / `lookaheadDiscount` / `lookaheadBudgetMs` | 0 | 0 | 0 | 4 / 0.9 / 60 |
 
 ### Robustness
 
@@ -151,26 +238,49 @@ reports win rates. Run it after changing anything in the evaluator:
 npx tsx src/server/tools/bot_tournament.ts 60
 ```
 
-Results from 60 games per pairing, seats alternated, with softmax, personality,
-corporation strategy, `attention` and Hard watching the opponent in place:
+Results from 60 games per pairing, seats alternated, with planning in place:
 
 ```
-medium  vs easy     medium wins 54/60 ( 90%)
-hard    vs easy     hard wins   60/60 (100%)
-insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   41/60 ( 68%)
-insane  vs medium   insane wins 44/60 ( 73%)
-insane  vs hard     insane wins 34/60 ( 57%)
+medium  vs easy     medium wins 59/60 ( 98%)  avg generations 17.4
+hard    vs easy     hard wins   60/60 (100%)  avg generations 16.2
+insane  vs easy     insane wins 60/60 (100%)  avg generations 16.4
+hard    vs medium   hard wins   41/60 ( 68%)  avg generations 15.6
+insane  vs medium   insane wins 47/60 ( 78%)  avg generations 15.2
+insane  vs hard     insane wins 35/60 ( 58%)  avg generations 14.9
 ```
 
-Before Hard watched the opponent, hard versus medium came out at 137/200 (68%)
-over 200 games, so a single 60-game run can swing by about six points either way.
+**Every ladder and A/B result before the planning work was measured on a single
+deal.** `SeededRandom` expects a seed in [0, 1) and multiplies it by 2^32, which
+wraps to 0 for every whole number, so the tournament's seeds 1, 2, 3… all dealt
+the same corporations (Interplanetary Cinematics and Saturn Systems), the same
+cards and the same board; only the bots' own randomness and personality
+differed. In that one deal the second seat won almost every bot-versus-bot game
+by about 25 VP. `deckSeed` now gives each seed its own deal. The older numbers
+in this document are kept as they were recorded; read them as one deal's. On
+that deal, before planning, the ladder read medium over easy 90%, hard over easy
+and insane over easy 100%, hard over medium 68% (137/200 over 200 games before
+Hard watched the opponent), insane over medium 73%, and insane over hard 57%.
 
-**Read this honestly: there are three distinct tiers, not four.** `easy` is far
-weaker than everything, `hard` beats `medium` reliably, and `insane` is a coin
-flip against `hard`. Insane differs from Hard in placement denial and slightly
-sharper knobs, and against another bot that plays just as well, denial mostly
-cancels out.
+To compare two versions of one level, play every seed twice with the seats
+swapped:
+
+```bash
+npx tsx src/server/tools/bot_tournament.ts ab 200 insane planning.lookahead=4 vs planning.lookahead=0
+```
+
+Settings before `vs` change side A, after it side B. It reports the win rate
+with a 95% interval and, more usefully, the **paired VP difference per seed
+with its standard error**: two bots of one level are close, the deal decides
+most games, and the paired difference cancels the deal. Win rates between two
+versions of one level barely move even when the VP difference is several
+standard errors. It also reports cash left at the end, big cards played, and
+the planning counters from `BotMemory`. `src/server/tools/bot_clone_bench.ts`
+times copying the game and a whole decision with and without lookahead.
+
+The ladder now has four tiers. Insane's edge over Hard is the lookahead, worth
+about 2.5 VP a game on top of everything Hard does, so it shows as 58% rather
+than as a rout: two strong bots are close, and the deal still decides most
+games.
 
 Bot-versus-bot games run about 14 to 16 generations, longer than a typical human
 game, because two cautious bots terraform more slowly than a human pushing to
@@ -211,21 +321,64 @@ The ladder is otherwise unchanged: on the same 60 seeds per pairing, Hard over
 Medium went from 58% to 63%, and Insane over Hard from 57% to 53%, both inside
 the noise band.
 
+### Planning, measured
+
+Each row is 200 seeds played both ways (400 games), on proper deals, as paired
+VP difference ± standard error. Unless noted, on top of origin/main with
+softmax, play style, `attention` and the opponent flags.
+
+| Change | Level | Wins | Paired VP |
+| --- | --- | --- | --- |
+| Price a bought card for when its requirements will be met (probability × value with that many fewer generations left) | Insane | 44.8% | **−3.06 ± 0.80** — harmful |
+| Same | Hard | 44.9% | **−2.57 ± 0.78** — harmful |
+| Same, but buying as many cards as before | Insane / Hard | 45.4% / 46.9% | −2.43 ± 0.78 / −1.96 ± 0.77 — harmful |
+| Only sink cards that can never be played (kept) | Insane | 50.1% | +0.04 ± 0.19 |
+| Same | Hard | 49.1% | +0.03 ± 0.37 |
+| Same | Medium | 47.3% | −0.58 ± 0.55 |
+| Savings goals (Insane's settings) | Insane | 57.5% | **+2.68 ± 0.67** |
+| Savings goals (Hard's settings) | Hard | 54.9% | **+2.64 ± 0.67** |
+| Savings goals (Medium's settings) | Medium | 48.8% | +1.13 ± 0.94 |
+| Enablers, weight 0.7 | Insane | 51.9% | **+1.72 ± 0.43** |
+| Enablers, weight 0.5 | Hard | 50.0% | +0.34 ± 0.44 |
+| `goalGuardsResearch` on top of Insane's goals and enablers | Insane | 51.6% | +0.48 ± 0.54 — left off |
+| Forecast, goals and enablers together vs none | Insane | 56.6% | **+2.94 ± 0.64** |
+| Same | Hard | 55.9% | **+2.88 ± 0.74** |
+| Forecast and goals together vs none | Medium | 49.8% | +1.38 ± 0.90 |
+| Lookahead 4 vs 0 | Insane | 57.1% | **+3.98 ± 0.64** |
+| Lookahead 4 vs 0, both with forecast, goals and enablers | Insane | 53.5% | **+2.52 ± 0.67** |
+
+Before the merge with origin/main the goals measured +1.75 ± 0.72 (Insane's
+settings) and +1.99 ± 0.62 (Medium's settings) at Insane, +2.04 ± 0.70 at Hard
+and +0.65 ± 0.71 at Medium. A first version that charged a goal's whole risk
+discount for every generation of delay, screened on the single tournament deal,
+cost Insane 3-4 VP a game.
+
+Three things were switched on although they measure as no effect: sinking
+unplayable cards at every level from Medium up, because buying a card the
+engine will never offer is a blunder a person sees; goals at Medium, because
+saving up for a card is what a medium player does; and enablers at Hard,
+because they fix a misjudgement a person sees (pricing Earth Office without the
+Earth cards in hand).
+
 At n=100 the standard error is about 5 points, so nothing under roughly 60% is
 a real effect.
 
-The conclusion is that **parameter tuning is exhausted**: once a level prices
-the game accurately, sharpening the same knobs does nothing. A genuinely
-stronger fourth tier needs a structural capability the evaluator does not have,
-most plausibly turn-level planning — choosing the best *pair* of actions rather
-than the best single action twice, so the bot can play a cheap production card
-to make an expensive one affordable in the same turn. That needs simulation,
-and the obvious route is blocked: `Game.serialize` deliberately drops the
-deferred-action queue, so a clone taken mid-action is not the position it came
-from. Any attempt should start by solving that.
+The conclusion was that **parameter tuning is exhausted**: once a level prices
+the game accurately, sharpening the same knobs does nothing, and a stronger
+fourth tier needed a structural capability. Planning across decisions — saving
+for a card, and trying the first action of a turn out on a copy of the game —
+is that capability, and it measures as real. Copying was not blocked after all:
+the deferred-action queue that `Game.serialize` drops is always empty at the
+top of an action, which is the one point the lookahead copies from.
 
 ## Tests
 
 `tests/bot/SelfPlay.spec.ts` is the load-bearing test: it plays a full
 two-player game at every difficulty and asserts the game reaches `Phase.END`.
 If the bot cannot answer some input, the run stops early and the test fails.
+
+`tests/bot/GameClone.spec.ts` guards the lookahead: a copy is the same
+position, playing moves on it leaves the real game's state, log, timers and
+pending input untouched, and nothing done to a copy reaches `GameLoader` or the
+database, even played to the end. Do not turn the lookahead on anywhere it
+fails.

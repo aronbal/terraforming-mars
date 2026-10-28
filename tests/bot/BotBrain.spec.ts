@@ -13,11 +13,12 @@ import {UndoActionOption} from '../../src/server/inputs/UndoActionOption';
 import {Resource} from '../../src/common/Resource';
 import {SpaceElevator} from '../../src/server/cards/base/SpaceElevator';
 import {GeothermalPower} from '../../src/server/cards/base/GeothermalPower';
-import {BotProfileOverride} from '../../src/server/bot/BotProfile';
+import {BotProfileOverride, NO_PLANNING} from '../../src/server/bot/BotProfile';
 import {TestPlayer} from '../TestPlayer';
 
 const SAVING: BotProfileOverride = {
   planning: {
+    ...NO_PLANNING,
     goals: true,
     goalMaxEta: 2,
     goalMinNet: 8,
@@ -168,7 +169,7 @@ describe('BotBrain', () => {
   });
 
   it('spends its savings on a mediocre card when it has no goal', () => {
-    const player = actOnce({});
+    const player = actOnce({planning: NO_PLANNING});
 
     expect(player.megaCredits).to.be.lessThan(15);
     expect(player.botMemory).is.undefined;
