@@ -464,14 +464,21 @@ can be turned on or off afterwards.
 - **Your link to this game** shows the player's own `player?id=` address, with a
   button that copies it. An app added to the home screen has no address bar, so this
   is the way to the link. Where the clipboard is refused, the link is selected instead.
-- **Go back one save** is shown to the game master only: the first person in the
-  player list the game was created with (`Game.gameMaster`, sent as
-  `PlayerViewModel.isGameMaster`). After a confirm it posts to `api/game/rollback`,
-  which refuses anyone else, restores the save before the latest
-  (`GameLoader.restorePreviousSave`, deleting the latest), keeps the undo setting,
-  logs who went back, and lets the computers move if it is their turn. The log line
-  is saved with the next save rather than at once, so going back twice goes back two
-  saves.
+- **Go back to an earlier save** is shown to the game master only: the first person
+  in the player list the game was created with (`Game.gameMaster`, sent as
+  `PlayerViewModel.isGameMaster`). It opens a list of the last 30 saves before the
+  latest, newest first, from `api/game/saves` (`ApiGameSaves`, a `SaveModel` each):
+  every row is named by the last line logged before that save -- the move it is just
+  after -- with the generation, who made it and how long ago. Lines private to another
+  player are left out. With undo on, a save is made at every decision (the computers'
+  moves land on the same one), so the list goes move by move; without it, a save is
+  made only at the first action of each round.
+- Picking a row asks first, then posts `api/game/rollback?saveId=`. The route refuses
+  anyone but the game master and a save that is not stored before the latest,
+  restores it (`GameLoader.restorePreviousSave`, deleting every save after it), keeps
+  the undo setting, logs who went back, and lets the computers move if it is their
+  turn. Without `saveId` it goes back one save. The log line is saved with the next
+  save rather than at once, so it does not add a save of its own.
 
 **Game over.** The turn page's first row becomes `Game over · See the final score`,
 a link to the results page, and the action tiles go.

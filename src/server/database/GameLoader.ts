@@ -5,6 +5,7 @@ import {IGame} from '../IGame';
 import {PlayerId, GameId, SpectatorId, isGameId, ParticipantId} from '../../common/Types';
 import {IGameLoader} from './IGameLoader';
 import {GameIdLedger} from './IDatabase';
+import {SerializedGame} from '../SerializedGame';
 import {Cache} from './Cache';
 import {MultiMap} from 'mnemonist';
 import {timeAsync} from '../utils/timer';
@@ -249,10 +250,17 @@ export class GameLoader implements IGameLoader {
     return game;
   }
 
-  public async restorePreviousSave(gameId: GameId): Promise<IGame | undefined> {
+  public async restorePreviousSave(gameId: GameId, saveId?: number): Promise<IGame | undefined> {
     const saveIds = await Database.getInstance().getSaveIds(gameId);
-    const previous = saveIds.sort((a, b) => a - b).at(-2);
-    return previous === undefined ? undefined : this.restoreGameAt(gameId, previous);
+    const earlier = saveIds.sort((a, b) => a - b).slice(0, -1);
+    const target = saveId ?? earlier.at(-1);
+    return target === undefined || !earlier.includes(target) ? undefined : this.restoreGameAt(gameId, target);
+  }
+
+  public async getRecentSaves(gameId: GameId, count: number): Promise<Array<{saveId: number, game: SerializedGame}>> {
+    const database = Database.getInstance();
+    const saveIds = (await database.getSaveIds(gameId)).sort((a, b) => a - b).slice(-count);
+    return Promise.all(saveIds.map(async (saveId) => ({saveId, game: await database.getGameVersion(gameId, saveId)})));
   }
 
   public mark(gameId: GameId) {

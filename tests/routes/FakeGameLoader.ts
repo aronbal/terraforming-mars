@@ -3,6 +3,7 @@ import {GameIdLedger} from '../../src/server/database/IDatabase';
 import {Game} from '../../src/server/Game';
 import {IGame} from '../../src/server/IGame';
 import {GameId, isGameId, PlayerId, SpectatorId} from '../../src/common/Types';
+import {SerializedGame} from '../../src/server/SerializedGame';
 
 export class FakeGameLoader implements IGameLoader {
   private games: Map<GameId, IGame> = new Map();
@@ -34,8 +35,16 @@ export class FakeGameLoader implements IGameLoader {
   }
   /** What `restorePreviousSave` resolves to, one game per call. */
   public previousSaves: Array<IGame | undefined> = [];
-  public restorePreviousSave(_gameId: GameId): Promise<IGame | undefined> {
+  /** The save ids `restorePreviousSave` was asked for, one per call. */
+  public restoredSaveIds: Array<number | undefined> = [];
+  public restorePreviousSave(_gameId: GameId, saveId?: number): Promise<IGame | undefined> {
+    this.restoredSaveIds.push(saveId);
     return Promise.resolve(this.previousSaves.shift());
+  }
+  /** What `getRecentSaves` resolves to. */
+  public recentSaves: Array<{saveId: number, game: SerializedGame}> = [];
+  public getRecentSaves(_gameId: GameId, count: number): Promise<Array<{saveId: number, game: SerializedGame}>> {
+    return Promise.resolve(this.recentSaves.slice(-count));
   }
   public mark() {
   }
