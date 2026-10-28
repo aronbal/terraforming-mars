@@ -1,5 +1,228 @@
 <template>
-  <div class="card-list-container" :class="getLanguageCssClass()">
+  <!-- On a phone, drawn in the shell's style: the search pinned at the top, the filters in a sheet. -->
+  <div v-if="mobileLayout" class="mobile-card-list" :class="getLanguageCssClass()" data-test="mobile-card-list">
+    <div class="mobile-more-head">
+      <a class="mobile-plain-button mobile-card-list-back" href="/" data-test="card-list-back">&lsaquo; {{ $t('Back') }}</a>
+    </div>
+    <header class="mobile-card-list-head">
+      <div class="mobile-card-list-eyebrow">{{ APP_NAME }}</div>
+      <h1 v-i18n>Cards List</h1>
+    </header>
+
+    <div class="mobile-card-list-bar">
+      <div class="mobile-card-list-search-row">
+        <label class="mobile-card-list-search">
+          <MobileIcon name="search" :size="16"/>
+          <input
+            ref="filter"
+            type="search"
+            enterkeyhint="search"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            :placeholder="$t('filter')"
+            v-model="filterText"
+            data-test="card-list-filter">
+          <button v-if="filterText !== ''" type="button" class="mobile-card-list-clear" :aria-label="$t('Clear')" @click="filterText = ''">&times;</button>
+        </label>
+        <button
+          type="button"
+          class="mobile-card-list-filters"
+          :class="{'mobile-card-list-filters--on': filtering}"
+          :aria-label="$t('Filters')"
+          data-test="card-list-open-filters"
+          @click="filtersOpen = true">
+          <MobileIcon name="sliders-horizontal" :size="18"/>
+        </button>
+      </div>
+      <div class="mobile-card-list-chips">
+        <button type="button" class="mobile-pill mobile-pill--button" data-test="card-list-names-only" @click="toggleNamesOnly()">
+          {{ $t(namesOnly ? 'Names only' : 'Full text') }}
+        </button>
+        <button type="button" class="mobile-pill mobile-pill--button" data-test="card-list-sort" @click="toggleSortOrder()">
+          {{ $t(sortOrder === 'a' ? 'A-Z' : '0-9') }} &#x2195;
+        </button>
+        <button
+          type="button"
+          class="mobile-pill mobile-pill--button"
+          :class="{'mobile-pill--accent': vps !== 0}"
+          data-test="card-list-vps"
+          @click="toggleVps()">
+          {{ $t(vpsLabel) }}
+        </button>
+      </div>
+    </div>
+
+    <section v-for="section in mobileCardSections" v-show="section.cards.length > 0" :key="section.title" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t(section.title) }} · {{ section.cards.length }}</h2>
+      <MobileCardListGrid :cards="section.cards" :tallCards="tallCards" @open="magnified = $event"/>
+    </section>
+
+    <!-- The rest were drawn for a desktop column; each is shrunk whole to fit. -->
+    <section v-show="visibleGlobalEvents.length > 0" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t('Global Events') }} · {{ visibleGlobalEvents.length }}</h2>
+      <div class="mobile-card-list-blocks">
+        <MobileFitBlock v-for="globalEventName in visibleGlobalEvents" :key="globalEventName" v-memo="[globalEventName]">
+          <GlobalEvent :globalEventName="globalEventName" type="distant"/>
+        </MobileFitBlock>
+      </div>
+    </section>
+
+    <section v-show="visibleColonyNames.length > 0" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t('Colonies') }} · {{ visibleColonyNames.length }}</h2>
+      <div class="mobile-card-list-blocks">
+        <MobileFitBlock v-for="colonyName in visibleColonyNames" :key="colonyName" v-memo="[colonyName, showMetadata]">
+          <Colony :colony="colonyModel(colonyName)"/>
+        </MobileFitBlock>
+      </div>
+    </section>
+
+    <section v-show="visibleMilestoneNames.length > 0" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t('Milestones') }} · {{ visibleMilestoneNames.length }}</h2>
+      <div class="mobile-card-list-blocks mobile-card-list-blocks--pairs">
+        <MobileFitBlock v-for="milestoneName in visibleMilestoneNames" :key="milestoneName" v-memo="[milestoneName]">
+          <div class="milestones">
+            <Milestone :milestone="milestoneModel(milestoneName)" :showDescription="true"/>
+          </div>
+        </MobileFitBlock>
+      </div>
+    </section>
+
+    <section v-show="visibleAwardNames.length > 0" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t('Awards') }} · {{ visibleAwardNames.length }}</h2>
+      <div class="mobile-card-list-blocks mobile-card-list-blocks--pairs">
+        <MobileFitBlock v-for="awardName in visibleAwardNames" :key="awardName" v-memo="[awardName]">
+          <div class="awards">
+            <Award :award="awardModel(awardName)" :showDescription="true"/>
+          </div>
+        </MobileFitBlock>
+      </div>
+    </section>
+
+    <section v-show="visibleAgendaIds.length > 0" class="mobile-card-list-section">
+      <h2 class="mobile-eyebrow">{{ $t('Agendas') }} · {{ visibleAgendaIds.length }}</h2>
+      <div class="mobile-card-list-blocks mobile-card-list-blocks--pairs">
+        <MobileFitBlock v-for="id in visibleAgendaIds" :key="id" v-memo="[id]">
+          <TurmoilAgendaContainer :agendaId="id"/>
+        </MobileFitBlock>
+      </div>
+    </section>
+
+    <div v-if="visibleCount === 0" class="mobile-list">
+      <div class="mobile-row mobile-row--empty mobile-card-list-empty" data-test="card-list-empty" v-i18n>No cards match the search and filters.</div>
+    </div>
+
+    <!-- A card opened at its printed size; a tap anywhere puts it back. -->
+    <div v-if="magnified !== undefined" class="mobile-magnify" role="dialog" data-test="card-list-magnified" @click="magnified = undefined">
+      <div class="mobile-magnify-holder">
+        <Card class="cardbox" :card="{'name': magnified}" :autoTall="tallCards"/>
+      </div>
+    </div>
+
+    <MobileOverlay v-if="filtersOpen" :title="$t('Filters')" @close="filtersOpen = false">
+      <div class="mobile-card-list-filter-sheet" data-test="card-list-filters">
+        <div class="mobile-section-head">
+          <h3 class="mobile-eyebrow" v-i18n>Expansions</h3>
+          <button type="button" class="mobile-plain-button" @click="setAll(expansions, allModules)">{{ $t(allOn(expansions, allModules) ? 'None' : 'All') }}</button>
+        </div>
+        <div class="mobile-card-list-options">
+          <button
+            v-for="expansion in allModules"
+            :key="expansion"
+            type="button"
+            class="mobile-card-list-option"
+            :aria-pressed="expansions[expansion]"
+            :data-test="'filter-module-' + expansion"
+            @click="expansions[expansion] = !expansions[expansion]">
+            <span class="mobile-card-list-option-icon expansion-icon" :class="expansionIconClass(expansion)"></span>
+            <span class="mobile-card-list-option-label">{{ $t(moduleName(expansion)) }}</span>
+          </button>
+        </div>
+
+        <div class="mobile-section-head">
+          <h3 class="mobile-eyebrow" v-i18n>Types</h3>
+          <button type="button" class="mobile-plain-button" @click="setAll(types, allTypes)">{{ $t(allOn(types, allTypes) ? 'None' : 'All') }}</button>
+        </div>
+        <div class="mobile-card-list-options">
+          <button
+            v-for="type in allTypes"
+            :key="type"
+            type="button"
+            class="mobile-card-list-option"
+            :aria-pressed="types[type]"
+            @click="types[type] = !types[type]">
+            <span class="mobile-card-list-option-label">{{ $t(typeLabel(type)) }}</span>
+          </button>
+        </div>
+
+        <div class="mobile-section-head">
+          <h3 class="mobile-eyebrow" v-i18n>Tags</h3>
+          <button type="button" class="mobile-plain-button" @click="setAllTags()">{{ $t(allTagsOn ? 'None' : 'All') }}</button>
+        </div>
+        <div class="mobile-card-list-options mobile-card-list-options--icons">
+          <!-- The event tag is the event type, as on the desktop list. -->
+          <button
+            v-for="tag in allTags"
+            :key="tag"
+            type="button"
+            class="mobile-card-list-option"
+            :aria-pressed="tagOn(tag)"
+            :aria-label="$t(tag)"
+            @click="toggleTag(tag)">
+            <span class="mobile-card-list-option-icon card-tag" :class="'tag-' + tag"></span>
+          </button>
+        </div>
+
+        <div class="mobile-section-head">
+          <h3 class="mobile-eyebrow" v-i18n>Resources</h3>
+          <button type="button" class="mobile-plain-button" @click="setAll(resources, allResources)">{{ $t(allOn(resources, allResources) ? 'None' : 'All') }}</button>
+        </div>
+        <div class="mobile-card-list-options mobile-card-list-options--icons">
+          <button
+            v-for="resource in allResources"
+            :key="resource"
+            type="button"
+            class="mobile-card-list-option"
+            :aria-pressed="resources[resource]"
+            :aria-label="$t(resource)"
+            @click="resources[resource] = !resources[resource]">
+            <span v-if="resource !== 'none'" class="mobile-card-list-option-icon card-resource" :class="cardResourceCSS[resource]"></span>
+            <span v-else class="mobile-card-list-option-icon card-tag tag-none"></span>
+          </button>
+        </div>
+
+        <h3 class="mobile-eyebrow" v-i18n>Display</h3>
+        <div class="mobile-list">
+          <label class="mobile-row mobile-more-switch">
+            <span class="mobile-row-body">
+              <span class="mobile-row-text">
+                <span class="mobile-row-title" v-i18n>Tall cards</span>
+              </span>
+              <span class="form-switch">
+                <input type="checkbox" v-model="tallCards">
+                <i class="form-icon"></i>
+              </span>
+            </span>
+          </label>
+          <label class="mobile-row mobile-more-switch">
+            <span class="mobile-row-body">
+              <span class="mobile-row-text">
+                <span class="mobile-row-title" v-i18n>Colonies with ships</span>
+              </span>
+              <span class="form-switch">
+                <input type="checkbox" v-model="showMetadata">
+                <i class="form-icon"></i>
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <button v-if="filtering" type="button" class="mobile-plain-button mobile-card-list-reset" data-test="card-list-reset" @click="resetFilters()" v-i18n>Reset filters</button>
+      </div>
+    </MobileOverlay>
+  </div>
+
+  <div v-else class="card-list-container" :class="getLanguageCssClass()">
     <h1 v-i18n>Cards List</h1>
 
       <!-- start filters -->
@@ -230,10 +453,40 @@ import {CardResource} from '@/common/CardResource';
 import {cardResourceCSS} from '../common/cardResources';
 import {setDocumentTitle} from '@/client/utils/documentTitle';
 import {textFitMetrics} from '@/client/utils/textFit';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
+import {APP_NAME} from '@/common/constants';
+import {MODULE_NAMES} from '@/common/cards/GameModule';
+import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileOverlay from '@/client/components/mobile/MobileOverlay.vue';
+import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
+import MobileCardListGrid from '@/client/components/cardlist/MobileCardListGrid.vue';
 
 
 type Refs = {
   filter: HTMLInputElement;
+};
+
+/** One run of cards on the phone's list, under its own heading. */
+type CardSection = {
+  title: string;
+  cards: ReadonlyArray<CardName>;
+};
+
+const TYPE_LABELS: Record<TypeOption, string> = {
+  [CardType.EVENT]: 'Event',
+  [CardType.ACTIVE]: 'Active',
+  [CardType.AUTOMATED]: 'Automated',
+  [CardType.PRELUDE]: 'Prelude',
+  [CardType.CORPORATION]: 'Corporation',
+  [CardType.CEO]: 'CEO',
+  [CardType.STANDARD_PROJECT]: 'Standard Projects',
+  [CardType.STANDARD_ACTION]: 'Standard Actions',
+  [CardType.PROXY]: 'Proxy',
+  colonyTiles: 'Colony Tiles',
+  globalEvents: 'Global Events',
+  milestones: 'Milestones',
+  awards: 'Awards',
+  agendas: 'Agendas',
 };
 
 export default defineComponent({
@@ -247,27 +500,80 @@ export default defineComponent({
     TurmoilAgendaContainer,
     PreferencesIcon,
     LanguageIcon,
+    MobileIcon,
+    MobileOverlay,
+    MobileFitBlock,
+    MobileCardListGrid,
   },
   data() {
     return {
       ...hashToModel(window.location.hash),
       // Whether the page has been scrolled down at all; gates the "scroll to top" widget.
       scrolled: false,
+      // On a phone: whether the filters sheet is open, and the card opened large.
+      filtersOpen: false,
+      magnified: undefined as CardName | undefined,
+      hashTimer: undefined as ReturnType<typeof setTimeout> | undefined,
     };
   },
   mounted() {
     setDocumentTitle('Cards List');
-    this.typedRefs.filter.focus();
+    // A phone would raise its keyboard over the list before anyone asked to search.
+    if (!this.mobileLayout) {
+      this.typedRefs.filter.focus();
+    }
     this.delayedSetLocationHash();
     this.measureTitleFit();
     window.addEventListener('scroll', this.handleScroll, {passive: true});
   },
   beforeUnmount() {
+    clearTimeout(this.hashTimer);
     window.removeEventListener('scroll', this.handleScroll);
   },
   computed: {
     typedRefs(): Refs {
       return this.$refs as unknown as Refs;
+    },
+    mobileLayout(): boolean {
+      return mobileLayout.value;
+    },
+    APP_NAME(): string {
+      return APP_NAME;
+    },
+    mobileCardSections(): ReadonlyArray<CardSection> {
+      return [
+        {title: 'Project Cards', cards: this.visibleProjectCards},
+        {title: 'Corporations', cards: this.visibleCorporationCards},
+        {title: 'Preludes', cards: this.visiblePreludeCards},
+        {title: 'CEOs', cards: this.visibleCeoCards},
+        {title: 'Standard Projects', cards: this.visibleStandardProjectCards},
+      ];
+    },
+    /** How many things the search and filters leave on the page, of every kind. */
+    visibleCount(): number {
+      return this.mobileCardSections.reduce((sum, section) => sum + section.cards.length, 0) +
+        this.visibleGlobalEvents.length +
+        this.visibleColonyNames.length +
+        this.visibleMilestoneNames.length +
+        this.visibleAwardNames.length +
+        this.visibleAgendaIds.length;
+    },
+    vpsLabel(): string {
+      switch (this.vps) {
+      case 1: return '+VPs';
+      case 2: return '-VPs';
+      default: return 'all';
+      }
+    },
+    allTagsOn(): boolean {
+      return this.allTags.every((tag) => this.tagOn(tag));
+    },
+    /** Whether the filters sheet hides anything, which its button shows. */
+    filtering(): boolean {
+      return !this.allOn(this.expansions, this.allModules) ||
+        !this.allOn(this.types, this.allTypes) ||
+        !this.allTagsOn ||
+        !this.allOn(this.resources, this.allResources);
     },
     allModules(): ReadonlyArray<GameModule> {
       return GAME_MODULES;
@@ -367,7 +673,7 @@ export default defineComponent({
   },
   methods: {
     delayedSetLocationHash(delayms: number = 200) {
-      setTimeout(() => {
+      this.hashTimer = setTimeout(() => {
         const changed = this.setLocationHash();
         this.delayedSetLocationHash(changed ? 10 : 100);
       }, delayms);
@@ -596,6 +902,43 @@ export default defineComponent({
     },
     toggleTallCards(): void {
       this.tallCards = !this.tallCards;
+    },
+    moduleName(module: GameModule): string {
+      return MODULE_NAMES[module];
+    },
+    typeLabel(type: TypeOption): string {
+      return TYPE_LABELS[type];
+    },
+    allOn<T extends string>(values: Record<T, boolean>, keys: ReadonlyArray<T>): boolean {
+      return keys.every((key) => values[key]);
+    },
+    /** Turns every option in a group on, or, when they all are already, off. */
+    setAll<T extends string>(values: Record<T, boolean>, keys: ReadonlyArray<T>): void {
+      const on = !this.allOn(values, keys);
+      keys.forEach((key) => values[key] = on);
+    },
+    // The event tag filters by the event type, as its checkbox does on the desktop list.
+    tagOn(tag: TagOption): boolean {
+      return tag === 'event' ? this.types.event : this.tags[tag];
+    },
+    toggleTag(tag: TagOption): void {
+      if (tag === 'event') {
+        this.types.event = !this.types.event;
+      } else {
+        this.tags[tag] = !this.tags[tag];
+      }
+    },
+    setAllTags(): void {
+      const on = !this.allTagsOn;
+      this.allTags.forEach((tag) => this.tags[tag] = on);
+      this.types.event = on;
+    },
+    resetFilters(): void {
+      const defaults = hashToModel('');
+      this.expansions = defaults.expansions;
+      this.types = defaults.types;
+      this.tags = defaults.tags;
+      this.resources = defaults.resources;
     },
   },
 });
