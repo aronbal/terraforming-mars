@@ -1,8 +1,9 @@
 import MarkdownIt from 'markdown-it';
 import {ReaderPage, readerPage} from '@/client/components/reader/reader';
 
-// No raw HTML from the page: what renders is only what Markdown can express.
-const md = new MarkdownIt({html: false, linkify: true, breaks: false});
+// The wiki lays some pages out in raw HTML -- a table that sets a list beside a
+// picture -- so HTML is parsed, and `sanitize` then keeps only what reads safely.
+const md = new MarkdownIt({html: true, linkify: true, breaks: false});
 
 type Token = ReturnType<typeof md.parse>[number];
 
@@ -18,6 +19,95 @@ export function linkKind(href: string): 'page' | 'pdf' | 'video' | 'external' {
     return 'video';
   }
   return 'external';
+}
+
+const ALLOWED_TAGS = new Set([
+  'a', 'b', 'strong', 'i', 'em', 'u', 's', 'del', 'code', 'pre', 'kbd', 'sub', 'sup', 'br', 'hr',
+  'p', 'div', 'span', 'section', 'blockquote', 'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'details', 'summary',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'img',
+]);
+
+// Gone with everything inside them, not just unwrapped.
+const DROPPED_TAGS = new Set([
+  'script', 'style', 'iframe', 'frame', 'object', 'embed', 'noscript', 'template', 'link', 'meta', 'base',
+  'form', 'input', 'button', 'textarea', 'select', 'svg', 'math', 'audio', 'video', 'canvas',
+]);
+
+const ALLOWED_ATTRIBUTES: Record<string, ReadonlySet<string>> = {
+  a: new Set(['href', 'title']),
+  img: new Set(['src', 'alt', 'title', 'width', 'height']),
+  td: new Set(['colspan', 'rowspan', 'align', 'valign']),
+  th: new Set(['colspan', 'rowspan', 'align', 'valign']),
+  ol: new Set(['start']),
+};
+
+const ELEMENT_NODE = 1;
+const TEXT_NODE = 3;
+
+/* An absolute http(s) URL for a link or a picture, or undefined for anything else. */
+function safeUrl(url: string, base: string): string | undefined {
+  try {
+    const resolved = new URL(url, base);
+    return resolved.protocol === 'https:' || resolved.protocol === 'http:' ? resolved.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function clean(parent: Node, page: ReaderPage): void {
+  for (const child of Array.from(parent.childNodes)) {
+    if (child.nodeType === TEXT_NODE) {
+      continue;
+    }
+    if (child.nodeType !== ELEMENT_NODE) {
+      parent.removeChild(child);
+      continue;
+    }
+    const element = child as Element;
+    const tag = element.tagName.toLowerCase();
+    if (DROPPED_TAGS.has(tag)) {
+      parent.removeChild(element);
+      continue;
+    }
+    clean(element, page);
+    if (!ALLOWED_TAGS.has(tag)) {
+      // An unknown tag keeps its text.
+      while (element.firstChild !== null) {
+        parent.insertBefore(element.firstChild, element);
+      }
+      parent.removeChild(element);
+      continue;
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      // The reader's own classes, which `renderPage` adds; nothing the page brings.
+      if (name === 'class' && attribute.value.split(/\s+/).every((value) => value.startsWith('reader-'))) {
+        continue;
+      }
+      if (ALLOWED_ATTRIBUTES[tag]?.has(name) !== true) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+      if (name === 'href' || name === 'src') {
+        const url = safeUrl(attribute.value, name === 'src' ? page.imageBase : page.linkBase);
+        if (url === undefined) {
+          element.removeAttribute(attribute.name);
+        } else {
+          element.setAttribute(attribute.name, url);
+        }
+      }
+    }
+  }
+}
+
+/** Rendered HTML with only the tags, attributes and http(s) URLs the reader allows. */
+export function sanitize(html: string, page: ReaderPage): string {
+  // A template's content is inert: nothing in it loads or runs while it is cleaned.
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  clean(template.content, page);
+  return template.innerHTML;
 }
 
 function resolve(url: string, base: string): string {
@@ -57,7 +147,8 @@ function linksIn(inline: Token): {texts: Array<string>, onlyLink: boolean} {
  * things the wiki writes for a wide screen are redrawn for a phone: a list whose
  * every item is a single link becomes rows, each marked with where it leads; and a
  * paragraph that only repeats links already given -- the Rulebooks page follows its
- * list with "(Local copies: ...)", the same rulebooks again -- is left out.
+ * list with "(Local copies: ...)", the same rulebooks again -- is left out. The
+ * result is sanitized last, so the page's own HTML keeps only what `sanitize` allows.
  */
 export function renderPage(markdown: string, page: ReaderPage): string {
   const env = {};
@@ -111,5 +202,5 @@ export function renderPage(markdown: string, page: ReaderPage): string {
     out.push(token);
   }
 
-  return md.renderer.render(out, md.options, env);
+  return sanitize(md.renderer.render(out, md.options, env), page);
 }
