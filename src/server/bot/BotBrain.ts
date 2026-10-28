@@ -42,6 +42,8 @@ import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './eva
 import {forecastRequirements} from './plan/RequirementForecast';
 import {GoalPlanner} from './plan/GoalPlanner';
 import {Enablers} from './plan/Enablers';
+import {TurnPlan, TurnPlanner} from './plan/TurnPlanner';
+import {withStats} from './BotMemory';
 import {Phase} from '../../common/Phase';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
@@ -75,9 +77,9 @@ export class BotBrain {
 
   constructor(
     private readonly player: IPlayer,
-    difficulty: BotDifficulty,
+    private readonly difficulty: BotDifficulty,
     private readonly random: BotRandom = new BotRandom(),
-    override?: BotProfileOverride) {
+    private readonly override?: BotProfileOverride) {
     this.profile = resolveProfile(difficulty, override);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
@@ -91,13 +93,51 @@ export class BotBrain {
     this.actions = this.newActionScorer();
   }
 
-  private newActionScorer(): ActionScorer {
+  /** The scorer this bot prices menu entries with. */
+  public actionScorer(): ActionScorer {
+    return this.actions;
+  }
+
+  private newActionScorer(plan?: TurnPlan): ActionScorer {
     const planning = this.profile.planning;
     const goal = planning.goals ? this.goals?.context(this.player.botMemory) : undefined;
     const enablers = this.goals === undefined || planning.enablerWeight <= 0 ?
       undefined :
       new Enablers(this.player, this.goals, planning.enablerWeight, goal?.card);
-    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal, enablers});
+    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal, enablers, plan});
+  }
+
+  /** The profile override for bots answering in a simulated game: the same, but never planning ahead. */
+  private simulationOverride(): BotProfileOverride {
+    return {...this.override, planning: {...this.override?.planning, lookahead: 0}};
+  }
+
+  /**
+   * Plans the first action of a turn with the second in view, when the
+   * profile looks ahead and the position can be copied safely.
+   *
+   * Returns true when the scorer now carries a plan.
+   */
+  private maybePlanTurn(input: OrOptions): boolean {
+    if (this.profile.planning.lookahead <= 0) {
+      return false;
+    }
+    const simulation = this.simulationOverride();
+    const plan = new TurnPlanner({
+      player: this.player,
+      profile: this.profile,
+      random: this.random,
+      scorer: this.actions,
+      scorerFor: (player) => new BotBrain(player, this.difficulty, new BotRandom(1), simulation).actionScorer(),
+      responderFor: (player, random) => ({
+        respond: (next) => new BotBrain(player, this.difficulty, random, simulation).respond(next),
+      }),
+    }).plan(input);
+    if (plan === undefined) {
+      return false;
+    }
+    this.actions = this.newActionScorer(plan);
+    return true;
   }
 
   /**
@@ -193,6 +233,15 @@ export class BotBrain {
 
   private respondToOr(input: OrOptions): InputResponse {
     this.maybeRefreshGoal(input);
+    const unplanned = this.actions;
+    if (this.maybePlanTurn(input)) {
+      const index = this.chooseIndex(input.options.map((option) => this.actions.score(option)));
+      const staticIndex = this.bestIndex(input.options.map((option) => unplanned.score(option)));
+      if (this.moveName(input, index, this.actions) !== this.moveName(input, staticIndex, unplanned)) {
+        this.player.botMemory = withStats(this.player.botMemory, (stats) => ({...stats, lookaheadChanged: stats.lookaheadChanged + 1}));
+      }
+      return {type: 'or', index, response: this.respond(input.options[index])};
+    }
     const index = this.chooseIndex(input.options.map((option) => this.actions.score(option)));
     const chosen = input.options[index];
     return {type: 'or', index, response: this.respond(chosen)};
@@ -515,6 +564,28 @@ export class BotBrain {
       if (perturbed > bestScore) {
         best = index;
         bestScore = perturbed;
+      }
+    });
+    return best;
+  }
+
+  /** Names the move `scorer` would make by taking option `index` of `menu`, down to the card. */
+  private moveName(menu: OrOptions, index: number, scorer: ActionScorer): string {
+    const option = menu.options[index];
+    if (!(option instanceof SelectCardToPlay)) {
+      return String(index);
+    }
+    const best = scorer.consideredCards(option as SelectCardToPlay<PlayableCard>)
+      .reduce<{card: PlayableCard, value: number} | undefined>((top, entry) => top === undefined || entry.value > top.value ? entry : top, undefined);
+    return `${index}:${best?.card.name}`;
+  }
+
+  /** The index of the highest of `scores`, the first on a tie. */
+  private bestIndex(scores: ReadonlyArray<number>): number {
+    let best = 0;
+    scores.forEach((score, index) => {
+      if (score > scores[best]) {
+        best = index;
       }
     });
     return best;

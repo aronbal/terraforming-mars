@@ -20,6 +20,7 @@ import {PlayableCard, planPaymentFor} from '../CardPayment';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 import {GoalContext} from '../plan/GoalPlanner';
 import {Enablers} from '../plan/Enablers';
+import {TurnPlan} from '../plan/TurnPlanner';
 import {inPurseTerms} from '../plan/Economy';
 import {Payment} from '../../../common/inputs/Payment';
 
@@ -50,6 +51,8 @@ export type ScorerPlanning = {
   readonly goal?: GoalContext;
   /** What a card does for the other cards in hand. */
   readonly enablers?: Enablers;
+  /** What each move on the action menu leaves possible for the rest of the turn. */
+  readonly plan?: TurnPlan;
 };
 
 export class ActionScorer {
@@ -121,7 +124,7 @@ export class ActionScorer {
     }
 
     try {
-      return this.scoreByAnnotation(option);
+      return this.scoreByAnnotation(option) + (this.planning.plan?.options.get(option) ?? 0);
     } catch (err) {
       return 0;
     }
@@ -309,7 +312,8 @@ export class ActionScorer {
     const shortfall = Math.max(0, cost - (this.player.megaCredits - reserve));
     // Spending down to nothing has a real cost: it forecloses next turn.
     const enabled = this.planning.enablers?.value(card) ?? 0;
-    return gross - cost - shortfall * 0.05 + this.goalAdjustment(card, payment) + enabled;
+    const followUp = this.planning.plan?.cards.get(card.name) ?? 0;
+    return gross - cost - shortfall * 0.05 + this.goalAdjustment(card, payment) + enabled + followUp;
   }
 
   /**

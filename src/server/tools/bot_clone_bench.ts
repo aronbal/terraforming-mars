@@ -21,6 +21,9 @@ import {InputResponse} from '../../common/inputs/InputResponse';
 import {isGameId, isPlayerId, isSpectatorId, safeCast} from '../../common/Types';
 import {NO_DATABASE, deckSeed} from './bot_tournament';
 
+/** The lookahead settings timed. */
+const LOOKAHEAD = {lookahead: 4, lookaheadDiscount: 0.9, lookaheadBudgetMs: 60};
+
 /** Most follow-up inputs a simulated move may raise before it is abandoned. */
 const MAX_STEPS = 40;
 
@@ -41,6 +44,8 @@ function main(): void {
   const clones: Array<number> = [];
   const moves: Array<number> = [];
   const sizes: Array<number> = [];
+  const plain: Array<number> = [];
+  const planned: Array<number> = [];
 
   for (let seed = 1; seed <= games; seed++) {
     const players = [0, 1].map((index) => {
@@ -63,6 +68,18 @@ function main(): void {
   }
 
   function measure(game: Game, player: IPlayer, response: InputResponse): void {
+    // A whole decision at the top of the turn, with and without looking ahead.
+    const menu = player.getWaitingFor();
+    if (menu !== undefined) {
+      const memory = player.botMemory;
+      const before = performance.now();
+      new BotBrain(player, 'insane', new BotRandom(1)).respond(menu);
+      const between = performance.now();
+      new BotBrain(player, 'insane', new BotRandom(1), {planning: LOOKAHEAD}).respond(menu);
+      planned.push(performance.now() - between);
+      plain.push(between - before);
+      player.botMemory = memory;
+    }
     sizes.push(JSON.stringify({...game.serialize(), gameLog: []}).length);
     const started = performance.now();
     const clone = cloneForLookahead(game);
@@ -92,6 +109,8 @@ function main(): void {
 
   report('clone', clones);
   report('clone + move + rescore', moves);
+  report('decision, static', plain);
+  report(`decision, lookahead ${LOOKAHEAD.lookahead}`, planned);
   console.log(`serialized size without log: p50 ${(percentile(sizes, 0.5) / 1024).toFixed(0)} KiB, max ${(percentile(sizes, 1) / 1024).toFixed(0)} KiB`);
 }
 
