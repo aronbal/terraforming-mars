@@ -36,10 +36,18 @@ import {planPayment} from './PaymentPlanner';
 import {ActionScorer} from './evaluate/ActionScorer';
 import {CardEvaluator} from './evaluate/CardEvaluator';
 import {scoreSpace} from './evaluate/SpaceEvaluator';
-import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './evaluate/Values';
+import {Tempo, ValueWeights, productionValues, shiftTempo, stockValues, tempoOf} from './evaluate/Values';
+import {forecastRequirements} from './plan/RequirementForecast';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
 const COMFORTABLE_HAND_SIZE = 8;
+
+/**
+ * How much of a card's value survives when its requirements are forecast to be
+ * met only after the game is expected to end. The estimate of game length is
+ * rough, so this is a discount rather than a write-off.
+ */
+const TOO_LATE_DISCOUNT = 0.3;
 
 /** Words that mark a card selection as something the player gives up. */
 const LOSS_WORDS = ['discard', 'remove', 'lose', 'sacrifice', 'destroy', 'spend', 'trash'];
@@ -64,6 +72,7 @@ export class BotBrain {
   private readonly cards: CardEvaluator;
   private readonly actions: ActionScorer;
   private readonly weights: ValueWeights;
+  private readonly laterCards = new Map<number, CardEvaluator>();
 
   constructor(
     private readonly player: IPlayer,
@@ -218,7 +227,7 @@ export class BotBrain {
       return [];
     }
 
-    const ranked = this.rankCards(option.cards, cardCost);
+    const ranked = this.rankCards(option.cards, cardCost, true);
     const wanted = Math.max(
       option.config.min,
       Math.min(limit, Math.round(limit * Math.max(this.profile.buyRate, 0.3))));
@@ -239,7 +248,7 @@ export class BotBrain {
     const buying = input.config.played === false;
     const losing = this.looksLikeLoss(input.title);
     const cardCost = buying ? this.player.cardCost : 0;
-    const ranked = this.rankCards(eligible, cardCost);
+    const ranked = this.rankCards(eligible, cardCost, buying || losing);
 
     let chosen: ReadonlyArray<ICard>;
     if (losing) {
@@ -267,10 +276,42 @@ export class BotBrain {
     return {type: 'card', cards: chosen.map((card) => card.name)};
   }
 
-  private rankCards(cards: ReadonlyArray<ICard>, cardCost: number): Array<{card: ICard, net: number}> {
+  /**
+   * Ranks cards by what they are worth to hold, best first.
+   *
+   * With `forecast`, a card is priced for when its requirements will be met
+   * rather than as if it could be played now, since the engine only offers
+   * cards to play once their requirements are met.
+   */
+  private rankCards(cards: ReadonlyArray<ICard>, cardCost: number, forecast: boolean = false): Array<{card: ICard, net: number}> {
     return cards
-      .map((card) => ({card, net: this.perturbed(this.cards.valueOfPlaying(card) - cardCost)}))
+      .map((card) => ({card, net: this.perturbed(this.prospectiveValue(card, forecast) - cardCost)}))
       .sort((a, b) => b.net - a.net);
+  }
+
+  private prospectiveValue(card: ICard, forecast: boolean): number {
+    if (!forecast || !this.profile.planning.requirementForecast) {
+      return this.cards.valueOfPlaying(card);
+    }
+    const {eta, probability} = forecastRequirements(this.player, card);
+    if (probability <= 0) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    if (eta <= 0) {
+      return probability * this.cards.valueOfPlaying(card);
+    }
+    const late = eta >= this.tempo.remainingGenerations ? TOO_LATE_DISCOUNT : 1;
+    return late * probability * this.cardsIn(eta).valueOfPlaying(card);
+  }
+
+  /** An evaluator for cards played `generations` from now. */
+  private cardsIn(generations: number): CardEvaluator {
+    let evaluator = this.laterCards.get(generations);
+    if (evaluator === undefined) {
+      evaluator = new CardEvaluator(this.player, this.profile, shiftTempo(this.tempo, generations), this.personality);
+      this.laterCards.set(generations, evaluator);
+    }
+    return evaluator;
   }
 
   private selectNamedCards(option: PlayerInput, cards: ReadonlyArray<ICard>): InputResponse {
