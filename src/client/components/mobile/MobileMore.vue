@@ -89,7 +89,7 @@
       </div>
       <p class="mobile-section-note" v-i18n>
         This game keeps running while you are away, and Continue a game lists the ones you
-        have open on this device. These screens are still drawn for a desktop.
+        have open on this device.
       </p>
     </template>
 
@@ -282,6 +282,7 @@ export default defineComponent({
     },
     gameLinks(): ReadonlyArray<GameLink> {
       return [
+        {label: 'Main page', path: '/', test: 'more-main-page'},
         {label: 'New game', path: '/' + paths.NEW_GAME, test: 'more-new-game'},
         {label: 'Continue a game', path: '/' + paths.CONTINUE_GAME, test: 'more-continue'},
         {label: 'All games', path: '/' + paths.GAMES_OVERVIEW, test: 'more-games'},

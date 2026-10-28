@@ -155,6 +155,24 @@
     font-size: 13px;
   }
 
+  // A table without headings is the wiki laying out a page side by side, which a
+  // phone has no room for: its cells stack.
+  table:not(:has(th)) {
+    display: block;
+
+    tbody,
+    tr,
+    td {
+      display: block;
+      padding: 0;
+      border: 0;
+    }
+
+    ul {
+      margin-bottom: 0.8em;
+    }
+  }
+
   th,
   td {
     padding: 6px 8px;

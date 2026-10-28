@@ -37,7 +37,7 @@ describe('MobileMore', () => {
 
   it('links to the other games by their real routes', () => {
     const paths = mount().vm.gameLinks.map((link: {path: string}) => link.path);
-    expect(paths).deep.eq(['/new-game', '/continue-game', '/games-overview']);
+    expect(paths).deep.eq(['/', '/new-game', '/continue-game', '/games-overview']);
   });
 
   it('opens the rules in the reader, not in a new tab', async () => {

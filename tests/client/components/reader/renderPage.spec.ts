@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {linkKind, renderPage} from '@/client/components/reader/renderPage';
+import {linkKind, renderPage, sanitize} from '@/client/components/reader/renderPage';
 import {readerPage} from '@/client/components/reader/reader';
 
 const RULEBOOKS = readerPage('https://github.com/terraforming-mars/terraforming-mars/wiki/Rulebooks')!;
@@ -43,5 +43,36 @@ describe('renderPage', () => {
   it('makes relative links absolute against the wiki', () => {
     const html = renderPage('[Variants](Variants#tr-boost)', RULEBOOKS);
     expect(html).to.include('href="https://github.com/terraforming-mars/terraforming-mars/wiki/Variants#tr-boost"');
+  });
+
+  it('draws the HTML the wiki lays pages out with', () => {
+    const html = renderPage([
+      '<table> <tr><td valign="top"> <ul> <li> ~90 new project cards </ul> </td>',
+      '<td> <img src="https://user-images.githubusercontent.com/1/moon.png" width="225" height="300"> </td> </tr> </table>',
+    ].join('\n'), RULEBOOKS);
+
+    expect(html).to.include('<table>');
+    expect(html).to.include('<td valign="top">');
+    expect(html).to.include('<img src="https://user-images.githubusercontent.com/1/moon.png" width="225" height="300">');
+    expect(html).not.to.include('&lt;table&gt;');
+  });
+
+  it('keeps nothing that could run', () => {
+    const html = sanitize([
+      '<p onclick="steal()">Text<script>steal()</script></p>',
+      '<img src="x.png" onerror="steal()">',
+      '<a href="javascript:steal()">bad</a>',
+      '<a href="Variants" style="color: red" class="evil">good</a>',
+      '<iframe src="https://example.com"></iframe>',
+      '<marquee>kept text</marquee>',
+    ].join(''), RULEBOOKS);
+
+    expect(html).eq([
+      '<p>Text</p>',
+      '<img src="https://github.com/terraforming-mars/terraforming-mars/wiki/x.png">',
+      '<a>bad</a>',
+      '<a href="https://github.com/terraforming-mars/terraforming-mars/wiki/Variants">good</a>',
+      'kept text',
+    ].join(''));
   });
 });

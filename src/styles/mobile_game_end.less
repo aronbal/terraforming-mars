@@ -254,6 +254,45 @@ each(@players, {
   color: @m-label;
 }
 
+// A card's line is the whole width to tap, and says it opens something.
+.mobile-end-line-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  margin: -6px 0;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:active {
+    background: @m-fill;
+  }
+
+  .mobile-end-line-text {
+    flex: 1;
+  }
+}
+
+.mobile-end-line-mark {
+  flex: none;
+  color: @m-label-3;
+}
+
+.mobile-end-card-caption {
+  margin: 0;
+  font-family: @m-font;
+  font-size: @m-row-title-size;
+  font-weight: 600;
+  color: @m-label;
+  .m-tabular();
+}
+
 .mobile-end-actions {
   display: flex;
   flex-direction: column;
@@ -262,4 +301,19 @@ each(@players, {
   a.mobile-play-sheet-button {
     text-decoration: none;
   }
+}
+
+// The results are not inside the shell, so the card held up blurs what is behind it
+// rather than letting the lines show through, and the medal sheet's title drops the
+// shadow the page gives every heading.
+.mobile-end-magnify {
+  background: fade(#000, 86%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.mobile-end .mobile-play-sheet-title {
+  padding: 0;
+  filter: none;
+  text-shadow: none;
 }
