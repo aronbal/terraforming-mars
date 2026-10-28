@@ -13,8 +13,8 @@ are played by people, so mixed games (two humans and a bot, say) work too.
 | --- | --- | --- |
 | `easy` | Easy | Takes legal moves with little planning. Badly undervalues production, so it never builds an engine. |
 | `medium` | Medium | Builds production, plays what it can afford, terraforms steadily, and races milestones. |
-| `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. |
-| `insane` | Insane | Everything Hard does, plus placement denial and timing the final generation around who is ahead. Measures as roughly even with Hard — see the ladder below. |
+| `hard` | Hard | Prices its engine correctly, values tag synergies, and converts spare cash into points at the end. Watches the opponent the way a competent human does: claims a milestone before they can, funds awards only on leads they cannot close, and pushes to end the game when ahead. |
+| `insane` | Insane | Everything Hard does, plus placement denial. Measures as roughly even with Hard — see the ladder below. |
 
 ## How it works
 
@@ -37,6 +37,7 @@ have made through the UI.
 | `src/server/bot/evaluate/Values.ts` | Prices resources, production and terraform rating. |
 | `src/server/bot/evaluate/CardEvaluator.ts` | Scores a card by walking its `behavior`. |
 | `src/server/bot/evaluate/ActionScorer.ts` | Scores an entry in the action menu. |
+| `src/server/bot/evaluate/MilestonesAndAwards.ts` | Prices claiming a milestone and funding an award. |
 | `src/server/bot/evaluate/SpaceEvaluator.ts` | Scores a space for a tile. |
 
 ### Evaluation
@@ -68,6 +69,17 @@ therefore under-builds, the way a weak player does. On top of that, weaker
 levels mix noise into every score and occasionally discard their ranking
 entirely.
 
+How much a level reads its opponent is split into three flags:
+
+| Flag | Levels | What it does |
+| --- | --- | --- |
+| `watchesMilestonesAndAwards` | Hard, Insane | A milestone an opponent can claim now, or is one step short of (one tag, one city, one point of TR), is worth more to claim first: waiting risks losing its 5 VP and handing them 5 VP. On the last milestone slot any milestone the opponent can reach counts. An opponent who has passed threatens nothing. Milestones the bot cannot claim yet are not valued at all. An award is priced by how safe the lead is — margin against how fast the scores have grown and how many generations are left — and losing it counts as the opponent's 5 VP, so ties and thin early leads are not funded. With one award slot left, funding an award the bot leads is also worth the award it stops an opponent from funding. An award the opponent leads is never funded. |
+| `timesTheEnd` | Hard, Insane | In the endgame, each step of temperature, oxygen or oceans is worth more when ahead on points. When behind, only the step that would finish Mars is held back; ordinary terraforming is still points. |
+| `deniesPlacement` | Insane | Takes board spaces partly to keep them from the opponent. |
+
+Everything is priced in megacredits like the rest of the evaluator. Medium and
+Easy price milestones and awards on their own position alone.
+
 There is no tree search. Cloning a game to try moves is not reliable here,
 because `Game.serialize` deliberately drops the deferred-action queue, so a
 clone taken mid-action is not the position it came from. The bot is a tuned
@@ -92,22 +104,22 @@ reports win rates. Run it after changing anything in the evaluator:
 npx tsx src/server/tools/bot_tournament.ts 60
 ```
 
-Results from 60 games per pairing, seats alternated:
+Results from 120 games per pairing, seats alternated:
 
 ```
-medium  vs easy     medium wins 59/60 ( 98%)
-hard    vs easy     hard wins   59/60 ( 98%)
-insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   38/60 ( 63%)
-insane  vs medium   insane wins 38/60 ( 63%)
-insane  vs hard     insane wins 32/60 ( 53%)
+medium  vs easy     medium wins 118/120 ( 98%)
+hard    vs easy     hard wins   120/120 (100%)
+insane  vs easy     insane wins 120/120 (100%)
+hard    vs medium   hard wins    78/120 ( 65%)
+insane  vs medium   insane wins  79/120 ( 66%)
+insane  vs hard     insane wins  64/120 ( 53%)
 ```
 
 **Read this honestly: there are three distinct tiers, not four.** `easy` is far
 weaker than everything, `hard` beats `medium` reliably, and `insane` is a coin
-flip against `hard`. Insane differs from Hard only in opponent awareness —
-placement denial and timing the final generation — and against another bot that
-plays just as well, denial mostly cancels out.
+flip against `hard`. Insane differs from Hard in placement denial and slightly
+sharper knobs, and against another bot that plays just as well, denial mostly
+cancels out.
 
 Bot-versus-bot games run about 14 to 16 generations, longer than a typical human
 game, because two cautious bots terraform more slowly than a human pushing to
@@ -135,6 +147,18 @@ that, the bot valued a city at a flat few megacredits, almost never bought the
 standard project, ignored the opponent's forests, and ringed open spaces with
 greeneries for the human to drop a city into. Measured over 120 games each
 against the previous version: 49% at Hard, 53% at Medium, 50% at Insane.
+
+Giving Hard the opponent-reading flags is the same kind of change. Measured
+over 320 games of the new Hard against the previous Hard (which ignored the
+opponent): 54% overall. Milestones and awards alone measured 51-54%, and
+gained the new Hard about 1 VP per game from awards. The first version of
+`timesTheEnd` — which held back *every* endgame terraforming step when behind,
+and even counted greeneries after oxygen was maxed — measured 45-46%, because a
+bot that is behind gives up TR while the leader closes the game anyway; the
+current version only refuses the step that finishes Mars and measured 48-50%.
+The ladder is otherwise unchanged: on the same 60 seeds per pairing, Hard over
+Medium went from 58% to 63%, and Insane over Hard from 57% to 53%, both inside
+the noise band.
 
 At n=100 the standard error is about 5 points, so nothing under roughly 60% is
 a real effect.
