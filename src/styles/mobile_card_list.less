@@ -1,0 +1,411 @@
+/*
+ * The cards list on a phone, drawn in the mobile shell's style: a search bar pinned
+ * at the top, the cards two to a row at the Cards tab's scale, and the filters in a
+ * sheet from the bottom. The cards, colonies and other pieces are the desktop
+ * components, scaled whole and never re-laid-out.
+ */
+
+.topmost-cards:has(.mobile-card-list) {
+  min-height: 100dvh;
+  background: @m-bg;
+
+  // The desktop leaves room for a sidebar this page does not have on a phone.
+  .main-container {
+    margin: 0;
+  }
+
+  > .notice {
+    position: static;
+    padding: 8px @m-gutter calc(16px + env(safe-area-inset-bottom));
+    font-family: @m-font;
+    font-size: @m-small-size;
+    text-align: center;
+    color: @m-label-3;
+  }
+}
+
+.mobile-card-list {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  box-sizing: border-box;
+  max-width: 820px;
+  margin: 0 auto;
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(@m-gutter + env(safe-area-inset-right))
+    24px
+    calc(@m-gutter + env(safe-area-inset-left));
+  background: @m-bg;
+  color: @m-label;
+  font-family: @m-font;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  // Nothing may widen the page: on a phone that shifts the view off the pinned search.
+  // `clip`, not `hidden`, so the page is not a scroll container and the bar still sticks.
+  overflow-x: clip;
+
+  // The shell resets its buttons under #mobile-shell, which this page is not in.
+  // Zero specificity, as there, so the shell's button classes still win.
+  :where(&) button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+}
+
+.mobile-card-list-back {
+  display: inline-flex;
+  align-items: center;
+  margin-left: -8px;
+  font-size: 15px;
+
+  &,
+  &:hover,
+  &:visited,
+  &:focus {
+    color: @m-accent;
+    text-decoration: none;
+  }
+}
+
+.mobile-card-list-head {
+  display: grid;
+  gap: 6px;
+
+  h1 {
+    margin: 0;
+    padding: 0;
+    filter: none;
+    text-shadow: none;
+    font-family: @m-font;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: @m-label;
+  }
+}
+
+.mobile-card-list-eyebrow {
+  .m-eyebrow();
+  color: @m-warn;
+}
+
+// Behind the status bar of a home-screen app, so the list never scrolls under the clock.
+.mobile-card-list::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 111;
+  height: env(safe-area-inset-top);
+  background: @m-bg;
+}
+
+// The search stays in reach while the list scrolls under it, on the shell's glass.
+.mobile-card-list-bar {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 110;
+  display: grid;
+  gap: 10px;
+  margin: 0 calc(-1 * @m-gutter);
+  padding: 8px @m-gutter 10px;
+  background: @m-glass;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid @m-sep;
+}
+
+.mobile-card-list-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-card-list-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 36px;
+  margin: 0;
+  padding: 0 4px 0 10px;
+  border-radius: @m-radius-button-lg - 2px;
+  background: @m-fill;
+  color: @m-label-2;
+  cursor: text;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: @m-label;
+    font-family: @m-font;
+    // 16px keeps iOS from zooming the page when the field takes focus.
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+
+    &::placeholder {
+      color: @m-label-2;
+    }
+
+    // The field draws its own clear button.
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.mobile-card-list-clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: @m-radius-pill;
+  font-size: 18px;
+  line-height: 1;
+  color: @m-label-2;
+
+  &:active {
+    background: @m-fill;
+  }
+}
+
+.mobile-card-list-filters {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: @m-radius-button-lg - 2px;
+  background: @m-fill;
+  color: @m-label;
+
+  &:active {
+    background: @m-fill-strong;
+  }
+}
+
+// Something is hidden by the filters: the button says so in the accent colour.
+.mobile-card-list-filters--on {
+  background: fade(@m-accent, 18%);
+  color: @m-accent;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border-radius: @m-radius-pill;
+    background: @m-accent;
+  }
+}
+
+.mobile-card-list-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .mobile-pill {
+    height: 28px;
+    padding: 0 12px;
+    font-size: @m-value-size;
+    color: @m-label;
+  }
+
+  .mobile-pill--accent {
+    color: @m-accent;
+  }
+}
+
+.mobile-card-list-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+// Two to a row on a phone held upright, more as the screen widens.
+.mobile-card-list-grid.mobile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: 12px;
+  place-items: start center;
+}
+
+.mobile-card-list .mobile-card-scaler {
+  --mobile-card-scale: 0.68;
+}
+
+.mobile-card-list .mobile-card-button {
+  // The tap is the card's own; the browser's grey flash is not wanted over it.
+  -webkit-tap-highlight-color: transparent;
+
+  &:active .cardbox {
+    filter: brightness(0.85);
+  }
+}
+
+// The colonies and global events are one to a row; the smaller pieces two, when two fit.
+.mobile-card-list-blocks {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+
+  > .mobile-fit {
+    min-width: 0;
+  }
+}
+
+.mobile-card-list-blocks--pairs {
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  justify-items: center;
+}
+
+// An agenda's brown tile, rounded like the shell's other cards.
+.mobile-card-list-blocks .container {
+  overflow: hidden;
+  border-radius: @m-radius-card;
+}
+
+.mobile-card-list-empty {
+  min-height: 0;
+  padding: 14px;
+  line-height: 1.4;
+}
+
+// The global heading styles would shadow the sheet's title.
+.mobile-card-list .mobile-overlay-title {
+  filter: none;
+  text-shadow: none;
+}
+
+.mobile-card-list .mobile-magnify-holder {
+  max-height: 90%;
+}
+
+//
+// The filters sheet
+//
+
+.mobile-card-list-filter-sheet {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+
+  .mobile-section-head,
+  > .mobile-eyebrow {
+    margin-top: 8px;
+  }
+
+  .mobile-list {
+    background: @m-card;
+  }
+}
+
+.mobile-card-list-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.mobile-card-list-options--icons {
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+}
+
+.mobile-card-list-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: @m-tap;
+  padding: 6px 10px;
+  border-radius: @m-radius-button-lg;
+  background: @m-card;
+  box-shadow: inset 0 0 0 1px @m-sep;
+  color: @m-label-3;
+  transition: background-color @m-duration @m-ease, color @m-duration @m-ease;
+
+  .mobile-card-list-options:not(.mobile-card-list-options--icons) & {
+    justify-content: flex-start;
+  }
+
+  // An option that is off is dimmed, as a card you cannot act on is.
+  .mobile-card-list-option-icon {
+    opacity: 0.35;
+    filter: grayscale(0.8);
+    transition: opacity @m-duration @m-ease, filter @m-duration @m-ease;
+  }
+
+  &[aria-pressed="true"] {
+    background: fade(@m-accent, 16%);
+    box-shadow: inset 0 0 0 1px fade(@m-accent, 55%);
+    color: @m-label;
+
+    .mobile-card-list-option-icon {
+      opacity: 1;
+      filter: none;
+    }
+  }
+}
+
+.mobile-card-list-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: @m-value-size;
+  font-weight: 600;
+}
+
+// The tags, resources and expansions keep their own artwork, at one size.
+.mobile-card-list-option-icon {
+  display: block;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  background-size: 26px 26px;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  &.card-tag,
+  &.card-resource {
+    position: static;
+    border-radius: @m-radius-pill;
+  }
+}
+
+// The base game has no expansion icon of its own; it gets its initial, as on the desktop.
+.mobile-card-list-option-icon.expansion-icon-base {
+  display: grid;
+  place-items: center;
+  border-radius: @m-radius-pill;
+  background: @m-label;
+  color: @m-bg;
+  font-size: @m-secondary-size;
+  font-weight: 800;
+
+  &::before {
+    content: "B";
+  }
+}
+
+.mobile-card-list-reset {
+  justify-self: center;
+  margin-top: 8px;
+  color: @m-bad;
+}
