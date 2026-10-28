@@ -43,7 +43,7 @@ export function scoreSpace(
     score += cityValue(adjacent, tempo);
   }
 
-  if (profile.playsAgainstOpponent) {
+  if (profile.deniesPlacement) {
     score += denialValue(player, space, adjacent);
   }
 
