@@ -9,13 +9,22 @@ import {ValueWeights} from './evaluate/Values';
  */
 export type BotProfile = {
   /**
-   * Fraction of a candidate's score replaced by noise, from 0 (always pick the
-   * best-scoring option) to 1 (pick uniformly at random).
+   * How loosely the bot picks between options, in megacredits.
+   *
+   * The bot picks each option with a probability that falls off with how much
+   * worse than the best it is (a softmax over the scores). Options within
+   * about this many megacredits of the best are picked often; an option many
+   * times this far behind almost never is. So a bot errs the way a person
+   * does, taking the second-best move when two are close, rather than making a
+   * random move. 0 always picks the best.
    */
-  noise: number;
+  temperature: number;
 
-  /** Chance per decision that the bot discards its ranking and picks at random. */
-  blunderRate: number;
+  /**
+   * How far the bot's per-game taste may stray from neutral, from 0 (no
+   * personality) upward. See `BotPersonality`.
+   */
+  personality: number;
 
   /**
    * How accurately the bot prices production, where 1 is accurate.
@@ -56,8 +65,8 @@ export type BotProfile = {
 
 const PROFILES: Record<BotDifficulty, BotProfile> = {
   easy: {
-    noise: 0.55,
-    blunderRate: 0.20,
+    temperature: 4,
+    personality: 0.35,
     productionWeight: 0.4,
     terraformWeight: 0.65,
     valuesSynergy: false,
@@ -68,8 +77,8 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     playsEndgame: false,
   },
   medium: {
-    noise: 0.22,
-    blunderRate: 0.05,
+    temperature: 1.8,
+    personality: 0.25,
     productionWeight: 0.72,
     terraformWeight: 0.85,
     valuesSynergy: false,
@@ -80,8 +89,8 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     playsEndgame: true,
   },
   hard: {
-    noise: 0.08,
-    blunderRate: 0.0,
+    temperature: 0.6,
+    personality: 0.15,
     productionWeight: 1.0,
     terraformWeight: 1.0,
     valuesSynergy: true,
@@ -92,8 +101,8 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     playsEndgame: true,
   },
   insane: {
-    noise: 0.0,
-    blunderRate: 0.0,
+    temperature: 0,
+    personality: 0.1,
     productionWeight: 1.05,
     terraformWeight: 1.0,
     valuesSynergy: true,
