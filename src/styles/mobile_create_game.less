@@ -253,6 +253,12 @@
     outline-offset: -2px;
   }
 
+  // A link opens in the app's reader on a phone, not in a new tab, and a touch
+  // screen leaves a hover tooltip standing after the tap.
+  .tooltip::after {
+    display: none;
+  }
+
   .create-game-expansion-icon {
     width: 26px;
     height: 26px;

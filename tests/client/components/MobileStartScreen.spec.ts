@@ -9,17 +9,24 @@ describe('MobileStartScreen', () => {
     expect(wrapper.exists()).to.be.true;
   });
 
-  it('leads with the two ways into a game, in this tab', () => {
+  it('leads with the two ways into a game', () => {
     const wrapper = mount(MobileStartScreen, {...globalConfig});
 
     const links = wrapper.findAll('a.mobile-row');
     expect(links[0].attributes('href')).eq('new-game');
     expect(links[1].attributes('href')).eq('continue-game');
-    expect(links[0].attributes('target')).is.undefined;
-    expect(links[1].attributes('target')).is.undefined;
-    for (const link of links.slice(2)) {
-      expect(link.attributes('target')).eq('_blank');
-    }
+  });
+
+  it('opens only other sites in a new tab', () => {
+    const wrapper = mount(MobileStartScreen, {...globalConfig});
+
+    // The wiki and the README open in the app's reader, the cards list in this tab.
+    const tabbed = wrapper.findAll('a.mobile-row')
+      .filter((link) => link.attributes('target') === '_blank')
+      .map((link) => link.attributes('href'));
+    expect(tabbed).has.length(2);
+    expect(tabbed[0]).to.include('boardgamegeek.com');
+    expect(wrapper.find('[data-test=start-book-open]').attributes('target')).is.undefined;
   });
 
   it('picks the language from a list rather than a wall of flags', () => {

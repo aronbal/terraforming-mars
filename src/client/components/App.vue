@@ -58,6 +58,8 @@
     <div class="notice" v-i18n>
       Not affiliated with FryxGames, Asmodee Digital or Steam in any way.
     </div>
+    <!-- On a phone the wiki opens inside the app, over whatever screen is up. -->
+    <ReaderSheet v-if="mobileShell"/>
   </div>
 </template>
 
@@ -77,6 +79,7 @@ const LoginHome = defineAsyncComponent(() => import(/* webpackChunkName: "login"
 const LoadGameForm = defineAsyncComponent(() => import(/* webpackChunkName: "load-game" */ '@/client/components/LoadGameForm.vue'));
 const MobilePlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "mobile-player-home" */ '@/client/components/mobile/MobilePlayerHome.vue'));
 const MobileGameEnd = defineAsyncComponent(() => import(/* webpackChunkName: "mobile-game-end" */ '@/client/components/mobile/MobileGameEnd.vue'));
+const ReaderSheet = defineAsyncComponent(() => import(/* webpackChunkName: "reader" */ '@/client/components/reader/ReaderSheet.vue'));
 const PlayerHome = defineAsyncComponent(() => import(/* webpackChunkName: "player-home" */ '@/client/components/PlayerHome.vue'));
 const SpectatorHome = defineAsyncComponent(() => import(/* webpackChunkName: "spectator-home" */ '@/client/components/SpectatorHome.vue'));
 const StartScreen = defineAsyncComponent(() => import(/* webpackChunkName: "start-screen" */ '@/client/components/StartScreen.vue'));
@@ -174,6 +177,7 @@ export default defineComponent({
     Help,
     AdminHome,
     LoginHome,
+    ReaderSheet,
   },
   computed: {
     /** Whether the phone shell replaces the desktop player view. */

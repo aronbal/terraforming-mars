@@ -28,13 +28,15 @@
       </div>
 
       <h3 class="mobile-eyebrow" v-i18n>Learn more</h3>
+      <!-- The wiki and the README open in the app's reader; only other sites get a tab. -->
       <div class="mobile-list">
         <a
           v-for="entry in referenceEntries"
           :key="entry.label"
           class="mobile-row mobile-row--button mobile-start-link"
           :href="entry.href"
-          target="_blank">
+          :target="entry.external === true ? '_blank' : undefined"
+          :data-test="'start-' + entry.icon">
           <span class="mobile-glyph" :class="entry.glyph">
             <MobileIcon :name="entry.icon" :size="16"/>
           </span>
@@ -42,7 +44,8 @@
             <span class="mobile-row-text">
               <span class="mobile-row-title">{{ $t(entry.label) }}</span>
             </span>
-            <MobileIcon class="mobile-start-external" name="external-link" :size="15"/>
+            <MobileIcon v-if="entry.external === true" class="mobile-start-external" name="external-link" :size="15"/>
+            <span v-else class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
           </span>
         </a>
       </div>
@@ -99,6 +102,7 @@ import {computed, ref} from 'vue';
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
 import MobileSettings from '@/client/components/mobile/MobileSettings.vue';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
+import {HELP_PAGES} from '@/client/components/reader/reader';
 import {PreferencesManager} from '@/client/utils/PreferencesManager';
 import {refreshMobileLayoutPreference} from '@/client/utils/useMobileLayout';
 import {ALL_LANGUAGES, LANGUAGES} from '@/common/constants';
@@ -110,6 +114,8 @@ type Entry = {
   href: string;
   icon: MobileIconName;
   glyph: string;
+  /** Another site, in a new tab. */
+  external?: boolean;
 };
 
 const playEntries: ReadonlyArray<Entry> = [
@@ -118,12 +124,12 @@ const playEntries: ReadonlyArray<Entry> = [
 ];
 
 const referenceEntries: ReadonlyArray<Entry> = [
-  {label: 'How to Play', href: 'https://github.com/terraforming-mars/terraforming-mars/wiki/Rulebooks', icon: 'book-open', glyph: 'mobile-glyph--neutral'},
+  {label: 'How to Play', href: HELP_PAGES.howToPlay, icon: 'book-open', glyph: 'mobile-glyph--neutral'},
   {label: 'Cards list', href: 'cards', icon: 'layers', glyph: 'mobile-glyph--neutral'},
-  {label: 'Board game', href: 'https://boardgamegeek.com/boardgame/167791/terraforming-mars', icon: 'dices', glyph: 'mobile-glyph--neutral'},
-  {label: 'About us', href: 'https://github.com/terraforming-mars/terraforming-mars#README', icon: 'info', glyph: 'mobile-glyph--neutral'},
-  {label: 'Whats new?', href: 'https://github.com/terraforming-mars/terraforming-mars/wiki/Changelog', icon: 'sparkles', glyph: 'mobile-glyph--neutral'},
-  {label: 'Join us on Discord', href: constants.DISCORD_INVITE, icon: 'message-circle', glyph: 'mobile-glyph--pr'},
+  {label: 'Whats new?', href: HELP_PAGES.changelog, icon: 'sparkles', glyph: 'mobile-glyph--neutral'},
+  {label: 'About us', href: HELP_PAGES.about, icon: 'info', glyph: 'mobile-glyph--neutral'},
+  {label: 'Board game', href: 'https://boardgamegeek.com/boardgame/167791/terraforming-mars', icon: 'dices', glyph: 'mobile-glyph--neutral', external: true},
+  {label: 'Join us on Discord', href: constants.DISCORD_INVITE, icon: 'message-circle', glyph: 'mobile-glyph--pr', external: true},
 ];
 
 const settings = raw_settings;
