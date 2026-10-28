@@ -36,6 +36,7 @@ import {StormCraftIncorporated} from './cards/colonies/StormCraftIncorporated';
 import {Tag} from '../common/cards/Tag';
 import {Timer} from '../common/Timer';
 import {BotDifficulty, isBotDifficulty} from '../common/bot/BotDifficulty';
+import {BotMemory, parseBotMemory} from './bot/BotMemory';
 import {ActionAnnotation} from '../common/input/Annotation';
 import {TurmoilHandler} from './turmoil/TurmoilHandler';
 import {AllOptions, DrawCards, DrawOptions} from './deferredActions/DrawCards';
@@ -158,6 +159,8 @@ export class Player implements IPlayer {
 
   /** When set, this player is a computer opponent playing at this difficulty. */
   public bot?: BotDifficulty;
+  /** What a computer opponent carries from one decision to the next. Only the bot writes it. */
+  public botMemory?: BotMemory;
 
   /**
    * Where the game was saved just before this player's last two saved decisions.
@@ -1732,6 +1735,10 @@ export class Player implements IPlayer {
     return this.game.gameOptions.undoOption && (this.actionsTakenThisRound > 0 || this.canUndoPastOpponents());
   }
 
+  public isAtActionMenu(): boolean {
+    return this.actionMenu !== undefined && this.waitingFor === this.actionMenu;
+  }
+
   public refreshUndoOption(): void {
     const menu = this.actionMenu;
     if (menu === undefined || this.waitingFor !== menu) {
@@ -1949,6 +1956,9 @@ export class Player implements IPlayer {
     if (this.lastCardPlayed !== undefined) {
       result.lastCardPlayed = this.lastCardPlayed;
     }
+    if (this.botMemory !== undefined) {
+      result.botMemory = this.botMemory;
+    }
     result.deltaProject = this.deltaProjectData;
     return result;
   }
@@ -2027,6 +2037,7 @@ export class Player implements IPlayer {
     player.autopass = d.autoPass ?? false;
     player.bot = isBotDifficulty(d.bot) ? d.bot : undefined;
     player.undoPoints = d.undoPoints ?? [];
+    player.botMemory = parseBotMemory(d.botMemory);
     player.preservationProgram = d.preservationProgram ?? false;
     // TODO(kberg): remove ?? 0 by 2026-11-01
     player.trThisGeneration = d.trThisGeneration ?? 0;

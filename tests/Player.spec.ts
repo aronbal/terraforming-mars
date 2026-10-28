@@ -687,6 +687,16 @@ describe('Player', () => {
     });
   });
 
+  it('knows when it is at the action menu', () => {
+    const [/* game */, player] = testGame(2);
+
+    player.takeAction();
+    expect(player.isAtActionMenu()).is.true;
+
+    player.setWaitingFor(new SelectOption('Something else'));
+    expect(player.isAtActionMenu()).is.false;
+  });
+
   it('run research phase', () => {
     const [game, player] = testGame(1, {skipInitialCardSelection: true});
     game.generation = 2;

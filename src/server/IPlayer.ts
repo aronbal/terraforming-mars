@@ -15,6 +15,7 @@ import {Priority} from './deferredActions/Priority';
 import {SerializedPlayer} from './SerializedPlayer';
 import {Timer} from '../common/Timer';
 import {BotDifficulty} from '../common/bot/BotDifficulty';
+import {BotMemory} from './bot/BotMemory';
 import {AllOptions, DrawOptions} from './deferredActions/DrawCards';
 import {Units} from '../common/Units';
 import {GlobalParameter} from '../common/GlobalParameter';
@@ -341,6 +342,10 @@ export interface IPlayer {
   autopass: boolean;
   /** When set, this player is a computer opponent playing at this difficulty. */
   bot?: BotDifficulty;
+  /** What a computer opponent carries from one decision to the next. Only the bot writes it. */
+  botMemory?: BotMemory;
+  /** True when this player is being asked the top-level action menu. */
+  isAtActionMenu(): boolean;
   /** The save Undo goes back to: the one made just before this player's last decision but one. */
   undoSaveId(): number | undefined;
   /** Adds or removes Undo in the action menu this player is asked, after undo is turned on or off. */
