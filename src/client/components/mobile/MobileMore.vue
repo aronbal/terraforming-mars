@@ -42,6 +42,16 @@
             <span class="mobile-row-chevron" aria-hidden="true">&rsaquo;</span>
           </span>
         </button>
+        <!-- An app added to the home screen has no reload button, and the shell holds
+             the page still, so it has no pull to refresh either. -->
+        <button class="mobile-row mobile-row--button" data-test="more-reload" @click="reload">
+          <span class="mobile-row-body">
+            <span class="mobile-row-text">
+              <span class="mobile-row-title" v-i18n>Reload</span>
+              <span class="mobile-row-subtitle mobile-more-wrap" v-i18n>Loads the page again, with the game as the server has it.</span>
+            </span>
+          </span>
+        </button>
       </div>
 
       <h3 class="mobile-eyebrow" v-i18n>Games</h3>
@@ -249,6 +259,9 @@ export default defineComponent({
         console.warn('Cannot copy the game link', err);
         window.getSelection()?.selectAllChildren(this.$refs.url as HTMLElement);
       }
+    },
+    reload(): void {
+      window.location.reload();
     },
     /* Fetched afresh each time, since every move makes another. */
     async openSaves(): Promise<void> {
