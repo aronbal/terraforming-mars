@@ -16,6 +16,16 @@ import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockVal
 /** What the bot assumes an unremarkable tile placement is worth in bonuses. */
 const TILE_PLACEMENT_VALUE = 2.5;
 
+/** What playing a card adds to a player's economy. */
+export type EconomicDelta = {
+  readonly stock: Units;
+  readonly production: Units;
+  /** Terraform rating, which is income too. */
+  readonly tr: number;
+};
+
+export const NO_ECONOMIC_DELTA: EconomicDelta = {stock: Units.EMPTY, production: Units.EMPTY, tr: 0};
+
 /**
  * Scores project, corporation and prelude cards in megacredits.
  *
@@ -63,6 +73,40 @@ export class CardEvaluator {
   /** Value of playing `card` now, net of the megacredits it takes to do so. */
   public valueOfBuying(card: IProjectCard): number {
     return this.valueOfPlaying(card) - this.player.getCardCost(card);
+  }
+
+  /**
+   * What playing `card` adds to the player's resources at once, to their
+   * production, and to their terraform rating.
+   *
+   * Only the declarative behavior is read, so a card with a bespoke `play()`
+   * reports nothing. Never throws.
+   */
+  public economicDelta(card: ICard): EconomicDelta {
+    const behavior = card.behavior;
+    if (behavior === undefined) {
+      return NO_ECONOMIC_DELTA;
+    }
+    try {
+      const stock = behavior.stock === undefined ? Units.EMPTY : this.countUnits(card, behavior.stock);
+      const gained = behavior.production === undefined ? Units.EMPTY : this.countUnits(card, behavior.production);
+      const lostProduction = behavior.lose?.production;
+      const lost = lostProduction === undefined || lostProduction === null ? Units.EMPTY : this.countUnits(card, lostProduction);
+      const production = Units.of({});
+      for (const key of Units.keys) {
+        production[key] = gained[key] - lost[key];
+      }
+      const global = behavior.global;
+      const steps = global === undefined ? 0 :
+        Math.max(0, global.temperature ?? 0) + Math.max(0, global.oxygen ?? 0) + Math.max(0, global.venus ?? 0);
+      const tr = (behavior.tr === undefined ? 0 : this.count(card, behavior.tr)) +
+        steps +
+        (behavior.ocean === undefined ? 0 : behavior.ocean.count ?? 1) +
+        (behavior.greenery === undefined ? 0 : 1);
+      return {stock, production, tr};
+    } catch (err) {
+      return NO_ECONOMIC_DELTA;
+    }
   }
 
   private counterFor(card: ICard): Counter {

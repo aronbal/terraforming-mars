@@ -38,6 +38,8 @@ import {CardEvaluator} from './evaluate/CardEvaluator';
 import {scoreSpace} from './evaluate/SpaceEvaluator';
 import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './evaluate/Values';
 import {forecastRequirements} from './plan/RequirementForecast';
+import {GoalPlanner} from './plan/GoalPlanner';
+import {Phase} from '../../common/Phase';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
 const COMFORTABLE_HAND_SIZE = 8;
@@ -63,8 +65,9 @@ export class BotBrain {
   private readonly personality: BotPersonality;
   private readonly tempo: Tempo;
   private readonly cards: CardEvaluator;
-  private readonly actions: ActionScorer;
+  private actions: ActionScorer;
   private readonly weights: ValueWeights;
+  private readonly goals: GoalPlanner | undefined;
 
   constructor(
     private readonly player: IPlayer,
@@ -76,7 +79,32 @@ export class BotBrain {
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
     this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
-    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.personality);
+    this.goals = this.profile.planning.goals ?
+      new GoalPlanner(player, this.profile, this.tempo, this.personality) :
+      undefined;
+    this.actions = this.newActionScorer();
+  }
+
+  private newActionScorer(): ActionScorer {
+    const goal = this.goals?.context(this.player.botMemory);
+    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, {goal});
+  }
+
+  /**
+   * Brings the bot's savings goal up to date, at the top of its turn.
+   *
+   * The action menu is the one place the goal is revised, so the goal a move
+   * is scored against is the one saved with the position it was taken from.
+   */
+  private maybeRefreshGoal(input: PlayerInput): void {
+    if (this.goals === undefined || input !== this.player.getWaitingFor() || !this.player.isAtActionMenu()) {
+      return;
+    }
+    const memory = this.goals.refresh(this.player.botMemory);
+    if (memory !== undefined) {
+      this.player.botMemory = memory;
+      this.actions = this.newActionScorer();
+    }
   }
 
   public respond(input: PlayerInput): InputResponse {
@@ -153,6 +181,7 @@ export class BotBrain {
   /* ---------------------------------------------------------------- menus */
 
   private respondToOr(input: OrOptions): InputResponse {
+    this.maybeRefreshGoal(input);
     const index = this.chooseIndex(input.options.map((option) => this.actions.score(option)));
     const chosen = input.options[index];
     return {type: 'or', index, response: this.respond(chosen)};
@@ -250,7 +279,7 @@ export class BotBrain {
       const affordable = cardCost > 0 ?
         Math.floor(this.player.spendableMegacredits() / cardCost) :
         eligible.length;
-      const limit = Math.min(max, affordable);
+      const limit = Math.min(max, affordable, this.researchLimit(cardCost) ?? affordable);
       // A hand the bot is not getting through is a reason to stop buying.
       const handPressure = Math.max(0, this.player.cardsInHand.length - COMFORTABLE_HAND_SIZE) * 0.08;
       const appetite = Math.ceil(eligible.length * Math.max(0.1, this.profile.buyRate - handPressure));
@@ -286,6 +315,14 @@ export class BotBrain {
       return Number.NEGATIVE_INFINITY;
     }
     return this.cards.valueOfPlaying(card);
+  }
+
+  /** How many cards research may buy without delaying the savings goal, if that applies. */
+  private researchLimit(cardCost: number): number | undefined {
+    if (this.goals === undefined || !this.profile.planning.goalGuardsResearch || this.player.game.phase !== Phase.RESEARCH) {
+      return undefined;
+    }
+    return this.goals.researchLimit(this.player.botMemory, this.player.spendableMegacredits(), cardCost);
   }
 
   private selectNamedCards(option: PlayerInput, cards: ReadonlyArray<ICard>): InputResponse {
