@@ -200,6 +200,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  // Safari's own style for a button is `align-items: flex-start`, which left the
+  // medals a few pixels wide: their widths are shares of the panel's.
+  align-items: stretch;
   gap: 4px;
   padding: 5px 5px 6px;
   border: 0;
