@@ -119,6 +119,13 @@ export interface IGame extends Logger {
   /** Double Down: tracking when an action is due to double down. Does not need to be serialized. */
   inDoubleDown: boolean;
   /**
+   * True for a copy of a game that a computer opponent plays moves out on.
+   *
+   * A simulation never saves and never records a result, so nothing done to
+   * it reaches the database or the game cache. Not serialized.
+   */
+  readonly simulation: boolean;
+  /**
    * Double Down: once the prelude is chosen, it's set here to be tracked during its play.
    *
    * Pretty much if you double down on New Partner, and draw a prelude, then the app
