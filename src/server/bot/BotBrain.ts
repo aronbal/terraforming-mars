@@ -28,7 +28,7 @@ import {SelectGlobalEvent} from '../inputs/SelectGlobalEvent';
 import {SelectClaimedUndergroundToken} from '../inputs/SelectClaimedUndergroundToken';
 import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
-import {BotProfile, profileFor, weightsOf} from './BotProfile';
+import {BotProfile, BotProfileOverride, resolveProfile, weightsOf} from './BotProfile';
 import {BotPersonality, personalityOf} from './BotPersonality';
 import {BotRandom} from './BotRandom';
 import {PlayableCard, planPaymentFor} from './CardPayment';
@@ -68,8 +68,9 @@ export class BotBrain {
   constructor(
     private readonly player: IPlayer,
     difficulty: BotDifficulty,
-    private readonly random: BotRandom = new BotRandom()) {
-    this.profile = profileFor(difficulty);
+    private readonly random: BotRandom = new BotRandom(),
+    override?: BotProfileOverride) {
+    this.profile = resolveProfile(difficulty, override);
     this.personality = personalityOf(player, this.profile);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
