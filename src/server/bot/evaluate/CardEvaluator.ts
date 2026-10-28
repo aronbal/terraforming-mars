@@ -9,6 +9,7 @@ import {Tag} from '../../../common/cards/Tag';
 import {Resource} from '../../../common/Resource';
 import {Units} from '../../../common/Units';
 import {BotProfile, weightsOf} from '../BotProfile';
+import {bestCitySpaceValue} from './SpaceEvaluator';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 
 /** What the bot assumes an unremarkable tile placement is worth in bonuses. */
@@ -144,8 +145,8 @@ export class CardEvaluator {
       value += VP_VALUE + trValue + TILE_PLACEMENT_VALUE;
     }
     if (behavior.city !== undefined) {
-      // A city is worth the points of the greeneries that end up beside it.
-      value += VP_VALUE + TILE_PLACEMENT_VALUE;
+      // A city is worth the points of the greeneries beside it, and room for more.
+      value += bestCitySpaceValue(this.player, this.tempo, this.profile, behavior.city);
     }
     if (behavior.tile !== undefined) {
       value += TILE_PLACEMENT_VALUE;

@@ -127,6 +127,15 @@ Do not spend time re-deriving these. Each was implemented and measured over
 | Raise or lower the card buy rate (0.45, 0.6, 0.85, 1.0) | 49-56% — all inside the noise band. |
 | Heavier engine weighting, zero cash reserve, more aggressive closing | 49-51% — all inside the noise band. |
 
+One change that measured as no effect between bots was kept anyway, because it
+fixes something a human exploits: a city is priced by the best space actually
+open for it, counting every adjacent greenery whoever owns it, and a greenery
+is charged for the city spaces it makes more attractive to the opponent. Before
+that, the bot valued a city at a flat few megacredits, almost never bought the
+standard project, ignored the opponent's forests, and ringed open spaces with
+greeneries for the human to drop a city into. Measured over 120 games each
+against the previous version: 49% at Hard, 53% at Medium, 50% at Insane.
+
 At n=100 the standard error is about 5 points, so nothing under roughly 60% is
 a real effect.
 
