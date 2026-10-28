@@ -68,6 +68,24 @@ export function tempoOf(game: IGame): Tempo {
   };
 }
 
+/**
+ * The tempo `generations` from now, for pricing something done later.
+ *
+ * Production bought later pays out fewer times, so a card played in two
+ * generations is worth what it would be with two fewer generations left.
+ */
+export function shiftTempo(tempo: Tempo, generations: number): Tempo {
+  if (generations <= 0) {
+    return tempo;
+  }
+  const remainingGenerations = Math.max(1, tempo.remainingGenerations - generations);
+  return {
+    progress: tempo.progress,
+    remainingGenerations,
+    endgame: tempo.endgame || remainingGenerations <= 2,
+  };
+}
+
 /** What one point of terraform rating is worth right now. */
 export function terraformRatingValue(tempo: Tempo, weights: ValueWeights = NEUTRAL_WEIGHTS): number {
   // A point of TR is a victory point plus a megacredit of income every

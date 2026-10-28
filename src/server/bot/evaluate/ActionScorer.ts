@@ -18,6 +18,11 @@ import {MilestonesAndAwards} from './MilestonesAndAwards';
 import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
+import {GoalContext} from '../plan/GoalPlanner';
+import {Enablers} from '../plan/Enablers';
+import {TurnPlan} from '../plan/TurnPlanner';
+import {inPurseTerms} from '../plan/Economy';
+import {Payment} from '../../../common/inputs/Payment';
 
 /** What the bot assumes an unremarkable tile placement is worth in bonuses. */
 const TILE_PLACEMENT_VALUE = 2.5;
@@ -40,6 +45,16 @@ const MAX_CLOSING_SWING = 7;
 export const PASS_SCORE = 0.25;
 const END_TURN_SCORE = 0.15;
 
+/** What the bot's planning adds to the scores. Every part is optional. */
+export type ScorerPlanning = {
+  /** The savings goal, which charges moves that delay it. */
+  readonly goal?: GoalContext;
+  /** What a card does for the other cards in hand. */
+  readonly enablers?: Enablers;
+  /** What each move on the action menu leaves possible for the rest of the turn. */
+  readonly plan?: TurnPlan;
+};
+
 export class ActionScorer {
   constructor(
     private readonly player: IPlayer,
@@ -47,7 +62,8 @@ export class ActionScorer {
     private readonly tempo: Tempo,
     private readonly cards: CardEvaluator,
     private readonly personality: BotPersonality = NEUTRAL_PERSONALITY,
-    private readonly attention: Attention = Attention.FULL) {
+    private readonly attention: Attention = Attention.FULL,
+    private readonly planning: ScorerPlanning = {}) {
     this.weights = weightsOf(profile);
     this.contests = new MilestonesAndAwards(player, profile, tempo);
   }
@@ -108,7 +124,7 @@ export class ActionScorer {
     }
 
     try {
-      return this.scoreByAnnotation(option);
+      return this.scoreByAnnotation(option) + (this.planning.plan?.options.get(option) ?? 0);
     } catch (err) {
       return 0;
     }
@@ -173,14 +189,15 @@ export class ActionScorer {
     if (this.profile.racesMilestones === false) {
       return PASS_SCORE / 2;
     }
-    return this.contests.bestMilestoneValue();
+    return this.contests.bestMilestoneValue() + this.goalPenalty(this.player.milestoneCost());
   }
 
   private awardScore(): number {
     if (this.profile.racesMilestones === false) {
       return PASS_SCORE / 2;
     }
-    return this.contests.bestAwardValue() ?? PASS_SCORE / 2;
+    const value = this.contests.bestAwardValue();
+    return value === undefined ? PASS_SCORE / 2 : value + this.goalPenalty(this.player.game.getAwardFundingCost());
   }
 
   /**
@@ -283,7 +300,8 @@ export class ActionScorer {
    * impossible, so the bot never picks a menu it then cannot answer.
    */
   public valueOfPlayingFromMenu(option: SelectCardToPlay<PlayableCard>, card: PlayableCard): number {
-    if (planPaymentFor(this.player, option, card) === undefined) {
+    const payment = planPaymentFor(this.player, option, card);
+    if (payment === undefined) {
       return Number.NEGATIVE_INFINITY;
     }
     const cost = this.costOf(option, card) * this.moneyValue();
@@ -293,7 +311,56 @@ export class ActionScorer {
     const reserve = Math.max(0, this.profile.reserveMegacredits + this.personality.thrift);
     const shortfall = Math.max(0, cost - (this.player.megaCredits - reserve));
     // Spending down to nothing has a real cost: it forecloses next turn.
-    return gross - cost - shortfall * 0.05;
+    const enabled = this.planning.enablers?.value(card) ?? 0;
+    const followUp = this.planning.plan?.cards.get(card.name) ?? 0;
+    return gross - cost - shortfall * 0.05 + this.goalAdjustment(card, payment) + enabled + followUp;
+  }
+
+  /**
+   * What playing `card` does to the savings goal, if the bot has one.
+   *
+   * The goal card itself is exempt: playing it is what the saving was for.
+   */
+  private goalAdjustment(card: PlayableCard, payment: Payment): number {
+    const goal = this.planning.goal;
+    if (goal === undefined || card.name === goal.card.name) {
+      return 0;
+    }
+    const spend = inPurseTerms(payment, this.player, goal.card);
+    if (isIStandardProjectCard(card)) {
+      return goal.adjustment(spend, 0, this.standardProjectIncome(card));
+    }
+    const delta = this.cards.economicDelta(card);
+    const gain = inPurseTerms(delta.stock, this.player, goal.card);
+    const income = inPurseTerms(delta.production, this.player, goal.card) + delta.tr;
+    return goal.adjustment(spend, gain, income);
+  }
+
+  /** What spending `cost` megacredits does to the savings goal: a penalty or nothing. */
+  private goalPenalty(cost: number): number {
+    const goal = this.planning.goal;
+    return goal === undefined ? 0 : Math.min(0, goal.adjustment(cost, 0, 0));
+  }
+
+  /** The income a standard project adds: its terraform rating, or a city's megacredit. */
+  private standardProjectIncome(card: IStandardProjectCard): number {
+    const game = this.player.game;
+    switch (card.name) {
+    case CardName.ASTEROID_STANDARD_PROJECT:
+      return game.getTemperature() < MAX_TEMPERATURE ? 1 : 0;
+    case CardName.AQUIFER_STANDARD_PROJECT:
+      return game.board.getOceanSpaces().length < MAX_OCEAN_TILES ? 1 : 0;
+    case CardName.GREENERY_STANDARD_PROJECT:
+      return game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? 1 : 0;
+    case CardName.AIR_SCRAPPING_STANDARD_PROJECT:
+    case CardName.AIR_SCRAPPING_STANDARD_PROJECT_VARIANT:
+      return game.getVenusScaleLevel() < MAX_VENUS_SCALE ? 1 : 0;
+    case CardName.BUFFER_GAS_STANDARD_PROJECT:
+    case CardName.CITY_STANDARD_PROJECT:
+      return 1;
+    default:
+      return 0;
+    }
   }
 
   /**

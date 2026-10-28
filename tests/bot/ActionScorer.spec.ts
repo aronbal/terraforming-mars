@@ -8,6 +8,9 @@ import {OrOptions} from '../../src/server/inputs/OrOptions';
 import {SelectOption} from '../../src/server/inputs/SelectOption';
 import {IPlayer} from '../../src/server/IPlayer';
 import {TileType} from '../../src/common/TileType';
+import {resolveProfile} from '../../src/server/bot/BotProfile';
+import {GoalPlanner} from '../../src/server/bot/plan/GoalPlanner';
+import {SpaceElevator} from '../../src/server/cards/base/SpaceElevator';
 import {Attention} from '../../src/server/bot/Attention';
 import {BotRandom} from '../../src/server/bot/BotRandom';
 import {NEUTRAL_PERSONALITY} from '../../src/server/bot/BotPersonality';
@@ -214,5 +217,23 @@ describe('ActionScorer', () => {
     const behind = scorerFor(player, lateGame).score(plants);
 
     expect(behind).to.eq(even);
+  });
+
+  it('charges a milestone that would delay the savings goal', () => {
+    const [game, player] = testGame(2);
+    player.megaCredits = 20;
+    player.cardsInHand.push(new SpaceElevator());
+    const profile = resolveProfile('insane', {planning: {goals: true, goalMaxEta: 2, goalMinNet: 8, goalCommitment: 1, goalRisk: 0.9}});
+    const tempo = tempoOf(game);
+    const goals = new GoalPlanner(player, profile, tempo, NEUTRAL_PERSONALITY);
+    const goal = goals.context(goals.refresh(undefined));
+    expect(goal, 'test needs a goal').is.not.undefined;
+    const milestone = new OrOptions(new SelectOption('Terraformer'));
+    milestone.annotation = 'milestone';
+
+    const cards = new CardEvaluator(player, profile, tempo);
+    const without = new ActionScorer(player, profile, tempo, cards).score(milestone);
+    const saving = new ActionScorer(player, profile, tempo, cards, NEUTRAL_PERSONALITY, Attention.FULL, {goal}).score(milestone);
+    expect(saving).to.be.lessThan(without);
   });
 });

@@ -11,6 +11,40 @@ import {SelectPlayer} from '../../src/server/inputs/SelectPlayer';
 import {SelectProductionToLose} from '../../src/server/inputs/SelectProductionToLose';
 import {UndoActionOption} from '../../src/server/inputs/UndoActionOption';
 import {Resource} from '../../src/common/Resource';
+import {SpaceElevator} from '../../src/server/cards/base/SpaceElevator';
+import {GeothermalPower} from '../../src/server/cards/base/GeothermalPower';
+import {BotProfileOverride, NO_PLANNING} from '../../src/server/bot/BotProfile';
+import {TestPlayer} from '../TestPlayer';
+
+const SAVING: BotProfileOverride = {
+  planning: {
+    ...NO_PLANNING,
+    goals: true,
+    goalMaxEta: 2,
+    goalMinNet: 8,
+    goalSwitchMargin: 0.25,
+    goalCommitment: 1,
+    goalRisk: 0.9,
+    goalMaxAgeSlack: 2,
+  },
+};
+
+/**
+ * Takes one action from the top of the turn for a player a generation short
+ * of Space Elevator, holding a mediocre card that would use up the savings.
+ */
+function actOnce(override: BotProfileOverride): TestPlayer {
+  const [/* game */, player] = testGame(2);
+  player.bot = 'insane';
+  player.megaCredits = 20;
+  player.cardsInHand.push(new SpaceElevator(), new GeothermalPower());
+  player.takeAction();
+  const menu = player.getWaitingFor();
+  expect(player.isAtActionMenu()).is.true;
+
+  player.process(new BotBrain(player, 'insane', new BotRandom(1), override).respond(menu!));
+  return player;
+}
 
 describe('BotBrain', () => {
   it('answers a plain confirmation', () => {
@@ -132,5 +166,20 @@ describe('BotBrain', () => {
     expect(corporation, 'the bot should have chosen a corporation').is.not.undefined;
     const cardCost = corporation?.cardCost ?? player.cardCost;
     expect(player.cardsInHand.length * cardCost).to.be.at.most(corporation!.startingMegaCredits);
+  });
+
+  it('spends its savings on a mediocre card when it has no goal', () => {
+    const player = actOnce({planning: NO_PLANNING});
+
+    expect(player.megaCredits).to.be.lessThan(15);
+    expect(player.botMemory).is.undefined;
+  });
+
+  it('keeps its savings for the card it is saving for', () => {
+    const player = actOnce(SAVING);
+
+    expect(player.botMemory?.goal?.card).to.eq(new SpaceElevator().name);
+    // Enough left that a generation's income still pays for Space Elevator.
+    expect(player.megaCredits).to.be.at.least(15);
   });
 });

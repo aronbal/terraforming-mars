@@ -28,7 +28,7 @@ import {SelectGlobalEvent} from '../inputs/SelectGlobalEvent';
 import {SelectClaimedUndergroundToken} from '../inputs/SelectClaimedUndergroundToken';
 import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
-import {BotProfile, profileFor, weightsOf} from './BotProfile';
+import {BotProfile, BotProfileOverride, resolveProfile, weightsOf} from './BotProfile';
 import {BotPersonality} from './BotPersonality';
 import {playStyleOf} from './BotStrategy';
 import {BotRandom} from './BotRandom';
@@ -39,6 +39,12 @@ import {ActionScorer} from './evaluate/ActionScorer';
 import {CardEvaluator} from './evaluate/CardEvaluator';
 import {scoreSpace} from './evaluate/SpaceEvaluator';
 import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './evaluate/Values';
+import {forecastRequirements} from './plan/RequirementForecast';
+import {GoalPlanner} from './plan/GoalPlanner';
+import {Enablers} from './plan/Enablers';
+import {TurnPlan, TurnPlanner} from './plan/TurnPlanner';
+import {withStats} from './BotMemory';
+import {Phase} from '../../common/Phase';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
 const COMFORTABLE_HAND_SIZE = 8;
@@ -64,21 +70,92 @@ export class BotBrain {
   private readonly personality: BotPersonality;
   private readonly tempo: Tempo;
   private readonly cards: CardEvaluator;
-  private readonly actions: ActionScorer;
+  private actions: ActionScorer;
   private readonly weights: ValueWeights;
+  private readonly goals: GoalPlanner | undefined;
   private readonly attention: Attention;
 
   constructor(
     private readonly player: IPlayer,
-    difficulty: BotDifficulty,
-    private readonly random: BotRandom = new BotRandom()) {
-    this.profile = profileFor(difficulty);
+    private readonly difficulty: BotDifficulty,
+    private readonly random: BotRandom = new BotRandom(),
+    private readonly override?: BotProfileOverride) {
+    this.profile = resolveProfile(difficulty, override);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
     this.personality = playStyleOf(player, this.profile, this.tempo);
     this.attention = new Attention(this.profile.attention, random);
     this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
-    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.personality, this.attention);
+    const planning = this.profile.planning;
+    this.goals = planning.goals || planning.enablerWeight > 0 ?
+      new GoalPlanner(player, this.profile, this.tempo, this.personality, this.attention) :
+      undefined;
+    this.actions = this.newActionScorer();
+  }
+
+  /** The scorer this bot prices menu entries with. */
+  public actionScorer(): ActionScorer {
+    return this.actions;
+  }
+
+  private newActionScorer(plan?: TurnPlan): ActionScorer {
+    const planning = this.profile.planning;
+    const goal = planning.goals ? this.goals?.context(this.player.botMemory) : undefined;
+    const enablers = this.goals === undefined || planning.enablerWeight <= 0 ?
+      undefined :
+      new Enablers(this.player, this.goals, planning.enablerWeight, goal?.card);
+    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal, enablers, plan});
+  }
+
+  /** The profile override for bots answering in a simulated game: the same, but never planning ahead. */
+  private simulationOverride(): BotProfileOverride {
+    return {...this.override, planning: {...this.override?.planning, lookahead: 0}};
+  }
+
+  /**
+   * Plans the first action of a turn with the second in view, when the
+   * profile looks ahead and the position can be copied safely.
+   *
+   * Returns true when the scorer now carries a plan.
+   */
+  private maybePlanTurn(input: OrOptions): boolean {
+    if (this.profile.planning.lookahead <= 0) {
+      return false;
+    }
+    const simulation = this.simulationOverride();
+    const plan = new TurnPlanner({
+      player: this.player,
+      profile: this.profile,
+      random: this.random,
+      scorer: this.actions,
+      scorerFor: (player) => new BotBrain(player, this.difficulty, new BotRandom(1), simulation).actionScorer(),
+      responderFor: (player, random) => ({
+        respond: (next) => new BotBrain(player, this.difficulty, random, simulation).respond(next),
+      }),
+    }).plan(input);
+    if (plan === undefined) {
+      return false;
+    }
+    this.actions = this.newActionScorer(plan);
+    return true;
+  }
+
+  /**
+   * Brings the bot's savings goal up to date, at the top of its turn.
+   *
+   * The action menu is the one place the goal is revised, so the goal a move
+   * is scored against is the one saved with the position it was taken from.
+   */
+  private maybeRefreshGoal(input: PlayerInput): void {
+    if (this.goals === undefined || !this.profile.planning.goals ||
+        input !== this.player.getWaitingFor() || !this.player.isAtActionMenu()) {
+      return;
+    }
+    const memory = this.goals.refresh(this.player.botMemory);
+    if (memory !== undefined) {
+      this.player.botMemory = memory;
+      this.actions = this.newActionScorer();
+    }
   }
 
   public respond(input: PlayerInput): InputResponse {
@@ -155,6 +232,16 @@ export class BotBrain {
   /* ---------------------------------------------------------------- menus */
 
   private respondToOr(input: OrOptions): InputResponse {
+    this.maybeRefreshGoal(input);
+    const unplanned = this.actions;
+    if (this.maybePlanTurn(input)) {
+      const index = this.chooseIndex(input.options.map((option) => this.actions.score(option)));
+      const staticIndex = this.bestIndex(input.options.map((option) => unplanned.score(option)));
+      if (this.moveName(input, index, this.actions) !== this.moveName(input, staticIndex, unplanned)) {
+        this.player.botMemory = withStats(this.player.botMemory, (stats) => ({...stats, lookaheadChanged: stats.lookaheadChanged + 1}));
+      }
+      return {type: 'or', index, response: this.respond(input.options[index])};
+    }
     const index = this.chooseIndex(input.options.map((option) => this.actions.score(option)));
     const chosen = input.options[index];
     return {type: 'or', index, response: this.respond(chosen)};
@@ -221,7 +308,7 @@ export class BotBrain {
       return [];
     }
 
-    const ranked = this.rankCards(option.cards, cardCost);
+    const ranked = this.rankCards(option.cards, cardCost, true);
     const wanted = Math.max(
       option.config.min,
       Math.min(limit, Math.round(limit * Math.max(this.profile.buyRate, 0.3))));
@@ -242,7 +329,7 @@ export class BotBrain {
     const buying = input.config.played === false;
     const losing = this.looksLikeLoss(input.title);
     const cardCost = buying ? this.player.cardCost : 0;
-    const ranked = this.rankCards(eligible, cardCost);
+    const ranked = this.rankCards(eligible, cardCost, buying || losing);
 
     let chosen: ReadonlyArray<ICard>;
     if (losing) {
@@ -252,7 +339,7 @@ export class BotBrain {
       const affordable = cardCost > 0 ?
         Math.floor(this.player.spendableMegacredits() / cardCost) :
         eligible.length;
-      const limit = Math.min(max, affordable);
+      const limit = Math.min(max, affordable, this.researchLimit(cardCost) ?? affordable);
       // A hand the bot is not getting through is a reason to stop buying.
       const handPressure = Math.max(0, this.player.cardsInHand.length - COMFORTABLE_HAND_SIZE) * 0.08;
       const appetite = Math.ceil(eligible.length * Math.max(0.1, this.profile.buyRate - handPressure));
@@ -270,10 +357,32 @@ export class BotBrain {
     return {type: 'card', cards: chosen.map((card) => card.name)};
   }
 
-  private rankCards(cards: ReadonlyArray<ICard>, cardCost: number): Array<{card: ICard, net: number}> {
+  /**
+   * Ranks cards by what they are worth to hold, best first.
+   *
+   * With `forecast`, a card whose requirements can never be met again, such
+   * as one whose maximum temperature has passed, ranks last: the engine will
+   * never offer it to play.
+   */
+  private rankCards(cards: ReadonlyArray<ICard>, cardCost: number, forecast: boolean = false): Array<{card: ICard, net: number}> {
     return cards
-      .map((card) => ({card, net: this.perturbed(this.cards.valueOfPlaying(card) - cardCost)}))
+      .map((card) => ({card, net: this.perturbed(this.prospectiveValue(card, forecast) - cardCost)}))
       .sort((a, b) => b.net - a.net);
+  }
+
+  private prospectiveValue(card: ICard, forecast: boolean): number {
+    if (forecast && this.profile.planning.requirementForecast && forecastRequirements(this.player, card).probability <= 0) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    return this.cards.valueOfPlaying(card);
+  }
+
+  /** How many cards research may buy without delaying the savings goal, if that applies. */
+  private researchLimit(cardCost: number): number | undefined {
+    if (this.goals === undefined || !this.profile.planning.goalGuardsResearch || this.player.game.phase !== Phase.RESEARCH) {
+      return undefined;
+    }
+    return this.goals.researchLimit(this.player.botMemory, this.player.spendableMegacredits(), cardCost);
   }
 
   private selectNamedCards(option: PlayerInput, cards: ReadonlyArray<ICard>): InputResponse {
@@ -455,6 +564,28 @@ export class BotBrain {
       if (perturbed > bestScore) {
         best = index;
         bestScore = perturbed;
+      }
+    });
+    return best;
+  }
+
+  /** Names the move `scorer` would make by taking option `index` of `menu`, down to the card. */
+  private moveName(menu: OrOptions, index: number, scorer: ActionScorer): string {
+    const option = menu.options[index];
+    if (!(option instanceof SelectCardToPlay)) {
+      return String(index);
+    }
+    const best = scorer.consideredCards(option as SelectCardToPlay<PlayableCard>)
+      .reduce<{card: PlayableCard, value: number} | undefined>((top, entry) => top === undefined || entry.value > top.value ? entry : top, undefined);
+    return `${index}:${best?.card.name}`;
+  }
+
+  /** The index of the highest of `scores`, the first on a tie. */
+  private bestIndex(scores: ReadonlyArray<number>): number {
+    let best = 0;
+    scores.forEach((score, index) => {
+      if (score > scores[best]) {
+        best = index;
       }
     });
     return best;

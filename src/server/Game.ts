@@ -185,6 +185,7 @@ export class Game implements IGame, Logger {
   public beholdTheEmperor: boolean = false;
   // Double Down
   public inDoubleDown: boolean = false;
+  public simulation: boolean = false;
   public doubleDownPrelude: CardName | undefined = undefined;
 
   // Vermin
@@ -472,6 +473,9 @@ export class Game implements IGame, Logger {
   }
 
   public save(): void {
+    if (this.simulation) {
+      return;
+    }
     GameLoader.getInstance().saveGame(this);
   }
 
@@ -1144,6 +1148,10 @@ export class Game implements IGame, Logger {
       scores.push({corporation: corporation, playerScore: vpb.total});
     });
 
+    if (this.simulation) {
+      this.phase = Phase.END;
+      return;
+    }
     Database.getInstance().saveGameResults(this.id, this.players.length, this.generation, this.gameOptions, scores);
     this.phase = Phase.END;
     const gameLoader = GameLoader.getInstance();
@@ -1764,7 +1772,14 @@ export class Game implements IGame, Logger {
     return addDays(this.createdTime, days).getTime();
   }
 
-  public static deserialize(d: SerializedGame): Game {
+  /**
+   * Rebuilds a game from its serialized form.
+   *
+   * With `simulation`, the game is a computer opponent's scratch copy: it is
+   * flagged before anything runs, so even the action menu rebuilt at the end
+   * of loading does not save it.
+   */
+  public static deserialize(d: SerializedGame, options?: {simulation?: boolean}): Game {
     const gameOptions = d.gameOptions;
     gameOptions.boardName = normalizeBoardName(gameOptions.boardName);
     const players = d.players.map((element) => Player.deserialize(element));
@@ -1784,6 +1799,7 @@ export class Game implements IGame, Logger {
     const ceoDeck = CeoDeck.deserialize(d.ceoDeck, rng);
 
     const game = new Game(d.id, d.name, players, first, d.activePlayer, d.spectatorId, gameOptions, rng, board, projectDeck, corporationDeck, preludeDeck, ceoDeck, d.tags);
+    game.simulation = options?.simulation === true;
     game.resettable = true;
     game.spectatorId = d.spectatorId;
     game.createdTime = new Date(d.createdTimeMs);
@@ -1910,7 +1926,7 @@ export class Game implements IGame, Logger {
       game.activePlayer.takeAction(/* saveBeforeTakingAction */ false);
     }
 
-    if (game.phase === Phase.END) {
+    if (game.phase === Phase.END && !game.simulation) {
       GameLoader.getInstance().mark(game.id);
     }
     return game;

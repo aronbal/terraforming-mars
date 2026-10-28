@@ -10,7 +10,9 @@ import {SelectSpace} from '../inputs/SelectSpace';
 import {SelectAmount} from '../inputs/SelectAmount';
 import {SelectPayment} from '../inputs/SelectPayment';
 import {UndoActionOption} from '../inputs/UndoActionOption';
+import {PlayerId} from '../../common/Types';
 import {BotBrain} from './BotBrain';
+import {BotProfileOverride} from './BotProfile';
 import {BotRandom} from './BotRandom';
 import {planPayment} from './PaymentPlanner';
 
@@ -25,6 +27,14 @@ const MAX_DECISIONS = 2000;
 /** How many times one input may be retried before the bot gives up on it. */
 const MAX_ATTEMPTS_PER_INPUT = 24;
 
+/** Settings for measuring the bot. The server never passes these. */
+export type BotRunnerOptions = {
+  /** The source of the bots' randomness, so a run can be replayed. */
+  random?: BotRandom;
+  /** Profile changes for particular players, for A/B tests. They are never saved. */
+  overrides?: ReadonlyMap<PlayerId, BotProfileOverride>;
+};
+
 /**
  * Plays out every computer opponent's pending decisions.
  *
@@ -33,10 +43,16 @@ const MAX_ATTEMPTS_PER_INPUT = 24;
  * which is either because the humans are up or because the game has ended.
  */
 export class BotRunner {
-  private readonly random = new BotRandom();
+  private readonly random: BotRandom;
+  private readonly overrides: ReadonlyMap<PlayerId, BotProfileOverride>;
 
-  public static run(game: IGame): void {
-    new BotRunner().play(game);
+  constructor(options?: BotRunnerOptions) {
+    this.random = options?.random ?? new BotRandom();
+    this.overrides = options?.overrides ?? new Map();
+  }
+
+  public static run(game: IGame, options?: BotRunnerOptions): void {
+    new BotRunner(options).play(game);
   }
 
   /** True when at least one player in this game is a computer opponent. */
@@ -100,7 +116,7 @@ export class BotRunner {
     }
 
     try {
-      const response = new BotBrain(bot, difficulty, this.random).respond(input);
+      const response = new BotBrain(bot, difficulty, this.random, this.overrides.get(bot.id)).respond(input);
       bot.process(response);
       return true;
     } catch (err) {
