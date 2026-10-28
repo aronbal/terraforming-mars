@@ -12,6 +12,7 @@ import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} fro
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
 import {CardEvaluator} from './CardEvaluator';
+import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 
@@ -356,7 +357,7 @@ export class ActionScorer {
     case CardName.GREENERY_STANDARD_PROJECT:
       return VP_VALUE + (game.getOxygenLevel() < MAX_OXYGEN_LEVEL ? tr + this.closingAdjustment() : 0) + TILE_PLACEMENT_VALUE;
     case CardName.CITY_STANDARD_PROJECT:
-      return production.megacredits + VP_VALUE * 0.8 + TILE_PLACEMENT_VALUE;
+      return production.megacredits + bestCitySpaceValue(this.player, this.tempo, this.profile);
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT:
     case CardName.AIR_SCRAPPING_STANDARD_PROJECT_VARIANT:
       return game.getVenusScaleLevel() < MAX_VENUS_SCALE ? tr : 0;

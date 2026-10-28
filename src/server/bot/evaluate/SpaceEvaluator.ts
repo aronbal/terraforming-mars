@@ -4,6 +4,7 @@ import {Board} from '../../boards/Board';
 import {SpaceBonus} from '../../../common/boards/SpaceBonus';
 import {SpaceType} from '../../../common/boards/SpaceType';
 import {TileType} from '../../../common/TileType';
+import {PlacementType} from '../../boards/PlacementType';
 import {BotProfile, weightsOf} from '../BotProfile';
 import {Tempo, VP_VALUE, cardDrawValue, stockValues} from './Values';
 
@@ -32,8 +33,9 @@ export function scoreSpace(
 
   if (tileType === TileType.GREENERY) {
     score += greeneryValue(player, adjacent);
+    score -= cityOpeningCost(player, adjacent);
   } else if (tileType === TileType.CITY || tileType === TileType.CAPITAL) {
-    score += cityValue(player, adjacent, tempo);
+    score += cityValue(adjacent, tempo);
   }
 
   if (profile.playsAgainstOpponent) {
@@ -119,15 +121,52 @@ function greeneryValue(player: IPlayer, adjacent: ReadonlyArray<Space>): number 
   return value;
 }
 
-/** Cities want empty neighbours the player can fill with greeneries later. */
-function cityValue(player: IPlayer, adjacent: ReadonlyArray<Space>, tempo: Tempo): number {
+/**
+ * What a greenery hands to whoever builds a city beside it later.
+ *
+ * Each empty space next to the greenery where a city may still go becomes a
+ * point more attractive to a city builder, and a space ringed by greeneries is
+ * exactly where an opponent drops a city for four or five points. The more
+ * greeneries already touch such a space, the likelier somebody cashes it in.
+ * Once the final greeneries are being placed nobody can build a city any more,
+ * so the cost disappears.
+ */
+function cityOpeningCost(player: IPlayer, adjacent: ReadonlyArray<Space>): number {
+  const game = player.game;
+  if (player.opponents.length === 0 || game.isDoneWithFinalProduction()) {
+    return 0;
+  }
+  const board = game.board;
+  let cost = 0;
+  for (const neighbour of adjacent) {
+    if (neighbour.tile !== undefined || neighbour.spaceType !== SpaceType.LAND) {
+      continue;
+    }
+    const around = board.getAdjacentSpaces(neighbour);
+    if (around.some((space) => Board.isCitySpace(space))) {
+      continue;
+    }
+    // Counting the greenery about to be placed.
+    const greeneries = 1 + around.filter((space) => space.tile?.tileType === TileType.GREENERY).length;
+    cost += VP_VALUE * Math.min(0.75, 0.15 * greeneries);
+  }
+  return cost;
+}
+
+/**
+ * Cities want greeneries beside them now, and empty neighbours to grow into.
+ *
+ * A city scores every adjacent greenery, whoever owns it, so an opponent's
+ * forest is as good a place for a city as the player's own.
+ */
+function cityValue(adjacent: ReadonlyArray<Space>, tempo: Tempo): number {
   let value = 0;
   let openNeighbours = 0;
   for (const neighbour of adjacent) {
     if (neighbour.tile === undefined && neighbour.spaceType === SpaceType.LAND) {
       openNeighbours++;
     } else if (neighbour.tile?.tileType === TileType.GREENERY) {
-      value += neighbour.player?.id === player.id ? VP_VALUE : 0;
+      value += VP_VALUE;
     }
   }
   // Room to grow is only worth something while there is time to grow into it.
@@ -150,4 +189,26 @@ function denialValue(player: IPlayer, space: Space, adjacent: ReadonlyArray<Spac
     value += 1;
   }
   return value;
+}
+
+/**
+ * What the best city the player could place right now is worth.
+ *
+ * Used when deciding whether to build a city at all, so that a space ringed by
+ * greeneries makes the city worth buying rather than only worth placing well.
+ */
+export function bestCitySpaceValue(
+  player: IPlayer,
+  tempo: Tempo,
+  profile: BotProfile,
+  placement: {space?: Space['id'], on?: PlacementType} = {}): number {
+  const board = player.game.board;
+  const spaces = placement.space !== undefined ?
+    [board.getSpaceOrThrow(placement.space)] :
+    board.getAvailableSpacesForType(player, placement.on ?? 'city');
+  let best = 0;
+  for (const space of spaces) {
+    best = Math.max(best, scoreSpace(player, space, TileType.CITY, tempo, profile));
+  }
+  return best;
 }
