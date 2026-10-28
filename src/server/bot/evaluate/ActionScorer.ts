@@ -11,6 +11,7 @@ import {Message} from '../../../common/logs/Message';
 import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} from '../../../common/constants';
 import {TileType} from '../../../common/TileType';
 import {BotProfile, weightsOf} from '../BotProfile';
+import {Attention} from '../Attention';
 import {CardEvaluator} from './CardEvaluator';
 import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
@@ -50,7 +51,8 @@ export class ActionScorer {
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
     private readonly tempo: Tempo,
-    private readonly cards: CardEvaluator) {
+    private readonly cards: CardEvaluator,
+    private readonly attention: Attention = Attention.FULL) {
     this.weights = weightsOf(profile);
   }
 
@@ -262,19 +264,36 @@ export class ActionScorer {
     return 4;
   }
 
-  /** The value of the best card the player can actually pay for. */
+  /** The value of the best card the player notices and can actually pay for. */
   public bestPlayableCardScore(option: PlayerInput): number {
     if (!(option instanceof SelectCardToPlay)) {
       return 0;
     }
-    let best = Number.NEGATIVE_INFINITY;
-    option.cards.forEach((card, index) => {
-      if (option.enabled?.[index] === false) {
-        return;
-      }
-      best = Math.max(best, this.valueOfPlayingFromMenu(option, card));
-    });
-    return best;
+    return this.consideredCards(option)
+      .reduce((best, entry) => Math.max(best, entry.value), Number.NEGATIVE_INFINITY);
+  }
+
+  /**
+   * The entries of a play-a-card menu the bot weighs this decision, with their values.
+   *
+   * Only entries the player can pay for are candidates. A card in hand is
+   * weighed only when the bot notices it, while standard projects are printed
+   * on the board and always seen. A bot that would notice nothing still sees
+   * its best candidate: forgetting every card in hand is not a mistake people
+   * make. Choosing whether to play a card and choosing which card both read
+   * this, so the bot never opens the menu for a card it then overlooks.
+   */
+  public consideredCards(option: SelectCardToPlay<PlayableCard>): Array<{card: PlayableCard, value: number}> {
+    const candidates = option.cards
+      .filter((_card, index) => option.enabled?.[index] !== false)
+      .map((card) => ({card, value: this.valueOfPlayingFromMenu(option, card)}))
+      .filter((entry) => entry.value > Number.NEGATIVE_INFINITY);
+    const noticed = candidates.filter((entry) =>
+      isIStandardProjectCard(entry.card) || this.attention.noticesCard(entry.card.name));
+    if (noticed.length > 0 || candidates.length === 0) {
+      return noticed;
+    }
+    return [candidates.reduce((best, entry) => entry.value > best.value ? entry : best)];
   }
 
   /**

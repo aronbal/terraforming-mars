@@ -30,6 +30,7 @@ import {DeltaProjectInput} from '../delta/DeltaProjectInput';
 
 import {BotProfile, profileFor, weightsOf} from './BotProfile';
 import {BotRandom} from './BotRandom';
+import {Attention} from './Attention';
 import {PlayableCard, planPaymentFor} from './CardPayment';
 import {planPayment} from './PaymentPlanner';
 import {ActionScorer} from './evaluate/ActionScorer';
@@ -62,6 +63,7 @@ export class BotBrain {
   private readonly cards: CardEvaluator;
   private readonly actions: ActionScorer;
   private readonly weights: ValueWeights;
+  private readonly attention: Attention;
 
   constructor(
     private readonly player: IPlayer,
@@ -70,8 +72,9 @@ export class BotBrain {
     this.profile = profileFor(difficulty);
     this.weights = weightsOf(this.profile);
     this.tempo = tempoOf(player.game);
+    this.attention = new Attention(this.profile.attention, random);
     this.cards = new CardEvaluator(player, this.profile, this.tempo);
-    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards);
+    this.actions = new ActionScorer(player, this.profile, this.tempo, this.cards, this.attention);
   }
 
   public respond(input: PlayerInput): InputResponse {
@@ -277,12 +280,10 @@ export class BotBrain {
   }
 
   private respondToCardToPlay(input: SelectCardToPlay<PlayableCard>): InputResponse {
-    const playable = input.cards
-      .map((card, index) => ({card, index}))
-      .filter((entry) => input.enabled?.[entry.index] !== false)
+    const playable = this.actions.consideredCards(input)
       .map((entry) => ({
         card: entry.card,
-        score: this.noisy(this.actions.valueOfPlayingFromMenu(input, entry.card)),
+        score: this.noisy(entry.value),
         payment: planPaymentFor(this.player, input, entry.card),
       }))
       .filter((entry) => entry.payment !== undefined)
@@ -300,7 +301,7 @@ export class BotBrain {
   private respondToSpace(input: SelectSpace): InputResponse {
     const tileType = this.tileTypeOf(input);
     const scores = input.spaces.map((space) =>
-      scoreSpace(this.player, space, tileType, this.tempo, this.profile));
+      scoreSpace(this.player, space, tileType, this.tempo, this.profile, this.attention));
     const index = this.chooseIndex(scores);
     return {type: 'space', spaceId: input.spaces[index].id};
   }

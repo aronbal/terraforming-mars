@@ -32,6 +32,7 @@ have made through the UI.
 | `src/server/bot/BotProfile.ts` | The tuning knobs each difficulty sets. |
 | `src/server/bot/BotBrain.ts` | Turns one `PlayerInput` into one `InputResponse`. |
 | `src/server/bot/BotRunner.ts` | Drives every pending bot decision until the humans are up. |
+| `src/server/bot/Attention.ts` | What the bot happens to notice in one decision. |
 | `src/server/bot/PaymentPlanner.ts` | Builds a legal `Payment` for a given cost. |
 | `src/server/bot/CardPayment.ts` | Works out what a menu entry costs and what may be spent on it. |
 | `src/server/bot/evaluate/Values.ts` | Prices resources, production and terraform rating. |
@@ -68,6 +69,28 @@ therefore under-builds, the way a weak player does. On top of that, weaker
 levels mix noise into every score and occasionally discard their ranking
 entirely.
 
+Weaker levels also miss things, the way a person does, rather than only
+choosing badly among everything. `attention` is the chance the bot notices any
+one option, and `Attention` draws that once per decision from the bot's own
+seeded `BotRandom`:
+
+| Level | `attention` |
+| --- | --- |
+| `easy` | 0.6 |
+| `medium` | 0.8 |
+| `hard` | 0.95 |
+| `insane` | 1 |
+
+- Each card in hand is noticed or overlooked for the whole decision. Deciding
+  whether to play a card and deciding which card both read
+  `ActionScorer.consideredCards`, so the bot never opens the play-a-card menu
+  for a card it then overlooks. If it would overlook every card it can pay for,
+  it still sees the best one. Standard projects are always seen.
+- When placing a greenery, the bot either thinks about the city spaces it opens
+  for the opponent or forgets about them, once for the whole placement.
+
+At `attention` 1 nothing is drawn, so Insane plays exactly as it did before.
+
 There is no tree search. Cloning a game to try moves is not reliable here,
 because `Game.serialize` deliberately drops the deferred-action queue, so a
 clone taken mid-action is not the position it came from. The bot is a tuned
@@ -92,15 +115,16 @@ reports win rates. Run it after changing anything in the evaluator:
 npx tsx src/server/tools/bot_tournament.ts 60
 ```
 
-Results from 60 games per pairing, seats alternated:
+Results from 120 games per pairing, seats alternated, with `attention` in
+place:
 
 ```
-medium  vs easy     medium wins 59/60 ( 98%)
-hard    vs easy     hard wins   59/60 ( 98%)
-insane  vs easy     insane wins 60/60 (100%)
-hard    vs medium   hard wins   38/60 ( 63%)
-insane  vs medium   insane wins 38/60 ( 63%)
-insane  vs hard     insane wins 32/60 ( 53%)
+medium  vs easy     medium wins 117/120 ( 98%)
+hard    vs easy     hard wins   120/120 (100%)
+insane  vs easy     insane wins 120/120 (100%)
+hard    vs medium   hard wins    75/120 ( 63%)
+insane  vs medium   insane wins  75/120 ( 63%)
+insane  vs hard     insane wins  63/120 ( 53%)
 ```
 
 **Read this honestly: there are three distinct tiers, not four.** `easy` is far

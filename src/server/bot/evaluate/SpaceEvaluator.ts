@@ -6,6 +6,7 @@ import {SpaceType} from '../../../common/boards/SpaceType';
 import {TileType} from '../../../common/TileType';
 import {PlacementType} from '../../boards/PlacementType';
 import {BotProfile, weightsOf} from '../BotProfile';
+import {Attention} from '../Attention';
 import {Tempo, VP_VALUE, cardDrawValue, stockValues} from './Values';
 
 /** Megacredits the bot assumes it gains for each ocean it builds next to. */
@@ -16,14 +17,16 @@ const OCEAN_ADJACENCY_VALUE = 2;
  *
  * The three things that matter are the bonus printed on the space, what the
  * neighbours are worth, and — for the hardest difficulty — whether taking the
- * space costs the opponent something.
+ * space costs the opponent something. What the opponent could do next only
+ * counts when `attention` notices it.
  */
 export function scoreSpace(
   player: IPlayer,
   space: Space,
   tileType: TileType | undefined,
   tempo: Tempo,
-  profile: BotProfile): number {
+  profile: BotProfile,
+  attention: Attention = Attention.FULL): number {
   const board = player.game.board;
   let score = bonusValue(player, space, tempo, profile);
 
@@ -33,7 +36,9 @@ export function scoreSpace(
 
   if (tileType === TileType.GREENERY) {
     score += greeneryValue(player, adjacent);
-    score -= cityOpeningCost(player, adjacent);
+    if (attention.noticesOpponentPlacement()) {
+      score -= cityOpeningCost(player, adjacent);
+    }
   } else if (tileType === TileType.CITY || tileType === TileType.CAPITAL) {
     score += cityValue(adjacent, tempo);
   }
