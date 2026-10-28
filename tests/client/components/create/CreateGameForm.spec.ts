@@ -3,6 +3,8 @@ import {globalConfig} from '../getLocalVue';
 import {expect} from 'chai';
 import CreateGameForm from '@/client/components/create/CreateGameForm.vue';
 import {CreateGameSettingsStorage} from '@/client/components/create/CreateGameSettingsStorage';
+import {PreferencesManager} from '@/client/utils/PreferencesManager';
+import {refreshMobileLayoutPreference, resetMobileLayoutForTest, startMobileLayoutTracking} from '@/client/utils/useMobileLayout';
 import {FakeLocalStorage} from '../FakeLocalStorage';
 import {BoardName} from '@/common/boards/BoardName';
 import {DEFAULT_EXPANSIONS} from '@/common/cards/GameModule';
@@ -44,6 +46,26 @@ describe('CreateGameForm', () => {
       ...globalConfig,
     });
     expect(wrapper.exists()).to.be.true;
+  });
+
+  it('is drawn like the game on a phone', () => {
+    const desktop = shallowMount(CreateGameForm, {...globalConfig});
+    expect(desktop.find('.create-game--mobile').exists()).is.false;
+    expect(desktop.find('[data-test=create-game-back]').exists()).is.false;
+
+    PreferencesManager.resetForTest();
+    resetMobileLayoutForTest();
+    startMobileLayoutTracking();
+    PreferencesManager.INSTANCE.set('mobile_layout', 'on');
+    refreshMobileLayoutPreference();
+    try {
+      const phone = shallowMount(CreateGameForm, {...globalConfig});
+      expect(phone.find('.create-game--mobile').exists()).is.true;
+      expect(phone.find('[data-test=create-game-back]').attributes('href')).eq('/');
+    } finally {
+      PreferencesManager.resetForTest();
+      resetMobileLayoutForTest();
+    }
   });
 
   it('restores the last saved game settings on load', async () => {

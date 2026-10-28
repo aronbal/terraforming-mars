@@ -1,0 +1,155 @@
+/*
+ * The continue-game screen on a phone: the recent games as the shell's rows, each
+ * with its player's colour as the glyph.
+ */
+
+.topmost-continue-game:has(.mobile-continue) {
+  background: @m-bg;
+
+  > .notice {
+    padding: 8px @m-gutter calc(16px + env(safe-area-inset-bottom));
+    font-family: @m-font;
+    font-size: @m-small-size;
+    color: @m-label-3;
+  }
+}
+
+.mobile-continue {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  box-sizing: border-box;
+  max-width: 560px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(@m-gutter + env(safe-area-inset-right))
+    24px
+    calc(@m-gutter + env(safe-area-inset-left));
+  background: @m-bg;
+  color: @m-label;
+  font-family: @m-font;
+  font-size: 14px;
+
+  :where(&) button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .mobile-eyebrow {
+    margin-top: 12px;
+  }
+}
+
+.mobile-continue-back {
+  display: inline-flex;
+  align-items: center;
+  margin-left: -8px;
+  font-size: 15px;
+
+  &,
+  &:hover,
+  &:visited,
+  &:focus {
+    color: @m-accent;
+    text-decoration: none;
+  }
+}
+
+.mobile-continue-head {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 8px;
+
+  h1 {
+    margin: 0;
+    padding: 0;
+    filter: none;
+    text-shadow: none;
+    font-family: @m-font;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: @m-label;
+  }
+}
+
+.mobile-continue-eyebrow {
+  .m-eyebrow();
+  color: @m-warn;
+}
+
+.mobile-continue-empty {
+  min-height: 0;
+  padding: 14px;
+  line-height: 1.4;
+}
+
+// The whole row opens the game; the link lies under it, the remove button over it.
+.mobile-continue-row {
+  position: relative;
+}
+
+.mobile-continue-link {
+  position: absolute;
+  inset: 0;
+}
+
+.mobile-continue-swatch {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-continue-remove {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: @m-radius-pill;
+  font-size: 20px;
+  line-height: 1;
+  color: @m-label-3;
+
+  &:active {
+    background: @m-fill;
+  }
+}
+
+.mobile-continue-clear {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+
+.mobile-continue .mobile-continue-clear-button {
+  color: @m-bad;
+}
+
+.mobile-continue-id {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: @m-label;
+  font-family: ui-monospace, Menlo, monospace;
+  // 16px keeps iOS from zooming the page when the field takes focus.
+  font-size: 16px;
+  outline: none;
+
+  &::placeholder {
+    color: @m-label-3;
+  }
+}
+
+.mobile-continue-error {
+  color: @m-bad;
+}

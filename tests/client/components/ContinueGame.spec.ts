@@ -4,6 +4,12 @@ import {globalConfig} from './getLocalVue';
 import {FakeLocalStorage} from './FakeLocalStorage';
 import ContinueGame from '@/client/components/ContinueGame.vue';
 import {getRecentGames, rememberGame} from '@/client/utils/RecentGamesStorage';
+import {PreferencesManager} from '@/client/utils/PreferencesManager';
+import {
+  refreshMobileLayoutPreference,
+  resetMobileLayoutForTest,
+  startMobileLayoutTracking,
+} from '@/client/utils/useMobileLayout';
 
 describe('ContinueGame', () => {
   let localStorage: FakeLocalStorage;
@@ -67,5 +73,51 @@ describe('ContinueGame', () => {
     await wrapper.find('.continue-game-manual button').trigger('click');
 
     expect(wrapper.find('.continue-game-error').exists()).to.be.true;
+  });
+
+  describe('on a phone', () => {
+    beforeEach(() => {
+      PreferencesManager.resetForTest();
+      resetMobileLayoutForTest();
+      startMobileLayoutTracking();
+      PreferencesManager.INSTANCE.set('mobile_layout', 'on');
+      refreshMobileLayoutPreference();
+    });
+
+    afterEach(() => {
+      PreferencesManager.resetForTest();
+      resetMobileLayoutForTest();
+    });
+
+    it('draws the games as the shell rows, each one a link', () => {
+      rememberGame({id: 'p-player', kind: 'player', gameName: 'Ares', name: 'Aron', color: 'blue', generation: 3});
+      rememberGame({id: 's-spectator', kind: 'spectator', gameName: 'Deimos'});
+
+      const wrapper = mount(ContinueGame, {...globalConfig});
+
+      expect(wrapper.find('.continue-game-container').exists()).is.false;
+      const rows = wrapper.findAll('[data-test=continue-row]');
+      expect(rows).has.length(2);
+      expect(rows[0].find('a').attributes('href')).eq('spectator?id=s-spectator');
+      expect(rows[0].find('.mobile-row-title').text()).eq('Spectator');
+      expect(rows[1].find('a').attributes('href')).eq('player?id=p-player');
+      expect(rows[1].find('.mobile-row-subtitle').text()).to.include('Ares');
+    });
+
+    it('removes a game from its row', async () => {
+      rememberGame({id: 'p-first', kind: 'player', gameName: 'Ares'});
+      rememberGame({id: 'p-second', kind: 'player', gameName: 'Deimos'});
+
+      const wrapper = mount(ContinueGame, {...globalConfig});
+      await wrapper.find('.mobile-continue-remove').trigger('click');
+
+      expect(getRecentGames().map((game) => game.id)).deep.eq(['p-first']);
+      expect(wrapper.findAll('[data-test=continue-row]')).has.length(1);
+    });
+
+    it('leads back to the main menu', () => {
+      const wrapper = mount(ContinueGame, {...globalConfig});
+      expect(wrapper.find('[data-test=continue-back]').attributes('href')).eq('/');
+    });
   });
 });

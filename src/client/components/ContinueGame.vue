@@ -1,5 +1,55 @@
 <template>
-  <div id="continue-game" class="continue-game-container">
+  <!-- On a phone, drawn like the game it returns to. -->
+  <div v-if="mobileLayout" id="continue-game" class="mobile-continue">
+    <div class="mobile-more-head">
+      <a class="mobile-plain-button mobile-continue-back" href="/" data-test="continue-back">&lsaquo; {{ $t('Back') }}</a>
+    </div>
+    <header class="mobile-continue-head">
+      <div class="mobile-continue-eyebrow">{{ APP_NAME }}</div>
+      <h1 v-i18n>Continue game</h1>
+      <p class="mobile-section-note" v-i18n>Games opened in this browser, most recent first.</p>
+    </header>
+
+    <div class="mobile-list">
+      <div v-if="games.length === 0" class="mobile-row mobile-row--empty mobile-continue-empty" v-i18n>
+        This browser hasn't opened any games yet. Games opened here are listed on this page so you can return to them later.
+      </div>
+      <div v-for="game in games" :key="game.id" class="mobile-row mobile-row--button mobile-continue-row" data-test="continue-row">
+        <a class="mobile-continue-link" :href="href(game)" :aria-label="title(game)"></a>
+        <span v-if="game.color !== undefined" class="mobile-glyph mobile-continue-swatch" :class="colorClass(game)">{{ symbol(game) }}</span>
+        <span v-else class="mobile-glyph mobile-glyph--neutral">
+          <MobileIcon :name="game.kind === 'spectator' ? 'eye' : 'users'" :size="16"/>
+        </span>
+        <span class="mobile-row-body">
+          <span class="mobile-row-text">
+            <span class="mobile-row-title">{{ title(game) }}</span>
+            <span class="mobile-row-subtitle">
+              {{ game.gameName }}<template v-if="game.generation !== undefined"> · {{ $t('generation') }} {{ game.generation }}</template><template v-if="game.phase === Phase.END"> · {{ $t('finished') }}</template>
+            </span>
+          </span>
+          <span class="mobile-row-trailing">{{ ago(game) }}</span>
+          <button class="mobile-continue-remove" type="button" @click="forget(game)" :aria-label="$t('remove')">&times;</button>
+        </span>
+      </div>
+    </div>
+    <div v-if="games.length > 0" class="mobile-continue-clear">
+      <button class="mobile-plain-button mobile-continue-clear-button" type="button" @click="forgetAll" v-i18n>Clear list</button>
+    </div>
+
+    <h3 class="mobile-eyebrow" v-i18n>Have a link's id?</h3>
+    <div class="mobile-list">
+      <div class="mobile-row">
+        <span class="mobile-row-body">
+          <input class="mobile-continue-id" placeholder="p1a2b3c…" v-model="id" @keyup.enter="continueById" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button class="mobile-plain-button" type="button" @click="continueById" v-i18n>Continue</button>
+        </span>
+      </div>
+    </div>
+    <p v-if="error !== undefined" class="mobile-section-note mobile-continue-error" v-i18n>{{ error }}</p>
+    <p v-else class="mobile-section-note" v-i18n>Paste the player, spectator, or game id from the link you were given.</p>
+  </div>
+
+  <div v-else id="continue-game" class="continue-game-container">
     <header class="continue-game-head">
       <div class="continue-game-eyebrow" v-i18n>{{ APP_NAME }}</div>
       <h1 v-i18n>Continue game</h1>
@@ -57,6 +107,10 @@ import {playerColorClass} from '@/common/utils/utils';
 import {playerSymbol} from '@/client/utils/playerSymbol';
 import {forgetAllGames, forgetGame, getRecentGames, RecentGame} from '@/client/utils/RecentGamesStorage';
 import {setDocumentTitle} from '@/client/utils/documentTitle';
+import {mobileLayout} from '@/client/utils/useMobileLayout';
+import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import {formatAgo} from '@/client/components/mobile/MobileLog';
+import {translateText} from '@/client/directives/i18n';
 
 const games = ref(getRecentGames());
 const id = ref('');
@@ -70,6 +124,17 @@ function href(game: RecentGame): string {
   case 'spectator': return `spectator?id=${game.id}`;
   case 'game': return `game?id=${game.id}`;
   }
+}
+
+function title(game: RecentGame): string {
+  if (game.name !== undefined) {
+    return game.name;
+  }
+  return translateText(game.kind === 'spectator' ? 'Spectator' : 'Player links');
+}
+
+function ago(game: RecentGame): string {
+  return formatAgo(game.lastSeenMs, Date.now());
 }
 
 function colorClass(game: RecentGame): string {

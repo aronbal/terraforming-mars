@@ -1,0 +1,445 @@
+/*
+ * The create-game form on a phone, drawn like the game it starts: the mobile shell's
+ * grouped cards, a phone's switches and checkmarks, and the one button that matters
+ * in a glass bar at the bottom.
+ *
+ * The form itself is the desktop component, unchanged. `CreateGameForm` adds
+ * `create-game--mobile` whenever the phone layout is on, and everything here hangs
+ * off that, so the desktop form is never touched.
+ */
+
+.topmost-create-game-form:has(.create-game--mobile) {
+  background: @m-bg;
+
+  // The desktop leaves room for a sidebar this page does not have on a phone.
+  .main-container {
+    margin: 0;
+  }
+
+  > .notice {
+    padding: 8px @m-gutter calc(16px + env(safe-area-inset-bottom));
+    font-family: @m-font;
+    font-size: @m-small-size;
+    color: @m-label-3;
+  }
+}
+
+// A phone's switch, drawn as one pseudo element: the knob is a radial gradient that
+// slides across the track.
+.m-switch-track() {
+  content: "";
+  flex: none;
+  order: 99;
+  width: 51px;
+  height: 31px;
+  margin-left: auto;
+  border: 0;
+  border-radius: @m-radius-pill;
+  background:
+    radial-gradient(circle at center, #fff 0 13.5px, transparent 14px) no-repeat,
+    @m-fill-strong;
+  background-size: 31px 31px, auto;
+  background-position: 0 0, 0 0;
+  transition: background-position @m-duration @m-ease, background-color @m-duration @m-ease;
+}
+
+.create-game--mobile {
+  max-width: 560px;
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(@m-gutter + env(safe-area-inset-right))
+    0
+    calc(@m-gutter + env(safe-area-inset-left));
+  font-family: @m-font;
+  color: @m-label;
+
+  .create-game-back {
+    display: inline-flex;
+    align-items: center;
+    margin-left: -8px;
+    font-size: 15px;
+    text-decoration: none;
+
+    &:hover,
+    &:visited,
+    &:focus {
+      color: @m-accent;
+      text-decoration: none;
+    }
+  }
+
+  .create-game-eyebrow {
+    .m-eyebrow();
+    margin-top: 12px;
+    color: @m-warn;
+  }
+
+  h1 {
+    margin: 4px 0 0;
+    padding: 0;
+    filter: none;
+    text-shadow: none;
+    font-family: @m-font;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: @m-label;
+  }
+
+  .changelog,
+  .discord-invite {
+    font-family: @m-font;
+    font-size: @m-secondary-size;
+    color: @m-label-2;
+
+    a,
+    a:visited {
+      color: @m-accent;
+    }
+
+    u {
+      text-decoration: none;
+    }
+  }
+
+  .changelog {
+    margin-top: 8px;
+  }
+
+  // The sections are the shell's grouped cards, one under another.
+  .create-game-page-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+    border-top: 0;
+  }
+
+  .create-game-page-column,
+  .create-game-page-column + .create-game-page-column {
+    padding: 0;
+    border: 0;
+    border-radius: @m-radius-card;
+    background: @m-card;
+    overflow: hidden;
+
+    h4 {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-family: @m-font;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+      color: @m-label;
+    }
+  }
+
+  .create-game-section-toggle {
+    min-height: 52px;
+    padding: 0 14px;
+  }
+
+  .create-game-section-toggle:active {
+    background: @m-fill;
+  }
+
+  // A chevron that turns down when the section is open, where the desktop has − and +.
+  .create-game-section-mark {
+    font-size: 0;
+    color: @m-label-3;
+
+    &::before {
+      content: "›";
+      display: inline-block;
+      font-family: @m-font;
+      font-size: 22px;
+      line-height: 1;
+      transition: transform @m-duration @m-ease;
+    }
+  }
+
+  .create-game-section-toggle[aria-expanded="true"] .create-game-section-mark::before {
+    transform: rotate(90deg);
+  }
+
+  .create-game-section-body {
+    padding-bottom: 4px;
+  }
+
+  .create-game-subsection-label {
+    .m-eyebrow();
+    padding: 18px 14px 6px;
+  }
+
+  // Every option is a row of the card, divided by the shell's separator.
+  .create-game-page-column label {
+    gap: 12px;
+    min-height: 48px;
+    margin: 0 0 0 14px;
+    padding: 6px 14px 6px 0;
+    border: 0;
+    border-top: 0.5px solid @m-sep;
+    border-radius: 0;
+    background: transparent;
+    font-family: @m-font;
+    font-size: @m-row-title-size;
+    font-weight: 400;
+    color: @m-label;
+
+    a,
+    a:visited {
+      color: @m-label-3;
+    }
+  }
+
+  .create-game-page-column input[type="checkbox"] + label:hover,
+  .create-game-page-column input[type="radio"] + label:hover {
+    background: transparent;
+  }
+
+  .create-game-page-column input[type="checkbox"] + label:active,
+  .create-game-page-column input[type="radio"] + label:active {
+    background: @m-fill;
+  }
+
+  // On and off is a switch at the end of the row.
+  .create-game-page-column input[type="checkbox"] + label::before {
+    .m-switch-track();
+  }
+
+  .create-game-page-column input[type="checkbox"]:checked + label,
+  .create-game-page-column input[type="radio"]:checked + label {
+    border-color: @m-sep;
+  }
+
+  .create-game-page-column input[type="checkbox"]:checked + label {
+    background: transparent;
+    font-weight: 400;
+
+    &::before {
+      background-color: @m-ok;
+      background-position: 20px 0, 0 0;
+    }
+
+    a {
+      color: @m-label-3;
+    }
+  }
+
+  // One of several is a checkmark at the end of the row, as in a phone's settings.
+  .create-game-page-column input[type="radio"] + label::before {
+    order: 99;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .create-game-page-column input[type="radio"]:checked + label {
+    background: transparent;
+    font-weight: 500;
+
+    &::before {
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a84ff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 20px no-repeat;
+    }
+  }
+
+  .create-game-page-column input:focus-visible + label {
+    outline: 2px solid @m-accent;
+    outline-offset: -2px;
+  }
+
+  .create-game-expansion-icon {
+    width: 26px;
+    height: 26px;
+    background-size: 26px 26px;
+  }
+
+  // Fields and pickers in the shell's raised fill rather than outlined boxes.
+  .create-game-corporations-count,
+  .player-handicap,
+  .create-game-player-name,
+  .form-select:not([multiple]):not([size]) {
+    border: 0;
+    border-radius: @m-radius-button;
+    background-color: @m-raised;
+    color: @m-label;
+    font-family: @m-font;
+    // 16px keeps iOS from zooming the page when a field takes focus.
+    font-size: 16px;
+
+    &:focus {
+      box-shadow: 0 0 0 2px @m-accent;
+    }
+  }
+
+  .create-game-corporations-count,
+  .player-handicap {
+    height: 34px;
+    text-align: center;
+    .m-tabular();
+  }
+
+  .form-input::placeholder {
+    color: @m-label-3;
+  }
+
+  // The players, one card each, their colour still the card's edge.
+  .create-game-players-cont {
+    padding-top: 0;
+    border-top: 0;
+
+    .columns {
+      gap: 12px;
+    }
+  }
+
+  .create-game-player {
+    padding: 14px 14px 14px 18px;
+    border: 0;
+    border-radius: @m-radius-card;
+    background: @m-card;
+
+    .form-label,
+    .form-switch,
+    .form-radio {
+      font-family: @m-font;
+      font-size: @m-row-title-size;
+      color: @m-label;
+      margin-top: 12px;
+    }
+
+    a,
+    a:visited {
+      color: @m-label-3;
+    }
+  }
+
+  .create-game-player-name {
+    height: 44px;
+    padding: 0 12px;
+    font-weight: 500;
+  }
+
+  // The colours as round swatches, the chosen one ringed.
+  .create-game-page-color-row {
+    gap: 4px;
+    margin-top: 12px;
+  }
+
+  .create-game-page-color-row div > label {
+    width: 34px;
+    height: 34px;
+    padding: 4px;
+    border: 0;
+    border-radius: @m-radius-pill;
+  }
+
+  .create-game-page-color-row input[type="radio"]:checked + label {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px @m-label;
+  }
+
+  .create-game-colorbox {
+    width: 26px;
+    height: 26px;
+    border-radius: @m-radius-pill;
+  }
+
+  // Spectre's switch, drawn as the shell draws it in the game's settings.
+  .form-switch {
+    padding-left: 60px;
+    min-height: 31px;
+    line-height: 31px;
+
+    .form-icon {
+      top: 0;
+      left: 0;
+      width: 51px;
+      height: 31px;
+      border: 0;
+      border-radius: @m-radius-pill;
+      background: @m-fill-strong;
+      transition: background-color @m-duration @m-ease;
+
+      &::before {
+        top: 2px;
+        left: 2px;
+        width: 27px;
+        height: 27px;
+        background: #fff;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+        transition: left @m-duration @m-ease;
+      }
+    }
+
+    input:checked + .form-icon {
+      background: @m-ok;
+
+      &::before {
+        left: 22px;
+      }
+    }
+
+    input:focus + .form-icon {
+      box-shadow: none;
+    }
+  }
+
+  .form-radio input:checked + .form-icon {
+    background: @m-accent;
+    border-color: @m-accent;
+  }
+
+  .create-game-bot-description {
+    font-size: @m-secondary-size;
+    color: @m-label-2;
+  }
+
+  // The actions in a glass bar at the foot of the screen; Create game is the one
+  // that fills it.
+  .create-game-action {
+    margin: 12px calc(-1 * (@m-gutter + env(safe-area-inset-left))) 0;
+    padding:
+      12px
+      calc(@m-gutter + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom))
+      calc(@m-gutter + env(safe-area-inset-left));
+    gap: 8px;
+    border-top: 0.5px solid @m-sep;
+    background: @m-glass;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+
+    .btn {
+      height: 48px;
+      min-height: 48px;
+      padding: 0 14px;
+      border: 0 !important;
+      border-radius: @m-radius-button-lg;
+      background: @m-fill !important;
+      color: @m-label !important;
+      font-family: @m-font;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .btn-action {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      padding: 0;
+    }
+
+    > .btn:first-child {
+      flex: 1;
+      background: @m-accent !important;
+      color: #fff !important;
+    }
+  }
+}
