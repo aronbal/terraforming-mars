@@ -26,6 +26,7 @@ import {Player} from '../Player';
 import {BotRunner} from '../bot/BotRunner';
 import {BotRandom} from '../bot/BotRandom';
 import {BotProfileOverride} from '../bot/BotProfile';
+import {BotStats, NO_STATS} from '../bot/BotMemory';
 import {BOT_DIFFICULTIES, BotDifficulty} from '../../common/bot/BotDifficulty';
 import {PlayerId, isPlayerId, isGameId, isSpectatorId, safeCast} from '../../common/Types';
 import {globalInitialize} from '../globalInitialize';
@@ -73,6 +74,8 @@ export type SeatStats = {
   unspent: number;
   /** Project cards costing 20 or more that the seat played. */
   bigCards: number;
+  /** What the seat's planning did. */
+  planning: BotStats;
 };
 
 export type GameResult = {
@@ -87,7 +90,19 @@ function seatStats(player: IPlayer): SeatStats {
     score: player.getVictoryPoints().total,
     unspent: player.megaCredits,
     bigCards: player.playedCards.asArray().filter((card) => (card.cost ?? 0) >= 20).length,
+    planning: player.botMemory?.stats ?? NO_STATS,
   };
+}
+
+/**
+ * The game's shuffle seed for tournament seed `seed`.
+ *
+ * `SeededRandom` expects a seed in [0, 1) and scales it by 2^32, so every
+ * whole number gives the same shuffle as 0: before this, every tournament game
+ * was dealt the same corporations and cards.
+ */
+export function deckSeed(seed: number): number {
+  return (seed * 0.6180339887498949) % 1;
 }
 
 /**
@@ -110,7 +125,7 @@ export function playGame(seats: ReadonlyArray<Seat>, seed: number, label: string
     players[0],
     safeCast(`s-${suffix}`, isSpectatorId),
     undefined,
-    seed);
+    deckSeed(seed));
 
   const overrides = new Map<PlayerId, BotProfileOverride>();
   seats.forEach((seat, index) => {
@@ -282,7 +297,11 @@ function ab(pairs: number, difficulty: BotDifficulty, a: BotProfileOverride, b: 
   const describe = (stats: ReadonlyArray<SeatStats>) =>
     `score ${mean(stats.map((s) => s.score)).toFixed(1)}  ` +
     `unspent M€ ${mean(stats.map((s) => s.unspent)).toFixed(1)}  ` +
-    `20+ cost cards ${mean(stats.map((s) => s.bigCards)).toFixed(2)}`;
+    `20+ cost cards ${mean(stats.map((s) => s.bigCards)).toFixed(2)}  ` +
+    `goals set ${mean(stats.map((s) => s.planning.goalsSet)).toFixed(2)}, ` +
+    `met ${mean(stats.map((s) => s.planning.goalsMet)).toFixed(2)}, ` +
+    `abandoned ${mean(stats.map((s) => s.planning.goalsAbandoned)).toFixed(2)}  ` +
+    `lookahead changed ${mean(stats.map((s) => s.planning.lookaheadChanged)).toFixed(2)}`;
 
   console.log(`A wins ${aWins}/${games}, draws ${draws}: ${(rate * 100).toFixed(1)}% ± ${(interval * 100).toFixed(1)} (95%)`);
   console.log(`Paired VP difference A−B: ${mean(differences).toFixed(2)} ± ${standardError(differences).toFixed(2)} (SE)`);
