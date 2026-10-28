@@ -41,6 +41,7 @@ import {scoreSpace} from './evaluate/SpaceEvaluator';
 import {Tempo, ValueWeights, productionValues, stockValues, tempoOf} from './evaluate/Values';
 import {forecastRequirements} from './plan/RequirementForecast';
 import {GoalPlanner} from './plan/GoalPlanner';
+import {Enablers} from './plan/Enablers';
 import {Phase} from '../../common/Phase';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
@@ -83,15 +84,20 @@ export class BotBrain {
     this.personality = playStyleOf(player, this.profile, this.tempo);
     this.attention = new Attention(this.profile.attention, random);
     this.cards = new CardEvaluator(player, this.profile, this.tempo, this.personality);
-    this.goals = this.profile.planning.goals ?
-      new GoalPlanner(player, this.profile, this.tempo, this.personality) :
+    const planning = this.profile.planning;
+    this.goals = planning.goals || planning.enablerWeight > 0 ?
+      new GoalPlanner(player, this.profile, this.tempo, this.personality, this.attention) :
       undefined;
     this.actions = this.newActionScorer();
   }
 
   private newActionScorer(): ActionScorer {
-    const goal = this.goals?.context(this.player.botMemory);
-    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal});
+    const planning = this.profile.planning;
+    const goal = planning.goals ? this.goals?.context(this.player.botMemory) : undefined;
+    const enablers = this.goals === undefined || planning.enablerWeight <= 0 ?
+      undefined :
+      new Enablers(this.player, this.goals, planning.enablerWeight, goal?.card);
+    return new ActionScorer(this.player, this.profile, this.tempo, this.cards, this.personality, this.attention, {goal, enablers});
   }
 
   /**
@@ -101,7 +107,8 @@ export class BotBrain {
    * is scored against is the one saved with the position it was taken from.
    */
   private maybeRefreshGoal(input: PlayerInput): void {
-    if (this.goals === undefined || input !== this.player.getWaitingFor() || !this.player.isAtActionMenu()) {
+    if (this.goals === undefined || !this.profile.planning.goals ||
+        input !== this.player.getWaitingFor() || !this.player.isAtActionMenu()) {
       return;
     }
     const memory = this.goals.refresh(this.player.botMemory);

@@ -45,7 +45,8 @@ const SCALES: Partial<Record<GlobalParameter, number>> = {
   [GlobalParameter.VENUS]: 2,
 };
 
-const PARAMETERS: Partial<Record<RequirementType, GlobalParameter>> = {
+/** The global parameter each global requirement type reads. */
+export const PARAMETERS: Partial<Record<RequirementType, GlobalParameter>> = {
   [RequirementType.OXYGEN]: GlobalParameter.OXYGEN,
   [RequirementType.TEMPERATURE]: GlobalParameter.TEMPERATURE,
   [RequirementType.OCEANS]: GlobalParameter.OCEANS,
@@ -61,7 +62,8 @@ const TURMOIL_PROBABILITY = 0.3;
 
 const compiled = new Map<CardName, ReadonlyArray<CardRequirement>>();
 
-function requirementsOf(card: ICard): ReadonlyArray<CardRequirement> {
+/** The compiled requirements of `card`, cached by name. */
+export function requirementsOf(card: ICard): ReadonlyArray<CardRequirement> {
   let requirements = compiled.get(card.name);
   if (requirements === undefined) {
     requirements = CardRequirements.compile([...card.requirements]).requirements;
@@ -143,13 +145,17 @@ function forecastOther(player: IPlayer, card: ICard, requirement: CardRequiremen
  *
  * A guess, not a promise: global parameters are extrapolated from how fast
  * Mars has been terraformed, tags from the cards in hand, and everything else
- * is a coin flip for next generation.
+ * is a coin flip for next generation. With `except`, that one requirement is
+ * treated as met, to ask what meeting it would change.
  */
-export function forecastRequirements(player: IPlayer, card: ICard): Forecast {
+export function forecastRequirements(player: IPlayer, card: ICard, except?: CardRequirement): Forecast {
   let eta = 0;
   let probability = 1;
   let closesIn: number | undefined;
   for (const requirement of requirementsOf(card)) {
+    if (requirement === except) {
+      continue;
+    }
     let forecast: Forecast;
     if (requirement instanceof GlobalParameterRequirement) {
       forecast = forecastGlobal(player, requirement);

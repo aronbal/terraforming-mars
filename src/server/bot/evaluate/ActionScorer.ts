@@ -19,6 +19,7 @@ import {bestCitySpaceValue} from './SpaceEvaluator';
 import {PlayableCard, planPaymentFor} from '../CardPayment';
 import {Tempo, ValueWeights, VP_VALUE, cardDrawValue, productionValues, stockValues, terraformRatingValue} from './Values';
 import {GoalContext} from '../plan/GoalPlanner';
+import {Enablers} from '../plan/Enablers';
 import {inPurseTerms} from '../plan/Economy';
 import {Payment} from '../../../common/inputs/Payment';
 
@@ -47,6 +48,8 @@ const END_TURN_SCORE = 0.15;
 export type ScorerPlanning = {
   /** The savings goal, which charges moves that delay it. */
   readonly goal?: GoalContext;
+  /** What a card does for the other cards in hand. */
+  readonly enablers?: Enablers;
 };
 
 export class ActionScorer {
@@ -305,7 +308,8 @@ export class ActionScorer {
     const reserve = Math.max(0, this.profile.reserveMegacredits + this.personality.thrift);
     const shortfall = Math.max(0, cost - (this.player.megaCredits - reserve));
     // Spending down to nothing has a real cost: it forecloses next turn.
-    return gross - cost - shortfall * 0.05 + this.goalAdjustment(card, payment);
+    const enabled = this.planning.enablers?.value(card) ?? 0;
+    return gross - cost - shortfall * 0.05 + this.goalAdjustment(card, payment) + enabled;
   }
 
   /**

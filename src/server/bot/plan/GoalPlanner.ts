@@ -2,6 +2,7 @@ import {IPlayer} from '../../IPlayer';
 import {IProjectCard} from '../../cards/IProjectCard';
 import {BotProfile} from '../BotProfile';
 import {BotPersonality} from '../BotPersonality';
+import {Attention} from '../Attention';
 import {BotGoal, BotMemory, BotStats, NO_STATS} from '../BotMemory';
 import {CardEvaluator} from '../evaluate/CardEvaluator';
 import {Tempo, shiftTempo} from '../evaluate/Values';
@@ -40,7 +41,8 @@ export class GoalPlanner {
     private readonly player: IPlayer,
     private readonly profile: BotProfile,
     private readonly tempo: Tempo,
-    private readonly personality: BotPersonality) {
+    private readonly personality: BotPersonality,
+    private readonly attention: Attention = Attention.FULL) {
   }
 
   private valueAt(card: IProjectCard, generations: number): number {
@@ -57,17 +59,22 @@ export class GoalPlanner {
    *
    * Each generation of waiting keeps only `goalRisk` of the value, because
    * plans go wrong: the opponent takes the space, the game ends sooner.
+   * `probability` is the chance its requirements are met in time, forecast
+   * when not given.
    */
-  public netAt(card: IProjectCard, eta: number): number {
-    const {probability} = forecastRequirements(this.player, card);
+  public netAt(card: IProjectCard, eta: number, probability: number = forecastRequirements(this.player, card).probability): number {
     const risk = Math.pow(this.profile.planning.goalRisk, eta);
     return probability * risk * this.valueAt(card, eta) - this.player.getCardCost(card);
   }
 
+  /** Generations until `card` is affordable, after `change` to the purse. */
+  public moneyEta(card: IProjectCard, change?: PurseChange): number {
+    return etaFor(this.player.getCardCost(card), purseFor(this.player, card, this.profile), change);
+  }
+
   /** Generations until `card` can be played, after `change` to the purse. */
   public etaOf(card: IProjectCard, change?: PurseChange): number {
-    const money = etaFor(this.player.getCardCost(card), purseFor(this.player, card, this.profile), change);
-    return Math.max(money, forecastRequirements(this.player, card).eta);
+    return Math.max(this.moneyEta(card, change), forecastRequirements(this.player, card).eta);
   }
 
   /** The last generation a goal can still be played in, counting this one as 0. */
@@ -138,7 +145,8 @@ export class GoalPlanner {
     }
     let best: {card: IProjectCard, eta: number, net: number} | undefined;
     for (const card of this.player.cardsInHand) {
-      if (card === excluded) {
+      // A held goal is remembered; a new one has to be noticed.
+      if (card === excluded || !this.attention.noticesCard(card.name)) {
         continue;
       }
       const eta = this.etaOf(card);
