@@ -55,6 +55,24 @@ function safeUrl(url: string, base: string): string | undefined {
   }
 }
 
+/*
+ * Where a picture on GitHub can be loaded from. A file's page on github.com
+ * (`/blob/`) is HTML, which GitHub's own renderer quietly swaps for the file; the
+ * reader has to do the same, or the picture shows broken. Files in the repo and in
+ * the wiki both come straight from raw.githubusercontent.com.
+ */
+export function imageUrl(url: string): string {
+  const file = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/.exec(url);
+  if (file !== null) {
+    return `https://raw.githubusercontent.com/${file[1]}/${file[2]}/${file[3].replace(/[?#].*$/, '')}`;
+  }
+  const wiki = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/wiki\/(.+\.[^/]+)$/.exec(url);
+  if (wiki !== null) {
+    return `https://raw.githubusercontent.com/wiki/${wiki[1]}/${wiki[2]}/${wiki[3].replace(/[?#].*$/, '')}`;
+  }
+  return url;
+}
+
 function clean(parent: Node, page: ReaderPage): void {
   for (const child of Array.from(parent.childNodes)) {
     if (child.nodeType === TEXT_NODE) {
@@ -94,7 +112,7 @@ function clean(parent: Node, page: ReaderPage): void {
         if (url === undefined) {
           element.removeAttribute(attribute.name);
         } else {
-          element.setAttribute(attribute.name, url);
+          element.setAttribute(attribute.name, name === 'src' ? imageUrl(url) : url);
         }
       }
     }
