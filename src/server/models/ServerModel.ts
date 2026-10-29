@@ -112,6 +112,7 @@ export class Server {
       waitingFor: this.getWaitingFor(player, player.getWaitingFor()),
       players: players,
       autopass: player.autopass,
+      canCancelAction: player.canCancelAction(),
     };
     return rv;
   }

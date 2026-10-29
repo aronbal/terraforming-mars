@@ -108,6 +108,7 @@ mobile/MobileLogRow.vue                 one log line: player glyph, what, who an
 mobile/MobileLogPane.vue                the whole log, a group per generation
 mobile/MobileLogCards.vue               the cards a log line names, opened large
 mobile/MobileOverlay.vue                the sheet the players and the menu open in
+mobile/MobileSheetDismiss.vue           a sheet's Cancel or Close, which can take an action back
 mobile/MobileIcon.vue, MobileIcons.ts   the Lucide icons the chrome draws, inlined
 mobile/MobileInitialCards.vue           the opening hand, one selection at a time
 mobile/MobileCardPicker.vue             cards side by side, chosen with a tap (the opening hand)
@@ -460,6 +461,25 @@ can be turned on or off afterwards.
   - `GameLoader.restoreGameAt` deletes the saves actually stored after the target,
     and refuses a target that is no longer stored.
 
+**Cancel, part way through an action.** A question the server asks after an
+action was chosen from the turn's menu -- the award Vitor's first action funds, a
+space for a tile, a target for a card -- used to have no way back: what was sent
+stayed sent. Where undo is on, it now has one, and the player gets the menu again.
+- `Player.takeAction` remembers the menu it hands out (the action menu, or the
+  corporations' first actions) and the save made just before it. While the player
+  is asked anything else on their own turn in the action phase, with undo on,
+  `Player.canCancelAction()` is true; it goes out as `PlayerViewModel.canCancelAction`.
+- `api/cancelaction` (`ApiCancelAction`) restores that save, keeps the undo setting,
+  and answers with the player's view. It refuses when there is nothing to take back.
+- On the phone the sheets' second button is `MobileSheetDismiss`. When the sheet
+  answers the server's own question and the action can be taken back, it reads
+  `Cancel` and does that; otherwise it puts the sheet down as before. The placement
+  bar's way out and the action panel (for questions drawn by the desktop's inputs)
+  offer the same `Cancel`.
+- Undo is required because the action may already have shown something hidden --
+  the top card of the deck, say. With undo on, the whole action could be undone
+  once it was done anyway.
+
 **This game, under ⋯.** The menu starts with the game itself when there is one.
 - **Your link to this game** shows the player's own `player?id=` address, with a
   button that copies it. An app added to the home screen has no address bar, so this
@@ -543,9 +563,9 @@ the bottom of every pane. It read as a second screen half-hidden behind the firs
 and was removed. Tapping the head, the scrim or dragging it down now puts the sheet
 away entirely; the turn page's question row and the header's turn pill bring it
 back. Every sheet has a second button for that: `Cancel` where the question may be
-backed out of (it is optional, or an option of a choice, which then comes back),
-and `Close` where it must be answered, so the hand or the board can be looked at
-first.
+backed out of (it is optional, or an option of a choice, which then comes back, or
+the action that asked it can be taken back), and `Close` where it must be answered,
+so the hand or the board can be looked at first.
 
 Compute the stops in **pixels, not percentages**, from the sheet's measured
 height. The placement confirm bar also needs a higher `z-index` than the sheet.
@@ -833,8 +853,9 @@ Four places where the implementation departs from the plan above, and why.
   about. It offers the tap through `spaceSelection.offerPlacement`, and the bar
   under the map turns from "Choose a space" into "Place here? ✕ ✓". Its way out
   depends on where the placement came from: `Back` to the choice it is an option
-  of, `Cancel` to give up a menu entry the player opened (a greenery), and none
-  for a space the server asks for after something was already done.
+  of, `Cancel` to give up a menu entry the player opened (a greenery), and for a
+  space the server asks for after something was already done, `Cancel` to take the
+  action back where undo is on, and none otherwise.
   Tapping another blinking space simply moves the choice.
   While the bar asks, the tapped space shows the tile it would get, faded and
   pulsing, with the player's cube on it (`BoardSpace` reads the pending

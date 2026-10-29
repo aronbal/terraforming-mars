@@ -105,3 +105,15 @@ export function postPlayerInput(
       body: JSON.stringify({runId: playerView.runId, ...response}),
     });
 }
+
+/**
+ * Takes back the action the player chose from their turn's menu, which still asks
+ * them something, and hands them the menu again. The server allows it only where
+ * Undo is allowed: `canCancelAction` on the player's view says when.
+ */
+export function cancelAction(
+  component: Pick<ComponentPublicInstance, '$root'>,
+  playerView: PlayerViewModel,
+): Promise<boolean> {
+  return requestPlayerView(component, playerView, paths.API_CANCEL_ACTION + '?id=' + playerView.id, {method: 'POST'});
+}

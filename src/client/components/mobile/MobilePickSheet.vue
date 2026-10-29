@@ -42,11 +42,12 @@
           :disabled="submitting || chosen === undefined"
           data-test="pick-sheet-submit"
           @click="submit">{{ $t(question.buttonLabel) }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="(question.optional || entry !== undefined) ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="pick-sheet-cancel"
-          @click="close">{{ $t((question.optional || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -56,6 +57,7 @@
 import {defineComponent, PropType} from 'vue';
 
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {PickQuestion, pickQuestion} from '@/client/components/mobile/PickSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {ColorWithNeutral} from '@/common/Color';
@@ -76,6 +78,7 @@ export default defineComponent({
   name: 'MobilePickSheet',
   components: {
     MobileIcon,
+    MobileSheetDismiss,
   },
   props: {
     playerView: {

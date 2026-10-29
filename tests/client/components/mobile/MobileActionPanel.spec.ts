@@ -55,6 +55,13 @@ describe('MobileActionPanel', () => {
     expect(mount({mode: 'sheet'}).find('[data-test="sheet-head"]').exists()).is.true;
   });
 
+  it('offers a way back to the menu from part way through an action, where the server allows it', () => {
+    expect(mount().find('[data-test="panel-cancel-action"]').exists()).is.false;
+    const cancellable = fakePlayerViewModel({canCancelAction: true});
+    expect(mount({playerView: cancellable}).find('[data-test="panel-cancel-action"]').exists()).is.true;
+    expect(mount({playerView: cancellable, hostsInput: false}).find('[data-test="panel-cancel-action"]').exists()).is.false;
+  });
+
   it('is a plain pane while it holds the opening hand', () => {
     const wrapper = mount({mode: 'tab'});
     expect(wrapper.find('[data-test="sheet-head"]').exists()).is.false;

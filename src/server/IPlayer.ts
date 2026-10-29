@@ -348,6 +348,10 @@ export interface IPlayer {
   isAtActionMenu(): boolean;
   /** The save Undo goes back to: the one made just before this player's last decision but one. */
   undoSaveId(): number | undefined;
+  /** Whether the action chosen from this player's menu, still asking them something, can be taken back. */
+  canCancelAction(): boolean;
+  /** The save that takes it back to the menu, when it can be. */
+  cancelActionSaveId(): number | undefined;
   /** Adds or removes Undo in the action menu this player is asked, after undo is turned on or off. */
   refreshUndoOption(): void;
   /** Player is done taking actions this generation. */

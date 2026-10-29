@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {linkKind, renderPage, sanitize} from '@/client/components/reader/renderPage';
+import {imageUrl, linkKind, renderPage, sanitize} from '@/client/components/reader/renderPage';
 import {readerPage} from '@/client/components/reader/reader';
 
 const RULEBOOKS = readerPage('https://github.com/terraforming-mars/terraforming-mars/wiki/Rulebooks')!;
@@ -57,6 +57,23 @@ describe('renderPage', () => {
     expect(html).not.to.include('&lt;table&gt;');
   });
 
+  it('loads pictures on GitHub from where the file itself is served', () => {
+    expect(imageUrl('https://github.com/terraforming-mars/terraforming-mars/blob/main/assets/moon/minetile.png'))
+      .eq('https://raw.githubusercontent.com/terraforming-mars/terraforming-mars/main/assets/moon/minetile.png');
+    expect(imageUrl('https://github.com/terraforming-mars/terraforming-mars/blob/main/assets/moon/minetile.png?raw=true'))
+      .eq('https://raw.githubusercontent.com/terraforming-mars/terraforming-mars/main/assets/moon/minetile.png');
+    expect(imageUrl('https://github.com/terraforming-mars/terraforming-mars/wiki/community-images/Venus.png'))
+      .eq('https://raw.githubusercontent.com/wiki/terraforming-mars/terraforming-mars/community-images/Venus.png');
+    expect(imageUrl('https://github.com/user-attachments/assets/c21d3e8e')).eq('https://github.com/user-attachments/assets/c21d3e8e');
+    expect(imageUrl('https://i.imgur.com/x.png')).eq('https://i.imgur.com/x.png');
+  });
+
+  it('draws the Moon page\'s tiles', () => {
+    const page = readerPage('https://github.com/terraforming-mars/terraforming-mars/wiki/The-Moon')!;
+    const html = renderPage('<img src="https://github.com/terraforming-mars/terraforming-mars/blob/main/assets/moon/minetile.png" width="100" />', page);
+    expect(html).to.include('<img src="https://raw.githubusercontent.com/terraforming-mars/terraforming-mars/main/assets/moon/minetile.png" width="100">');
+  });
+
   it('keeps nothing that could run', () => {
     const html = sanitize([
       '<p onclick="steal()">Text<script>steal()</script></p>',
@@ -69,7 +86,7 @@ describe('renderPage', () => {
 
     expect(html).eq([
       '<p>Text</p>',
-      '<img src="https://github.com/terraforming-mars/terraforming-mars/wiki/x.png">',
+      '<img src="https://raw.githubusercontent.com/wiki/terraforming-mars/terraforming-mars/x.png">',
       '<a>bad</a>',
       '<a href="https://github.com/terraforming-mars/terraforming-mars/wiki/Variants">good</a>',
       'kept text',

@@ -75,11 +75,12 @@
           :disabled="submitting"
           data-test="choice-sheet-submit"
           @click="submit">{{ $t(buttonLabel) }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="optional ? 'Cancel' : 'Close'"
+          :asked="true"
           data-test="choice-sheet-cancel"
-          @click="close">{{ $t(optional ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -89,6 +90,7 @@
 import {defineComponent, PropType} from 'vue';
 
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import WarningsComponent from '@/client/components/WarningsComponent.vue';
 import {BoardRule, NestedStep, boardRuleIn, choiceInput, nestedKind, playerChoiceInput} from '@/client/components/mobile/ChoiceSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
@@ -120,6 +122,7 @@ export default defineComponent({
   name: 'MobileChoiceSheet',
   components: {
     MobileIcon,
+    MobileSheetDismiss,
     WarningsComponent,
   },
   props: {
