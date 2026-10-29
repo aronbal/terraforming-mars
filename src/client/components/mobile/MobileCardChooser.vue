@@ -55,11 +55,12 @@
           :disabled="!canSubmit"
           data-test="card-chooser-submit"
           @click="submit()">{{ submitLabel }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="cancellable ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="card-chooser-cancel"
-          @click="close">{{ $t(cancellable ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -70,6 +71,7 @@ import {defineComponent, PropType} from 'vue';
 
 import Card from '@/client/components/card/Card.vue';
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {chooserInput, chooserPrice, chooserResponse} from '@/client/components/mobile/CardChooser';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {CardName} from '@/common/cards/CardName';
@@ -99,6 +101,7 @@ export default defineComponent({
   components: {
     Card,
     MobileIcon,
+    MobileSheetDismiss,
   },
   props: {
     playerView: {

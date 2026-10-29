@@ -41,11 +41,12 @@
           :disabled="submitting || chosen === undefined"
           data-test="colony-sheet-submit"
           @click="submit">{{ $t(input.buttonLabel) }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="(input.optional || entry !== undefined) ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="colony-sheet-cancel"
-          @click="close">{{ $t((input.optional || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -57,6 +58,7 @@ import {defineComponent, PropType} from 'vue';
 import Colony from '@/client/components/colonies/Colony.vue';
 import MobileFitBlock from '@/client/components/mobile/MobileFitBlock.vue';
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {colonyInput, entryResponse} from '@/client/components/mobile/PickSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {ColonyName} from '@/common/colonies/ColonyName';
@@ -80,6 +82,7 @@ export default defineComponent({
     Colony,
     MobileFitBlock,
     MobileIcon,
+    MobileSheetDismiss,
   },
   props: {
     playerView: {

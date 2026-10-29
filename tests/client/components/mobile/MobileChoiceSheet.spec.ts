@@ -73,6 +73,23 @@ describe('MobileChoiceSheet', () => {
     expect(nestedKind({type: 'and', title: '', buttonLabel: 'OK', options: [amount, option('Skip')]})).is.undefined;
   });
 
+  it('takes back the action that asked it, where the server allows it', async () => {
+    const requested: Array<string> = [];
+    global.fetch = (async (url: string) => {
+      requested.push(url);
+      return {ok: true, status: 200, json: async () => fakePlayerViewModel()};
+    }) as unknown as typeof global.fetch;
+    const wrapper = mount(MobileChoiceSheet, {
+      ...globalConfig,
+      props: {playerView: fakePlayerViewModel({id: 'p-blue-id', canCancelAction: true, waitingFor: plants()} as never)},
+    });
+    const cancel = wrapper.find('[data-test=choice-sheet-cancel]');
+    expect(cancel.text()).eq('Cancel');
+    await cancel.trigger('click');
+    await flushPromises();
+    expect(requested).deep.eq(['api/cancelaction?id=p-blue-id']);
+  });
+
   it('hands an option that is a question of its own on to its sheet', async () => {
     const wrapper = render(discardOrSkip());
     const rows = wrapper.findAll('[data-test=choice-sheet-option]');

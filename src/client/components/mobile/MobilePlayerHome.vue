@@ -340,7 +340,7 @@ import {NestedStep, choiceInput, playerChoiceInput} from '@/client/components/mo
 import {paymentInput} from '@/client/components/mobile/PaymentSheet';
 import {PlayerInputModel, SelectPaymentModel, SelectSpaceModel} from '@/common/models/PlayerInputModel';
 import {SelectSpaceResponse} from '@/common/inputs/InputResponse';
-import {postPlayerInput} from '@/client/utils/playerInputRequest';
+import {cancelAction, postPlayerInput} from '@/client/utils/playerInputRequest';
 import {ActionAnnotation} from '@/common/input/Annotation';
 import {MobileIconName} from '@/client/components/mobile/MobileIcons';
 import {ColonyName} from '@/common/colonies/ColonyName';
@@ -502,14 +502,15 @@ export default defineComponent({
      * The placement bar's way out, when there is one. A space chosen for an option of a
      * choice goes back to the choice; one for a menu entry the player opened -- a
      * greenery, a standard project -- gives the entry up. A space the server asks for
-     * after something was already done has none: what is done stays done, and the
-     * tabs are still there to look at the hand.
+     * after something was already done takes that action back, where Undo is allowed;
+     * otherwise it has none: what is done stays done, and the tabs are still there to
+     * look at the hand.
      */
     placementBack(): string | undefined {
       if (this.asking === 'space') {
         return 'Back';
       }
-      return pickFocused.value ? 'Cancel' : undefined;
+      return pickFocused.value || this.playerView.canCancelAction ? 'Cancel' : undefined;
     },
     /* The space on the board asked for as the option chosen in the choice sheet. */
     nestedSpace(): SelectSpaceModel | undefined {
@@ -813,9 +814,16 @@ export default defineComponent({
     },
     /* The placement bar's way out: back to the choice the space was chosen from, or
        the menu entry given up and the turn page back. */
-    leavePlacement(): void {
+    async leavePlacement(): Promise<void> {
       if (this.asking === 'space') {
         this.putDownAsking();
+        return;
+      }
+      // The server is part way through the action: that is what is given up, whatever
+      // was opened on the phone to start it.
+      if (this.playerView.canCancelAction) {
+        // Accepted, the shell is drawn afresh from the turn's menu.
+        await cancelAction(this, this.playerView);
         return;
       }
       this.forgetPick();

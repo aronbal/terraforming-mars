@@ -89,6 +89,11 @@ export type PublicPlayerModel = {
 /** A player's view of the game, including their secret information. */
 export interface PlayerViewModel extends ViewModel {
   autopass: boolean;
+  /**
+   * Whether the action this player chose from their turn's menu, which still asks
+   * them something, can be taken back to the menu. Only where Undo is allowed.
+   */
+  canCancelAction: boolean;
   cardsInHand: ReadonlyArray<CardModel>;
   dealtCorporationCards: ReadonlyArray<CardModel>;
   dealtPreludeCards: ReadonlyArray<CardModel>;

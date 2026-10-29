@@ -172,6 +172,12 @@ export class Player implements IPlayer {
   private decisionSaved = false;
   /** The action menu, while it is what this player is asked. */
   private actionMenu: OrOptions | undefined;
+  /**
+   * The menu this player's turn was last handed out with -- the action menu, or the
+   * first actions of their corporations -- and the save made just before it, from
+   * which the action chosen from it can be taken back while it is still being asked.
+   */
+  private actionStart: {menu: PlayerInput, saveId: number} | undefined;
 
   // Turmoil
   public turmoilPolicyActionUsed: boolean = false;
@@ -1473,6 +1479,7 @@ export class Player implements IPlayer {
   // @ts-ignore saveBeforeTakingAction is unused at the moment.
   public takeAction(saveBeforeTakingAction: boolean = true): void {
     const game = this.game;
+    this.actionStart = undefined;
 
     if (game.deferredActions.length > 0) {
       game.deferredActions.runAll(() => this.takeAction());
@@ -1481,6 +1488,8 @@ export class Player implements IPlayer {
     game.endLoggedAction();
 
     const save = this.actionsTakenThisRound === 0 || game.gameOptions.undoOption;
+    // Read before saving: the save is stored under it, and moves it on once it is written.
+    const saveId = save && this.bot === undefined ? game.lastSaveId : undefined;
     if (this.bot === undefined) {
       if (save) {
         // The id this save is stored under. On Postgres every save made while one
@@ -1582,6 +1591,7 @@ export class Player implements IPlayer {
         orOptions.options.push(this.passOption());
       }
 
+      this.startAction(orOptions, saveId);
       this.setWaitingFor(orOptions, this.runWhenEmpty(() => {
         if (this.pendingInitialActions.length === 0) {
           this.incrementActionsTaken();
@@ -1593,11 +1603,16 @@ export class Player implements IPlayer {
     }
 
     this.actionMenu = this.getActions();
+    this.startAction(this.actionMenu, saveId);
     this.setWaitingFor(this.actionMenu, this.runWhenEmpty(() => {
       this.actionMenu = undefined;
       this.incrementActionsTaken();
       this.takeAction();
     }));
+  }
+
+  private startAction(menu: PlayerInput, saveId: number | undefined): void {
+    this.actionStart = saveId === undefined ? undefined : {menu, saveId};
   }
 
   private incrementActionsTaken(): void {
@@ -1771,6 +1786,26 @@ export class Player implements IPlayer {
 
   public undoSaveId(): number | undefined {
     return this.previousUndoPoint()?.saveId;
+  }
+
+  /**
+   * Whether the action this player chose from their turn's menu can be taken back
+   * while it still asks them something: a space, a target, an award. It is an undo
+   * of an action not yet finished, so it is offered only where Undo is, and only in
+   * the action phase, on this player's own turn.
+   */
+  public canCancelAction(): boolean {
+    const start = this.actionStart;
+    return start !== undefined &&
+      this.game.gameOptions.undoOption &&
+      this.game.phase === Phase.ACTION &&
+      this.game.activePlayer === this &&
+      this.waitingFor !== undefined &&
+      this.waitingFor !== start.menu;
+  }
+
+  public cancelActionSaveId(): number | undefined {
+    return this.canCancelAction() ? this.actionStart?.saveId : undefined;
   }
 
   private allOtherPlayersHavePassed(): boolean {

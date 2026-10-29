@@ -40,11 +40,12 @@
           :disabled="submitting || chosen === undefined"
           data-test="party-sheet-submit"
           @click="submit">{{ $t(input.buttonLabel) }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="(input.optional || entry !== undefined) ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="party-sheet-cancel"
-          @click="close">{{ $t((input.optional || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -55,6 +56,7 @@ import {defineComponent, PropType} from 'vue';
 
 import MobileIcon from '@/client/components/mobile/MobileIcon.vue';
 import MobilePartyRow from '@/client/components/mobile/MobilePartyRow.vue';
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {entryResponse, partyInput} from '@/client/components/mobile/PickSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {SelectPartyModel} from '@/common/models/PlayerInputModel';
@@ -81,6 +83,7 @@ export default defineComponent({
   components: {
     MobileIcon,
     MobilePartyRow,
+    MobileSheetDismiss,
   },
   props: {
     playerView: {

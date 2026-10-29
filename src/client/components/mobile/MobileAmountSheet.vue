@@ -52,11 +52,12 @@
           :disabled="submitting"
           data-test="amount-sheet-submit"
           @click="submit">{{ $t(input.buttonLabel) }} · {{ amount }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="(input.optional === true || entry !== undefined) ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="amount-sheet-cancel"
-          @click="close">{{ $t((input.optional === true || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -65,6 +66,7 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {amountInput, amountResponse} from '@/client/components/mobile/AmountSheet';
 import {postPlayerInput} from '@/client/utils/playerInputRequest';
 import {SelectAmountModel} from '@/common/models/PlayerInputModel';
@@ -85,6 +87,9 @@ type DataModel = {
  */
 export default defineComponent({
   name: 'MobileAmountSheet',
+  components: {
+    MobileSheetDismiss,
+  },
   props: {
     playerView: {
       type: Object as PropType<PlayerViewModel>,

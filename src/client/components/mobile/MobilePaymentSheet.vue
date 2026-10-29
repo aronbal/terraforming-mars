@@ -62,11 +62,12 @@
           :disabled="!canSubmit"
           data-test="payment-sheet-submit"
           @click="submit">{{ message('Pay · ${0} M€', payment.megacredits) }}</button>
-        <button
-          type="button"
-          class="mobile-play-sheet-button"
+        <MobileSheetDismiss
+          :playerView="playerView"
+          :label="(playerinput.optional === true || entry !== undefined) ? 'Cancel' : 'Close'"
+          :asked="entry === undefined"
           data-test="payment-sheet-cancel"
-          @click="close">{{ $t((playerinput.optional === true || entry !== undefined) ? 'Cancel' : 'Close') }}</button>
+          @close="close"/>
       </div>
     </section>
   </div>
@@ -75,6 +76,7 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import {Ledger, PAYMENT_UNIT_DESCRIPTIONS, paymentProblem, paymentUnitIconClass, remainingMegacredits, totalSpent} from '@/client/components/PaymentLedger';
 import {computeDefaultPayment} from '@/client/components/PaymentDefaults';
 import {paymentResponse, selectPaymentOrder} from '@/client/components/mobile/PaymentSheet';
@@ -103,6 +105,9 @@ type DataModel = {
  */
 export default defineComponent({
   name: 'MobilePaymentSheet',
+  components: {
+    MobileSheetDismiss,
+  },
   mixins: [PaymentWidgetMixin],
   props: {
     playerView: {

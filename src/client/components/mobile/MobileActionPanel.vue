@@ -25,6 +25,11 @@
         :playerView="playerView"
         :waitingfor="playerView.waitingFor"/>
       <div v-else-if="playerView.game.phase === 'end'" v-i18n>This game is over.</div>
+      <!-- A question asked part way through an action has no way back of its own:
+           where Undo is allowed, this takes the action back to the turn's menu. -->
+      <div v-if="mode === 'sheet' && hostsInput && playerView.canCancelAction" class="mobile-panel-cancel">
+        <MobileSheetDismiss :playerView="playerView" label="Cancel" :asked="true" data-test="panel-cancel-action"/>
+      </div>
     </div>
   </div>
 </template>
@@ -32,6 +37,7 @@
 <script lang="ts">
 import {defineComponent, PropType} from 'vue';
 
+import MobileSheetDismiss from '@/client/components/mobile/MobileSheetDismiss.vue';
 import WaitingFor from '@/client/components/WaitingFor.vue';
 import {PlayerViewModel} from '@/common/models/PlayerModel';
 import {SheetSnap, SHEET_SNAPS} from '@/client/components/mobile/MobileView';
@@ -89,6 +95,7 @@ export default defineComponent({
   },
   emits: ['update:snap'],
   components: {
+    MobileSheetDismiss,
     WaitingFor,
   },
   data(): DataModel {
