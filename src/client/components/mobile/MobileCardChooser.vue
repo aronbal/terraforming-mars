@@ -9,6 +9,7 @@
       aria-modal="true"
       :aria-label="$t(input.title)"
       tabindex="-1"
+      :style="panelStyle"
       @keydown.esc="close">
       <span class="mobile-play-sheet-grabber" aria-hidden="true"></span>
       <div class="mobile-play-sheet-body">
@@ -82,6 +83,8 @@ type DataModel = {
   /** The cards chosen so far, in the order they were chosen. */
   chosen: Array<CardName>;
   submitting: boolean;
+  /** Where the shell's header ends, in pixels from the top of the screen, or 0 without one. */
+  headerBottom: number;
 };
 
 /*
@@ -116,9 +119,15 @@ export default defineComponent({
     return {
       chosen: [],
       submitting: false,
+      headerBottom: 0,
     };
   },
   computed: {
+    /* The sheet stops short of the header, so the tags a pick is weighed against stay
+       on screen above it; the cards scroll inside the sheet instead. */
+    panelStyle(): Record<string, string> {
+      return this.headerBottom > 0 ? {maxHeight: `calc(100% - ${this.headerBottom}px)`} : {};
+    },
     input(): SelectCardModel | undefined {
       return chooserInput(this.playerView.waitingFor, this.entry);
     },
@@ -184,6 +193,8 @@ export default defineComponent({
     },
   },
   mounted() {
+    const header = document.querySelector('#mobile-shell .mobile-header');
+    this.headerBottom = header?.getBoundingClientRect().bottom ?? 0;
     const panel = this.$refs.panel as HTMLElement | undefined;
     panel?.focus({preventScroll: true});
   },

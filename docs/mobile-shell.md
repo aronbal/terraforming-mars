@@ -353,7 +353,9 @@ away.
 cards to buy, any card's own "choose a card" — opens in the card chooser
 (`MobileCardChooser.vue`) instead of the sheet, and so does Sell patents. Every
 card is on screen at once, two abreast, so they can be compared against each other
-and against the tags in the header, which the chooser's scrim leaves unblurred. A
+and against the tags in the header, which the chooser's scrim leaves unblurred. The
+chooser never rises over the header: it is measured when the chooser opens, the
+sheet stops at its foot, and cards that do not fit scroll inside the sheet. A
 tap chooses a card (for a question that takes one, it moves the choice) and a second
 tap puts it back. The one blue button says what the pick comes to: `Select`,
 `Buy 2 · 6 M€`, `Sell 3 · +3 M€`, or `Skip` when buying none. A question that must
