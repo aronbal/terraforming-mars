@@ -110,6 +110,44 @@ describe('MobileGameEnd', () => {
     expect(wrapper.find('[data-test="end-card"]').exists()).is.false;
   });
 
+  it('shows a card scored against a player from its owner\'s table, and names the owner', async () => {
+    // Blue played Vermin and filled it; Aron pays for his cities without owning it.
+    const owner = {...player('Blue', 'blue', 70, 10), tableau: [{name: CardName.VERMIN, resources: 11}]};
+    const victim = {
+      ...aron,
+      victoryPointsBreakdown: {
+        ...aron.victoryPointsBreakdown,
+        detailsCards: [{cardName: CardName.VERMIN, victoryPoint: -5}],
+      },
+    };
+    const wrapper = render([victim, owner]);
+
+    const aronsLines = wrapper.findAll('[data-test="end-details"]')[0].findAll('[data-test="end-card-line"]');
+    expect(aronsLines).has.length(1);
+    await aronsLines[0].trigger('click');
+
+    expect(wrapper.find('[data-test="end-card"]').text()).contains('-5 VP');
+    expect(wrapper.vm.shown?.card).deep.eq({name: CardName.VERMIN, resources: 11});
+    expect(wrapper.find('[data-test="end-card-owner"]').text()).contains('Blue\'s card');
+  });
+
+  it('does not name the owner of a player\'s own card', async () => {
+    const scorer = player('Scorer', 'blue', 90, 10);
+    const withCards = {
+      ...scorer,
+      tableau: [{name: CardName.VERMIN, resources: 11}],
+      victoryPointsBreakdown: {
+        ...scorer.victoryPointsBreakdown,
+        detailsCards: [{cardName: CardName.VERMIN, victoryPoint: -3}],
+      },
+    };
+    const wrapper = render([withCards, aron]);
+
+    await wrapper.find('[data-test="end-card-line"]').trigger('click');
+    expect(wrapper.vm.shown?.card).deep.eq({name: CardName.VERMIN, resources: 11});
+    expect(wrapper.find('[data-test="end-card-owner"]').exists()).is.false;
+  });
+
   it('opens a milestone or an award from its line, with its rule', async () => {
     const claimed = {
       ...green,

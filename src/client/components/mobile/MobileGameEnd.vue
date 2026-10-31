@@ -124,6 +124,11 @@
         <Card class="cardbox" :card="shown.card"/>
       </div>
       <p class="mobile-end-card-caption">{{ say('${0} VP', String(shown.points)) }}</p>
+      <!-- Vermin scores against everyone; say whose card it is when it is not this player's. -->
+      <p v-if="shown.owner !== undefined" class="mobile-end-card-owner" data-test="end-card-owner">
+        <span class="mobile-end-card-owner-dot" :class="'player_bg_color_' + shown.owner.color" aria-hidden="true"></span>
+        {{ say('${0}\'s card', shown.owner.name) }}
+      </p>
     </div>
 
     <MobileMedalSheet
@@ -168,6 +173,8 @@ type DetailLine = {
   text: string;
   /** The card the points came from, as it lay on the table. */
   card?: CardModel;
+  /** Who played that card, when it is not the player the points went to. */
+  owner?: Owner;
   /** Or the milestone or award they came from. */
   medal?: Medal;
 };
@@ -177,9 +184,15 @@ type Medal = {
   name: string;
 };
 
+type Owner = {
+  name: string;
+  color: Color;
+};
+
 type ShownCard = {
   card: CardModel;
   points: number;
+  owner?: Owner;
 };
 
 type ChartLine = {
@@ -299,14 +312,24 @@ export default defineComponent({
      * The card behind a line of points: as it lay on the table, with its resources, or
      * as printed. Not every line is a card -- Turmoil, colonies and a few expansions
      * score under their own names -- and those have nothing to show.
+     *
+     * A card can score for a player who did not play it: Vermin costs every player VP
+     * per city. Then it is shown from its owner's table, with the owner named, so its
+     * resources are the ones that counted.
      */
-    cardFor(player: PublicPlayerModel, name: string): CardModel | undefined {
+    cardFor(player: PublicPlayerModel, name: string): {card?: CardModel, owner?: Owner} {
       const onTable = player.tableau.find((model) => model.name === name);
       if (onTable !== undefined) {
-        return onTable;
+        return {card: onTable};
+      }
+      for (const other of this.viewModel.players) {
+        const theirs = other.tableau.find((model) => model.name === name);
+        if (theirs !== undefined) {
+          return {card: theirs, owner: {name: other.name, color: other.color}};
+        }
       }
       const card = getCard(name as CardName);
-      return card === undefined ? undefined : {name: card.name};
+      return card === undefined ? {} : {card: {name: card.name}};
     },
     /* A milestone or award this game had, by name; anything else has no rule to show. */
     medalFor(kind: Medal['kind'], name: string | undefined): Medal | undefined {
@@ -315,7 +338,7 @@ export default defineComponent({
     },
     open(line: DetailLine): void {
       if (line.card !== undefined) {
-        this.shown = {card: line.card, points: line.points};
+        this.shown = {card: line.card, points: line.points, owner: line.owner};
       } else {
         this.medal = line.medal;
       }
@@ -329,7 +352,7 @@ export default defineComponent({
             key: 'card-' + card.cardName,
             points: card.victoryPoint,
             text: this.$t(card.cardName),
-            card: this.cardFor(player, card.cardName),
+            ...this.cardFor(player, card.cardName),
           })),
         // "Claimed ${0} milestone" names the milestone first; "${0} place for ${1} award" the award second.
         ...vp.detailsMilestones.map((detail) => ({
