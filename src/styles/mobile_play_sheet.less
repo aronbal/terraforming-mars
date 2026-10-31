@@ -386,6 +386,12 @@
   text-align: center;
 }
 
+// The sheet's body scrolls when the cards are taller than it, rather than squeezing them.
+.mobile-card-chooser-title,
+.mobile-play-sheet-body > .mobile-card-grid {
+  flex: none;
+}
+
 /*
  * Cards two abreast, each the desktop's own card scaled the way the play sheet scales
  * one, so they can be compared without a swipe. A chosen card is ringed and ticked.

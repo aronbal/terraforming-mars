@@ -152,4 +152,24 @@ describe('MobileCardChooser', () => {
   it('closes when there is no pick among cards to answer', () => {
     expect(render(menu(option('Pass for this generation', 'pass'))).emitted('close')).has.length(1);
   });
+
+  it('stops short of the header, so the tags in it stay on screen', () => {
+    const shell = document.createElement('div');
+    shell.id = 'mobile-shell';
+    const header = document.createElement('header');
+    header.className = 'mobile-header';
+    header.getBoundingClientRect = () => ({bottom: 212} as DOMRect);
+    shell.appendChild(header);
+    document.body.appendChild(shell);
+    try {
+      // JSDOM drops a calc() written to an element's style, so the binding is read instead.
+      expect(render(draft()).vm.panelStyle).deep.eq({maxHeight: 'calc(100% - 212px)'});
+    } finally {
+      shell.remove();
+    }
+  });
+
+  it('keeps its own height without a header to stop short of', () => {
+    expect(render(draft()).vm.panelStyle).deep.eq({});
+  });
 });
