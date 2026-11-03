@@ -74,6 +74,8 @@ export type SeatStats = {
   unspent: number;
   /** Project cards costing 20 or more that the seat played. */
   bigCards: number;
+  /** Cards still in hand when the game ended. */
+  heldCards: number;
   /** What the seat's planning did. */
   planning: BotStats;
 };
@@ -90,6 +92,7 @@ function seatStats(player: IPlayer): SeatStats {
     score: player.getVictoryPoints().total,
     unspent: player.megaCredits,
     bigCards: player.playedCards.asArray().filter((card) => (card.cost ?? 0) >= 20).length,
+    heldCards: player.cardsInHand.length,
     planning: player.botMemory?.stats ?? NO_STATS,
   };
 }
@@ -298,6 +301,7 @@ function ab(pairs: number, difficulty: BotDifficulty, a: BotProfileOverride, b: 
     `score ${mean(stats.map((s) => s.score)).toFixed(1)}  ` +
     `unspent M€ ${mean(stats.map((s) => s.unspent)).toFixed(1)}  ` +
     `20+ cost cards ${mean(stats.map((s) => s.bigCards)).toFixed(2)}  ` +
+    `held cards ${mean(stats.map((s) => s.heldCards)).toFixed(1)}  ` +
     `goals set ${mean(stats.map((s) => s.planning.goalsSet)).toFixed(2)}, ` +
     `met ${mean(stats.map((s) => s.planning.goalsMet)).toFixed(2)}, ` +
     `abandoned ${mean(stats.map((s) => s.planning.goalsAbandoned)).toFixed(2)}  ` +

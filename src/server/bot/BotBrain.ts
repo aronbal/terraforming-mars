@@ -353,8 +353,10 @@ export class BotBrain {
         eligible.length;
       const limit = Math.min(max, affordable, this.researchLimit(cardCost) ?? affordable);
       // A hand the bot is not getting through is a reason to stop buying, down to nothing.
-      const handPressure = Math.max(0, this.player.cardsInHand.length - this.comfortableHandSize()) * 0.08;
-      const appetite = Math.ceil(eligible.length * Math.max(0, this.profile.buyRate - handPressure));
+      const sizesHand = this.profile.planning.sizesHandToGame;
+      const comfortable = sizesHand ? this.comfortableHandSize() : COMFORTABLE_HAND_SIZE;
+      const handPressure = Math.max(0, this.player.cardsInHand.length - comfortable) * 0.08;
+      const appetite = Math.ceil(eligible.length * Math.max(sizesHand ? 0 : 0.1, this.profile.buyRate - handPressure));
       chosen = ranked
         .filter((entry) => entry.net > 0)
         .slice(0, Math.max(min, Math.min(limit, appetite)))
@@ -396,12 +398,19 @@ export class BotBrain {
     if (!forecast) {
       return value;
     }
-    const net = value - (isIProjectCard(card) ? this.player.getCardCost(card) : 0);
-    if (!this.profile.planning.requirementForecast) {
+    const planning = this.profile.planning;
+    const net = planning.buysNetOfPlayCost && isIProjectCard(card) ? value - this.player.getCardCost(card) : value;
+    if (!planning.requirementForecast) {
       return net;
     }
     const requirements = forecastRequirements(this.player, card);
-    if (requirements.probability <= 0 || requirements.eta >= this.tempo.remainingGenerations) {
+    if (requirements.probability <= 0) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    if (!planning.buysOnPlayChance) {
+      return net;
+    }
+    if (requirements.eta >= this.tempo.remainingGenerations) {
       return Number.NEGATIVE_INFINITY;
     }
     return net * requirements.probability * this.productionChance(card);
