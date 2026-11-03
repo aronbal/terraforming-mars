@@ -26,7 +26,7 @@ import {maxOutOceans, setOxygenLevel, setTemperature} from '../TestingUtils';
 import {cast} from '../../src/common/utils/utils';
 
 const CAREFUL_BUYER: BotProfileOverride = {
-  planning: {buysNetOfPlayCost: true, buysOnPlayChance: true, sizesHandToGame: true},
+  planning: {buysNetOfPlayCost: true, buysOnProductionChance: true, sizesHandToGame: true},
 };
 
 /** How many of `cards` the bot buys from a research-style menu. */

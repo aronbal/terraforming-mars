@@ -399,7 +399,10 @@ export class BotBrain {
       return value;
     }
     const planning = this.profile.planning;
-    const net = planning.buysNetOfPlayCost && isIProjectCard(card) ? value - this.player.getCardCost(card) : value;
+    let net = planning.buysNetOfPlayCost && isIProjectCard(card) ? value - this.player.getCardCost(card) : value;
+    if (planning.buysOnProductionChance) {
+      net *= this.productionChance(card);
+    }
     if (!planning.requirementForecast) {
       return net;
     }
@@ -413,7 +416,7 @@ export class BotBrain {
     if (requirements.eta >= this.tempo.remainingGenerations) {
       return Number.NEGATIVE_INFINITY;
     }
-    return net * requirements.probability * this.productionChance(card);
+    return net * requirements.probability;
   }
 
   /** Chance the bot will have the production `card` gives up when it wants to play it. */
