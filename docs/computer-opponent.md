@@ -158,6 +158,19 @@ forecast also extrapolates global parameters from the last few generations'
 snapshots, which the savings goals use; it never calls a global requirement's
 `satisfies`, which writes Think Tank costs onto the card.
 
+**What research buys** (`buysNetOfPlayCost`, `buysOnProductionChance`,
+`sizesHandToGame`). Bots used to finish games holding eight or more cards they
+had paid 3 M€ each for. Research compared a card's value with the 3 M€ to buy
+it but never with the price of playing it, and it always bought at least one
+card however full the hand. A card can also give up a production the bot does
+not have: Underground City, GHG Factories and Corporate Stronghold all need
+energy production, and a bot without any held them all game. Now, depending on
+the profile, a card is bought on its value less its play cost; its value is cut
+to a quarter when the bot lacks the production it gives up (to 60% when
+another card in hand supplies it); and the comfortable hand size shrinks to
+two cards per generation left, with no one-card floor, so a hand the game
+cannot outlast stops research.
+
 **Savings goals** (`goals` and `goal*`, `plan/GoalPlanner.ts`,
 `plan/Economy.ts`). A static evaluator spends what it has on the best thing it
 can afford now, so the expensive card in hand waits behind a stream of cheaper
@@ -216,6 +229,8 @@ What each level plans:
 | `goalMaxEta` / `goalMinNet` | – | 1 / 15 | 2 / 10 | 2 / 8 |
 | `goalSwitchMargin` / `goalCommitment` / `goalRisk` / `goalMaxAgeSlack` | – | 0.3 / 0.5 / 0.85 / 1 | 0.3 / 0.8 / 0.88 / 2 | 0.25 / 1 / 0.9 / 2 |
 | `goalGuardsResearch` | off | off | off | off |
+| `buysNetOfPlayCost` | off | off | on | on |
+| `buysOnProductionChance` / `sizesHandToGame` | off | on | on | on |
 | `enablerWeight` | 0 | 0 | 0.5 | 0.7 |
 | `lookahead` / `lookaheadDiscount` / `lookaheadBudgetMs` | 0 | 0 | 0 | 4 / 0.9 / 60 |
 
@@ -273,7 +288,8 @@ with a 95% interval and, more usefully, the **paired VP difference per seed
 with its standard error**: two bots of one level are close, the deal decides
 most games, and the paired difference cancels the deal. Win rates between two
 versions of one level barely move even when the VP difference is several
-standard errors. It also reports cash left at the end, big cards played, and
+standard errors. It also reports cash left at the end, big cards played, cards
+still in hand, and
 the planning counters from `BotMemory`. `src/server/tools/bot_clone_bench.ts`
 times copying the game and a whole decision with and without lookahead.
 
@@ -293,7 +309,7 @@ Do not spend time re-deriving these. Each was implemented and measured over
 
 | Idea | Result |
 | --- | --- |
-| Buy cards on value with a margin, instead of to a quota | **44%** — actively harmful. More cards beats fewer: the play threshold already filters what gets played, so extra options are worth more than the 3 M€. |
+| Buy cards on value with a margin, instead of to a quota | **44%** — actively harmful. More cards beats fewer: the play threshold already filters what gets played, so extra options are worth more than the 3 M€. Measured on the single deal (see below); buying on value net of the play cost, still to the quota, later measured +2.6 VP at Hard on proper deals. |
 | Price steel and titanium by whether the hand holds cards that can spend them | 49% — no effect. |
 | Both of the above together | **32%** — clearly worse. |
 | Value a greenery by adjacency to the player's own cities at decision time | 44% — no effect. Placement already picks good spaces once the greenery is bought. |
@@ -346,6 +362,27 @@ softmax, play style, `attention` and the opponent flags.
 | Forecast and goals together vs none | Medium | 49.8% | +1.38 ± 0.90 |
 | Lookahead 4 vs 0 | Insane | 57.1% | **+3.98 ± 0.64** |
 | Lookahead 4 vs 0, both with forecast, goals and enablers | Insane | 53.5% | **+2.52 ± 0.67** |
+
+Measured later for research, 100 seeds both ways (200 games) each, against the
+profile before the change. Cards held at the end fell from about 8.8 to 4.8 at
+Hard with all three on.
+
+| Change | Level | Wins | Paired VP |
+| --- | --- | --- | --- |
+| `buysNetOfPlayCost` | Hard | 57.5% | **+2.58 ± 1.16** |
+| Same | Medium | 50.0% | −1.46 ± 1.50 — left off |
+| Same (40 seeds) | Insane | 50.0% | −0.16 ± 1.82 |
+| `buysOnProductionChance` | Hard | 50.5% | +1.80 ± 0.90 |
+| `sizesHandToGame` | Hard | 49.8% | −0.39 ± 0.45 |
+| Same | Medium | 50.5% | −0.04 ± 0.66 |
+| All three | Hard | 53.5% | +0.66 ± 1.02 |
+| Price a bought card by the forecast probability, nothing if it is due after the end (again) | Hard | 45.8% | **−2.51 ± 1.15** — harmful, removed |
+
+With these on, the 60-game ladder read medium over easy 95%, hard over easy
+100%, insane over easy 98%, hard over medium 78%, insane over medium 72% and
+insane over hard 47%. That last is the unpaired ladder's noise: Insane against
+Hard over 60 seeds played both ways read 60.4%, **+5.95 ± 1.36** VP, against
+60.0%, +7.06 ± 1.30 with all three off on both sides.
 
 Before the merge with origin/main the goals measured +1.75 ± 0.72 (Insane's
 settings) and +1.99 ± 0.62 (Medium's settings) at Insane, +2.04 ± 0.70 at Hard

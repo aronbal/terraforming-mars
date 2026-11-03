@@ -70,6 +70,22 @@ export class CardEvaluator {
     return favoured ? this.personality.favouriteTagBonus : 1;
   }
 
+  /**
+   * The kinds of production `card` gives up to be played that the player lacks.
+   *
+   * A card that lowers a production below its floor cannot be played at all,
+   * the way Underground City cannot without two energy production.
+   */
+  public missingProduction(card: ICard): ReadonlyArray<keyof Units> {
+    const production = card.behavior?.production;
+    if (production === undefined) {
+      return [];
+    }
+    const units = this.countUnits(card, production);
+    return Units.keys.filter((key) =>
+      units[key] < 0 && !this.player.production.canAdjust(Units.of({[key]: units[key]})));
+  }
+
   /** Value of playing `card` now, net of the megacredits it takes to do so. */
   public valueOfBuying(card: IProjectCard): number {
     return this.valueOfPlaying(card) - this.player.getCardCost(card);

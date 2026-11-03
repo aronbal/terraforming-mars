@@ -37,7 +37,7 @@ import {Tag} from '../common/cards/Tag';
 import {Timer} from '../common/Timer';
 import {BotDifficulty, isBotDifficulty} from '../common/bot/BotDifficulty';
 import {BotMemory, parseBotMemory} from './bot/BotMemory';
-import {ActionAnnotation} from '../common/input/Annotation';
+import {ActionAnnotation, ChoiceAnnotation} from '../common/input/Annotation';
 import {TurmoilHandler} from './turmoil/TurmoilHandler';
 import {AllOptions, DrawCards, DrawOptions} from './deferredActions/DrawCards';
 import {Units} from '../common/Units';
@@ -1217,6 +1217,7 @@ export class Player implements IPlayer {
           'Select space for greenery tile',
           this.game.board.getAvailableSpacesForGreenery(this))
           .placing(TileType.GREENERY)
+          .annotate('placeFinalGreenery' satisfies ChoiceAnnotation)
           .andThen((space) => {
             // Do not raise oxygen or award TR for final greenery placements
             this.game.addGreenery(this, space, false);
@@ -1227,10 +1228,12 @@ export class Player implements IPlayer {
             return undefined;
           }));
       action.options.push(
-        new SelectOption('Don\'t place a greenery').andThen(() => {
-          this.game.playerIsDoneWithGame(this);
-          return undefined;
-        }),
+        new SelectOption('Don\'t place a greenery')
+          .annotate('declineFinalGreenery' satisfies ChoiceAnnotation)
+          .andThen(() => {
+            this.game.playerIsDoneWithGame(this);
+            return undefined;
+          }),
       );
       this.setWaitingForSafely(action);
       return;

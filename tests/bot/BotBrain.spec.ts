@@ -15,6 +15,22 @@ import {SpaceElevator} from '../../src/server/cards/base/SpaceElevator';
 import {GeothermalPower} from '../../src/server/cards/base/GeothermalPower';
 import {BotProfileOverride, NO_PLANNING} from '../../src/server/bot/BotProfile';
 import {TestPlayer} from '../TestPlayer';
+import {RemoveAnyPlants} from '../../src/server/deferredActions/RemoveAnyPlants';
+import {SelectCard} from '../../src/server/inputs/SelectCard';
+import {IProjectCard} from '../../src/server/cards/IProjectCard';
+import {UndergroundCity} from '../../src/server/cards/base/UndergroundCity';
+import {GHGFactories} from '../../src/server/cards/base/GHGFactories';
+import {SolarPower} from '../../src/server/cards/base/SolarPower';
+import {BotDifficulty} from '../../src/common/bot/BotDifficulty';
+import {maxOutOceans, setOxygenLevel, setTemperature} from '../TestingUtils';
+import {cast} from '../../src/common/utils/utils';
+
+/** How many of `cards` the bot buys from a research-style menu. */
+function cardsBought(player: TestPlayer, difficulty: BotDifficulty, cards: ReadonlyArray<IProjectCard>, seed: number = 1): number {
+  const menu = new SelectCard('Select card(s) to buy', 'Buy', cards, {min: 0, max: cards.length, played: false});
+  const response = new BotBrain(player, difficulty, new BotRandom(seed)).respond(menu);
+  return (response as {cards: Array<string>}).cards.length;
+}
 
 const SAVING: BotProfileOverride = {
   planning: {
@@ -181,5 +197,67 @@ describe('BotBrain', () => {
     expect(player.botMemory?.goal?.card).to.eq(new SpaceElevator().name);
     // Enough left that a generation's income still pays for Space Elevator.
     expect(player.megaCredits).to.be.at.least(15);
+  });
+
+  it('takes plants from an opponent, never its own', () => {
+    const [/* game */, player, opponent] = testGame(3);
+    player.plants = 5;
+    opponent.plants = 5;
+    const random = new BotRandom(3);
+
+    let removed = 0;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const menu = cast(new RemoveAnyPlants(player, 3).execute(), OrOptions);
+      const index = (new BotBrain(player, 'medium', random).respond(menu) as {index: number}).index;
+      expect(cast(menu.options[index], SelectOption).warnings ?? []).does.not.include('removeOwnPlants');
+      if (index === 0) {
+        removed++;
+      }
+    }
+    expect(removed).to.be.greaterThan(80);
+  });
+
+  it('places every final greenery it can', () => {
+    const [/* game */, player] = testGame(2);
+    player.plants = 16;
+    player.takeActionForFinalGreenery();
+    const menu = cast(player.getWaitingFor(), OrOptions);
+    const random = new BotRandom(5);
+
+    for (let attempt = 0; attempt < 50; attempt++) {
+      expect(new BotBrain(player, 'easy', random).respond(menu)).to.have.property('index', 0);
+    }
+  });
+
+  it('does not buy a card it lacks the production to play', () => {
+    const [/* game */, player] = testGame(2);
+    player.megaCredits = 50;
+
+    expect(cardsBought(player, 'hard', [new UndergroundCity()])).to.eq(0);
+
+    player.production.add(Resource.ENERGY, 2);
+    expect(cardsBought(player, 'hard', [new UndergroundCity()])).to.eq(1);
+  });
+
+  it('counts on a card in hand for the production another one gives up', () => {
+    const [/* game */, player] = testGame(2);
+    player.megaCredits = 50;
+    player.cardsInHand.push(new SolarPower());
+
+    expect(cardsBought(player, 'hard', [new UndergroundCity()])).to.eq(1);
+  });
+
+  it('stops buying when its hand already outlasts the game', () => {
+    const [game, player] = testGame(2);
+    setTemperature(game, 6);
+    setOxygenLevel(game, 13);
+    maxOutOceans(player, 8);
+    player.megaCredits = 100;
+    player.production.add(Resource.ENERGY, 4);
+    for (let i = 0; i < 10; i++) {
+      player.cardsInHand.push(new SolarPower());
+    }
+
+    expect(cardsBought(player, 'hard', [new GHGFactories(), new GHGFactories(), new GHGFactories(), new GHGFactories()])).to.eq(0);
   });
 });
