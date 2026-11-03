@@ -25,14 +25,10 @@ import {BotDifficulty} from '../../src/common/bot/BotDifficulty';
 import {maxOutOceans, setOxygenLevel, setTemperature} from '../TestingUtils';
 import {cast} from '../../src/common/utils/utils';
 
-const CAREFUL_BUYER: BotProfileOverride = {
-  planning: {buysNetOfPlayCost: true, buysOnProductionChance: true, sizesHandToGame: true},
-};
-
 /** How many of `cards` the bot buys from a research-style menu. */
 function cardsBought(player: TestPlayer, difficulty: BotDifficulty, cards: ReadonlyArray<IProjectCard>, seed: number = 1): number {
   const menu = new SelectCard('Select card(s) to buy', 'Buy', cards, {min: 0, max: cards.length, played: false});
-  const response = new BotBrain(player, difficulty, new BotRandom(seed), CAREFUL_BUYER).respond(menu);
+  const response = new BotBrain(player, difficulty, new BotRandom(seed)).respond(menu);
   return (response as {cards: Array<string>}).cards.length;
 }
 

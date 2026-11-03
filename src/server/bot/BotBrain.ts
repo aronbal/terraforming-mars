@@ -385,13 +385,12 @@ export class BotBrain {
   }
 
   /**
-   * What `card` is worth to hold, with `forecast` net of playing it and of the chance it never is.
+   * What `card` is worth to hold, with `forecast` priced for playing it.
    *
-   * A card in hand is only worth what it adds beyond its price, so one worth
-   * less than it costs to play is not worth buying. It also waits on its
-   * requirements and on the production it gives up, such as the energy
-   * production Underground City needs, and one that cannot be played before
-   * the game ends is worth nothing.
+   * A card whose requirements can never be met is worth nothing. Depending on
+   * the profile, a card is also worth only what it adds beyond the price of
+   * playing it, and less when the bot lacks the production it gives up, such
+   * as the energy production Underground City needs.
    */
   private prospectiveValue(card: ICard, forecast: boolean): number {
     const value = this.cards.valueOfPlaying(card);
@@ -399,24 +398,11 @@ export class BotBrain {
       return value;
     }
     const planning = this.profile.planning;
-    let net = planning.buysNetOfPlayCost && isIProjectCard(card) ? value - this.player.getCardCost(card) : value;
-    if (planning.buysOnProductionChance) {
-      net *= this.productionChance(card);
-    }
-    if (!planning.requirementForecast) {
-      return net;
-    }
-    const requirements = forecastRequirements(this.player, card);
-    if (requirements.probability <= 0) {
+    if (planning.requirementForecast && forecastRequirements(this.player, card).probability <= 0) {
       return Number.NEGATIVE_INFINITY;
     }
-    if (!planning.buysOnPlayChance) {
-      return net;
-    }
-    if (requirements.eta >= this.tempo.remainingGenerations) {
-      return Number.NEGATIVE_INFINITY;
-    }
-    return net * requirements.probability;
+    const net = planning.buysNetOfPlayCost && isIProjectCard(card) ? value - this.player.getCardCost(card) : value;
+    return planning.buysOnProductionChance ? net * this.productionChance(card) : net;
   }
 
   /** Chance the bot will have the production `card` gives up when it wants to play it. */

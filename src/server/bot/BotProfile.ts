@@ -118,12 +118,6 @@ export type PlanningProfile = {
   /** When true, a card is bought on its value net of what it costs to play. */
   buysNetOfPlayCost: boolean;
   /**
-   * When true, a card is bought on the chance its requirements are met before the game ends.
-   *
-   * Needs `requirementForecast`.
-   */
-  buysOnPlayChance: boolean;
-  /**
    * When true, a card is bought on the chance the bot has the production it gives up,
    * such as the energy production Underground City needs.
    */
@@ -152,7 +146,6 @@ export const NO_PLANNING: PlanningProfile = {
   goalGuardsResearch: false,
   requirementForecast: false,
   buysNetOfPlayCost: false,
-  buysOnPlayChance: false,
   buysOnProductionChance: false,
   sizesHandToGame: false,
   enablerWeight: 0,
@@ -204,6 +197,8 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     planning: {
       ...NO_PLANNING,
       requirementForecast: true,
+      buysOnProductionChance: true,
+      sizesHandToGame: true,
       goals: true,
       goalMaxEta: 1,
       goalMinNet: 15,
@@ -230,6 +225,9 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     planning: {
       ...NO_PLANNING,
       requirementForecast: true,
+      buysNetOfPlayCost: true,
+      buysOnProductionChance: true,
+      sizesHandToGame: true,
       goals: true,
       goalMaxEta: 2,
       goalMinNet: 10,
@@ -256,10 +254,9 @@ const PROFILES: Record<BotDifficulty, BotProfile> = {
     playsEndgame: true,
     planning: {
       requirementForecast: true,
-      buysNetOfPlayCost: false,
-      buysOnPlayChance: false,
-      buysOnProductionChance: false,
-      sizesHandToGame: false,
+      buysNetOfPlayCost: true,
+      buysOnProductionChance: true,
+      sizesHandToGame: true,
       goals: true,
       goalMaxEta: 2,
       goalMinNet: 8,
