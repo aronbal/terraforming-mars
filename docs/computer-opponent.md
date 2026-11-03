@@ -378,6 +378,12 @@ Hard with all three on.
 | All three | Hard | 53.5% | +0.66 ± 1.02 |
 | Price a bought card by the forecast probability, nothing if it is due after the end (again) | Hard | 45.8% | **−2.51 ± 1.15** — harmful, removed |
 
+With these on, the 60-game ladder read medium over easy 95%, hard over easy
+100%, insane over easy 98%, hard over medium 78%, insane over medium 72% and
+insane over hard 47%. That last is the unpaired ladder's noise: Insane against
+Hard over 60 seeds played both ways read 60.4%, **+5.95 ± 1.36** VP, against
+60.0%, +7.06 ± 1.30 with all three off on both sides.
+
 Before the merge with origin/main the goals measured +1.75 ± 0.72 (Insane's
 settings) and +1.99 ± 0.62 (Medium's settings) at Insane, +2.04 ± 0.70 at Hard
 and +0.65 ± 0.71 at Medium. A first version that charged a goal's whole risk
