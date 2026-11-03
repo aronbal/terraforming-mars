@@ -8,6 +8,7 @@ import {Resource} from '../../common/Resource';
 import {BotDifficulty} from '../../common/bot/BotDifficulty';
 import {ICard} from '../cards/ICard';
 import {ICorporationCard} from '../cards/corporation/ICorporationCard';
+import {isIProjectCard} from '../cards/IProjectCard';
 
 import {OrOptions} from '../inputs/OrOptions';
 import {AndOptions} from '../inputs/AndOptions';
@@ -48,6 +49,17 @@ import {Phase} from '../../common/Phase';
 
 /** Hand size beyond which the bot starts buying fewer cards. */
 const COMFORTABLE_HAND_SIZE = 8;
+
+/** Roughly how many project cards a bot plays in a generation, from bot games. */
+const CARDS_PLAYED_PER_GENERATION = 2;
+
+/**
+ * Chance the bot gets the production a card gives up, when it lacks it now.
+ *
+ * Better when another card in hand supplies that production.
+ */
+const MISSING_PRODUCTION_CHANCE = 0.25;
+const SUPPLIED_PRODUCTION_CHANCE = 0.6;
 
 /** Words that mark a card selection as something the player gives up. */
 const LOSS_WORDS = ['discard', 'remove', 'lose', 'sacrifice', 'destroy', 'spend', 'trash'];
@@ -340,9 +352,9 @@ export class BotBrain {
         Math.floor(this.player.spendableMegacredits() / cardCost) :
         eligible.length;
       const limit = Math.min(max, affordable, this.researchLimit(cardCost) ?? affordable);
-      // A hand the bot is not getting through is a reason to stop buying.
-      const handPressure = Math.max(0, this.player.cardsInHand.length - COMFORTABLE_HAND_SIZE) * 0.08;
-      const appetite = Math.ceil(eligible.length * Math.max(0.1, this.profile.buyRate - handPressure));
+      // A hand the bot is not getting through is a reason to stop buying, down to nothing.
+      const handPressure = Math.max(0, this.player.cardsInHand.length - this.comfortableHandSize()) * 0.08;
+      const appetite = Math.ceil(eligible.length * Math.max(0, this.profile.buyRate - handPressure));
       chosen = ranked
         .filter((entry) => entry.net > 0)
         .slice(0, Math.max(min, Math.min(limit, appetite)))
@@ -370,11 +382,45 @@ export class BotBrain {
       .sort((a, b) => b.net - a.net);
   }
 
+  /**
+   * What `card` is worth to hold, with `forecast` net of playing it and of the chance it never is.
+   *
+   * A card in hand is only worth what it adds beyond its price, so one worth
+   * less than it costs to play is not worth buying. It also waits on its
+   * requirements and on the production it gives up, such as the energy
+   * production Underground City needs, and one that cannot be played before
+   * the game ends is worth nothing.
+   */
   private prospectiveValue(card: ICard, forecast: boolean): number {
-    if (forecast && this.profile.planning.requirementForecast && forecastRequirements(this.player, card).probability <= 0) {
+    const value = this.cards.valueOfPlaying(card);
+    if (!forecast) {
+      return value;
+    }
+    const net = value - (isIProjectCard(card) ? this.player.getCardCost(card) : 0);
+    if (!this.profile.planning.requirementForecast) {
+      return net;
+    }
+    const requirements = forecastRequirements(this.player, card);
+    if (requirements.probability <= 0 || requirements.eta >= this.tempo.remainingGenerations) {
       return Number.NEGATIVE_INFINITY;
     }
-    return this.cards.valueOfPlaying(card);
+    return net * requirements.probability * this.productionChance(card);
+  }
+
+  /** Chance the bot will have the production `card` gives up when it wants to play it. */
+  private productionChance(card: ICard): number {
+    const missing = this.cards.missingProduction(card);
+    if (missing.length === 0) {
+      return 1;
+    }
+    const supplied = missing.every((key) => this.player.cardsInHand.some((other) =>
+      other !== card && this.cards.economicDelta(other).production[key] > 0));
+    return supplied ? SUPPLIED_PRODUCTION_CHANCE : MISSING_PRODUCTION_CHANCE;
+  }
+
+  /** How many cards the bot can hold and still expect to play them before the game ends. */
+  private comfortableHandSize(): number {
+    return Math.min(COMFORTABLE_HAND_SIZE, Math.ceil(this.tempo.remainingGenerations * CARDS_PLAYED_PER_GENERATION));
   }
 
   /** How many cards research may buy without delaying the savings goal, if that applies. */

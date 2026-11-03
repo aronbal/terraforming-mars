@@ -6,7 +6,8 @@ import {SelectCardToPlay} from '../../inputs/SelectCardToPlay';
 import {UndoActionOption} from '../../inputs/UndoActionOption';
 import {IStandardProjectCard, isIStandardProjectCard} from '../../cards/IStandardProjectCard';
 import {CardName} from '../../../common/cards/CardName';
-import {ActionAnnotation} from '../../../common/input/Annotation';
+import {ActionAnnotation, ChoiceAnnotation} from '../../../common/input/Annotation';
+import {RemovePlantsOption} from '../../deferredActions/RemoveAnyPlants';
 import {Message} from '../../../common/logs/Message';
 import {MAX_OCEAN_TILES, MAX_OXYGEN_LEVEL, MAX_TEMPERATURE, MAX_VENUS_SCALE} from '../../../common/constants';
 import {TileType} from '../../../common/TileType';
@@ -131,7 +132,7 @@ export class ActionScorer {
   }
 
   private scoreByAnnotation(option: PlayerInput): number {
-    switch (option.annotation as ActionAnnotation | undefined) {
+    switch (option.annotation as ActionAnnotation | ChoiceAnnotation | undefined) {
     case 'pass':
       return PASS_SCORE;
     case 'endTurn':
@@ -160,6 +161,11 @@ export class ActionScorer {
     case 'turmoilParty':
     case 'sendDelegate':
       return 3;
+    case 'placeFinalGreenery':
+      // Plants are worth nothing once the game is over, so the tile is free points.
+      return VP_VALUE + TILE_PLACEMENT_VALUE;
+    case 'declineFinalGreenery':
+      return Number.NEGATIVE_INFINITY;
     default:
       return this.scoreByStructure(option);
     }
@@ -169,6 +175,9 @@ export class ActionScorer {
   private scoreByStructure(option: PlayerInput): number {
     if (option instanceof SelectCardToPlay) {
       return this.bestPlayableCardScore(option);
+    }
+    if (option instanceof RemovePlantsOption) {
+      return this.removePlantsScore(option);
     }
     if (option instanceof SelectOption) {
       const named = this.namedChoiceValue(option.title);
@@ -224,6 +233,24 @@ export class ActionScorer {
       return this.profile.racesMilestones ? this.contests.milestoneValue(milestone) : PASS_SCORE / 2;
     }
     return undefined;
+  }
+
+  /**
+   * Scores taking plants from a player.
+   *
+   * Removing an opponent's plants costs nothing and sets them back by what the
+   * plants are worth, so it beats skipping. Removing the bot's own plants never
+   * helps it.
+   */
+  private removePlantsScore(option: RemovePlantsOption): number {
+    if (option.target === undefined) {
+      return 0;
+    }
+    if (option.target === this.player) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    const stock = stockValues(this.player, this.tempo, this.weights);
+    return option.quantity * stock.plants;
   }
 
   private convertPlantsScore(): number {

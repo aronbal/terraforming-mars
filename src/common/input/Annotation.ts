@@ -25,3 +25,16 @@ export const ACTION_ANNOTATIONS = [
 ] as const;
 
 export type ActionAnnotation = typeof ACTION_ANNOTATIONS[number];
+
+/**
+ * Stable identifiers for answers to questions outside the action menu.
+ *
+ * Like `ACTION_ANNOTATIONS`, they let the computer opponent recognise an answer
+ * without matching on its translated title. They never mark an action menu.
+ */
+export const CHOICE_ANNOTATIONS = [
+  'placeFinalGreenery',
+  'declineFinalGreenery',
+] as const;
+
+export type ChoiceAnnotation = typeof CHOICE_ANNOTATIONS[number];
